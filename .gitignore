@@ -1,8 +1,54 @@
 mock-data-generator/node_modules/*
 sample/*
-.vscode/*
 mock-data-generator/markers/*
 batch-app/markers/*
-/.idea/
+
+# Secrets and local configuration (keep the committed .env.example)
+.env
+.env.*
+!.env.example
+*.netrc
+*.pem
+*.key
+
+# Python tooling
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+test-results/
+reports/
+.mypy_cache/
+.ruff_cache/
+
+# GnuCOBOL and local batch run artifacts
+*.o
+*.so
+*.dll
+*.lst
+*.int
+build/
+out/
+target/
+.batch-runs/
+
+# Node, Java, and other ecosystem artifacts that tools may create
+node_modules/
+.gradle/
+*.class
+
+# IDE and editor settings
+.idea/
+.vscode/*
+*.swp
+*~
+
+# OS files
 .DS_Store
 **/.DS_Store
+Thumbs.db

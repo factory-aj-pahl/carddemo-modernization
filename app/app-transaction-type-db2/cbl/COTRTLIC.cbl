@@ -1808,7 +1808,7 @@
 180900                 AND  TR_TYPE = :WS-TYPE-CD-FILTER)
 181000                 OR  :WS-EDIT-TYPE-FLAG <> '1')
 181200             AND
-181300           	 ((:WS-EDIT-DESC-FLAG = '1'
+181300                   ((:WS-EDIT-DESC-FLAG = '1'
 181500                  AND TR_DESCRIPTION LIKE
 181600                        TRIM(:WS-TYPE-DESC-FILTER))
 181700                  OR :WS-EDIT-DESC-FLAG <> '1')

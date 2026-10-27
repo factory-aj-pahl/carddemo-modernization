@@ -1,0 +1,43 @@
+# Install with `make setup` (runs `pre-commit install`). Run on demand with
+# `.venv/bin/pre-commit run --all-files`.
+# Whitespace fixers skip the mainframe sources: COBOL/JCL columns and line endings are significant.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+        exclude: ^(app|samples|diagrams|scripts)/
+      - id: trailing-whitespace
+        exclude: ^(app|samples|diagrams|scripts)/
+        args: [--markdown-linebreak-ext=md]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.3
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: local
+    hooks:
+      - id: carddemo-lint
+        name: CardDemo COBOL/JCL lint (new findings only)
+        entry: python3 -m tools.carddemo lint
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: carddemo-docs
+        name: Generated inventory and AGENTS.md are current
+        entry: sh -c 'python3 -m tools.carddemo inventory --check && python3 -m tools.carddemo check-docs'
+        language: system
+        pass_filenames: false
+        always_run: true

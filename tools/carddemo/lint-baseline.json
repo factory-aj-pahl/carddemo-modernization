@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "findings": [
+    {
+      "rule": "CD010",
+      "path": "app/app-transaction-type-db2/ddl/XTRNTYCAT.ddl",
+      "key": "XTRNTYCAT"
+    },
+    {
+      "rule": "CD020",
+      "path": "app/app-transaction-type-db2/cbl/COTRTLIC.cbl",
+      "key": "0000-MAIN",
+      "value": 69
+    },
+    {
+      "rule": "CD020",
+      "path": "app/app-transaction-type-db2/cbl/COTRTLIC.cbl",
+      "key": "2500-SETUP-MESSAGE",
+      "value": 33
+    },
+    {
+      "rule": "CD020",
+      "path": "app/app-transaction-type-db2/cbl/COTRTUPC.cbl",
+      "key": "0000-MAIN",
+      "value": 41
+    },
+    {
+      "rule": "CD020",
+      "path": "app/app-transaction-type-db2/cbl/COTRTUPC.cbl",
+      "key": "3300-SETUP-SCREEN-ATTRS",
+      "value": 43
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COACTUPC.cbl",
+      "key": "1100-RECEIVE-MAP",
+      "value": 93
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COACTUPC.cbl",
+      "key": "1205-COMPARE-OLD-NEW",
+      "value": 34
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COACTUPC.cbl",
+      "key": "3300-SETUP-SCREEN-ATTRS",
+      "value": 248
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COACTUPC.cbl",
+      "key": "9700-CHECK-CHANGE-IN-REC",
+      "value": 36
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COCRDLIC.cbl",
+      "key": "0000-MAIN",
+      "value": 35
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COCRDUPC.cbl",
+      "key": "0000-MAIN",
+      "value": 31
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COCRDUPC.cbl",
+      "key": "3300-SETUP-SCREEN-ATTRS",
+      "value": 45
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/CORPT00C.cbl",
+      "key": "PROCESS-ENTER-KEY",
+      "value": 36
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COTRN00C.cbl",
+      "key": "PROCESS-ENTER-KEY",
+      "value": 31
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COTRN02C.cbl",
+      "key": "VALIDATE-INPUT-DATA-FIELDS",
+      "value": 46
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cbl/COUSR00C.cbl",
+      "key": "PROCESS-ENTER-KEY",
+      "value": 32
+    },
+    {
+      "rule": "CD020",
+      "path": "app/cpy/CSSTRPFY.cpy",
+      "key": "YYYY-STORE-PFKEY",
+      "value": 29
+    },
+    {
+      "rule": "CD030",
+      "path": "app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl",
+      "key": "9999-EXIT"
+    },
+    {
+      "rule": "CD030",
+      "path": "app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl",
+      "key": "9500-EXIT"
+    },
+    {
+      "rule": "CD030",
+      "path": "app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl",
+      "key": "9990-EXIT"
+    },
+    {
+      "rule": "CD030",
+      "path": "app/app-authorization-ims-db2-mq/cbl/DBUNLDGS.CBL",
+      "key": "9999-EXIT"
+    },
+    {
+      "rule": "CD030",
+      "path": "app/app-authorization-ims-db2-mq/cbl/PAUDBLOD.CBL",
+      "key": "9999-EXIT"
+    },
+    {
+      "rule": "CD030",
+      "path": "app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL",
+      "key": "9999-EXIT"
+    },
+    {
+      "rule": "CD031",
+      "path": "app/cpy/UNUSED1Y.cpy",
+      "key": "UNUSED1Y"
+    },
+    {
+      "rule": "CD050",
+      "path": "app/app-authorization-ims-db2-mq/cbl/DBUNLDGS.CBL",
+      "key": "app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:01 WS-VARIABLES. .. COPY PAUTBPCB.",
+      "value": 73
+    },
+    {
+      "rule": "CD050",
+      "path": "app/app-transaction-type-db2/cbl/COTRTUPC.cbl",
+      "key": "app/cbl/COACTUPC.cbl:EXIT .. .",
+      "value": 49
+    },
+    {
+      "rule": "CD050",
+      "path": "app/app-transaction-type-db2/cbl/COTRTUPC.cbl",
+      "key": "app/cbl/COACTUPC.cbl:IF CDEMO-FROM-TRANID EQUAL LOW-V .. THRU 3390-SETUP-INFOMSG-ATTRS-EX",
+      "value": 30
+    },
+    {
+      "rule": "CD050",
+      "path": "app/app-vsam-mq/cbl/COACCT01.cbl",
+      "key": "app/app-vsam-mq/cbl/CODATE01.cbl:. .. END-EVALUATE.",
+      "value": 134
+    },
+    {
+      "rule": "CD050",
+      "path": "app/app-vsam-mq/cbl/COACCT01.cbl",
+      "key": "app/app-vsam-mq/cbl/CODATE01.cbl:AUTHOR. AWS. .. VALUE ZEROS.",
+      "value": 85
+    },
+    {
+      "rule": "CD050",
+      "path": "app/app-vsam-mq/cbl/COACCT01.cbl",
+      "key": "app/app-vsam-mq/cbl/CODATE01.cbl:MOVE WS-CICS-RESP1-CD TO WS-CICS .. INITIALIZE WS-DATE-TIME REPLACIN",
+      "value": 152
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/CBACT04C.cbl",
+      "key": "app/cbl/CBTRN02C.cbl:01 IO-STATUS. .. 06 DB2-REST PIC X(04).",
+      "value": 41
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/CBACT04C.cbl",
+      "key": "app/cbl/CBTRN02C.cbl:PERFORM 9910-DISPLAY-IO-STATUS .. EXIT.",
+      "value": 36
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/COACTUPC.cbl",
+      "key": "app/cbl/COACTVWC.cbl:. .. .",
+      "value": 137
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/COACTUPC.cbl",
+      "key": "app/cbl/COACTVWC.cbl:05 WS-XREF-RID. .. VALUE SPACES.",
+      "value": 33
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/COACTUPC.cbl",
+      "key": "app/cbl/COCRDUPC.cbl:GO TO COMMON-RETURN .. MAPSET(LIT-THISMAPSET)",
+      "value": 42
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/COACTVWC.cbl",
+      "key": "app/cbl/COCRDSLC.cbl:COPY CVCUS01Y. .. WHEN CDEMO-PGM-ENTER",
+      "value": 62
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/COACTVWC.cbl",
+      "key": "app/cbl/COCRDSLC.cbl:PERFORM 1000-SEND-MAP .. .",
+      "value": 35
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/COCRDSLC.cbl",
+      "key": "app/cbl/COCRDUPC.cbl:. .. .",
+      "value": 40
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cbl/COCRDSLC.cbl",
+      "key": "app/cbl/COCRDUPC.cbl:05 CICS-OUTPUT-EDIT-VARS. .. 88 FOUND-CARDS-FOR-ACCOUNT VALUE",
+      "value": 51
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cpy/CSLKPCDY.cpy",
+      "key": "app/cpy/CSLKPCDY.cpy:'202', .. '986',",
+      "value": 408
+    },
+    {
+      "rule": "CD050",
+      "path": "app/cpy/CSLKPCDY.cpy",
+      "key": "app/cpy/CSLKPCDY.cpy:'211', .. '999'.",
+      "value": 79
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBACT02C.cbl",
+      "key": "CARD-RECORD"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBACT03C.cbl",
+      "key": "CARD-XREF-RECORD"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBACT03C.cbl",
+      "key": "CARD-XREF-RECORD"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBCUS01C.cbl",
+      "key": "CUSTOMER-RECORD"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBCUS01C.cbl",
+      "key": "CUSTOMER-RECORD"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBTRN01C.cbl",
+      "key": "DALYTRAN-CARD-NUM"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBTRN01C.cbl",
+      "key": "DALYTRAN-RECORD"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBTRN01C.cbl",
+      "key": "XREF-CARD-NUM"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBTRN03C.cbl",
+      "key": "FD-XREF-CARD-NUM"
+    },
+    {
+      "rule": "CD070",
+      "path": "app/cbl/CBTRN03C.cbl",
+      "key": "TRAN-RECORD"
+    }
+  ]
+}

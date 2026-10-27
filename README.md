@@ -12,6 +12,7 @@ CardDemo is a comprehensive mainframe application that simulates a credit card m
 - [Optional Features](#optional-features)
 - [Installation](#installation)
 - [Running Batch Jobs](#running-batch-jobs)
+- [Local Development and Testing](#local-development-and-testing)
 - [Application Details](#application-details)
   - [User Functions](#user-functions)
   - [Admin Functions](#admin-functions)
@@ -124,7 +125,7 @@ CardDemo includes several optional modules that extend the base functionality:
    - Ensure proper transfer modes (binary/text) as appropriate
 
 4. **Upload Sample Data**
-   - Transfer the sample data from the `main/-/data/EBCDIC/` folder to the mainframe
+   - Transfer the sample data from the `app/data/EBCDIC/` folder to the mainframe
    - Use binary transfer mode to preserve data integrity
    - Create the following datasets:
 
@@ -232,6 +233,27 @@ Execute the following JCLs in sequence to run the full batch process:
 | WAITSTEP | Defines a step to wait job for given time           |                 |
 | CBPAUP0J | Purge expired authorizations                        | IMS-DB2-MQ: Pending Authorizations |
 
+## Local Development and Testing
+
+You do not need a mainframe to check most changes. The `tools/carddemo` package (Python 3.10+,
+standard library only) and GnuCOBOL provide static analysis, a COBOL syntax check, and local
+runs of the batch programs that use only sequential and VSAM files.
+
+```sh
+make setup          # .venv with pinned dev tools, git hooks
+make setup-cobol    # GnuCOBOL via apt (Debian/Ubuntu)
+make check          # everything CI runs: lint, type check, COBOL syntax, docs, tests
+make run-batch PROGRAM=CBTRN02C   # run POSTTRAN's program on the sample data
+```
+
+A devcontainer with all of this preinstalled is in `.devcontainer/`. See [AGENTS.md](AGENTS.md)
+for every command and the coding conventions, and the [docs](docs/) folder for:
+
+- [Architecture and service flows](docs/architecture.md)
+- [Data model](docs/data-model.md) and the generated [source inventory](docs/INVENTORY.md)
+- [Static analysis rules](docs/static-analysis.md)
+- [Batch operations runbook](docs/runbooks/batch-operations.md)
+- [Data handling and privacy](docs/data-handling.md)
 ## Application Details
 
 CardDemo is a comprehensive credit card management application built primarily using COBOL. It provides functionality for managing accounts, credit cards, transactions, and bill payments.
@@ -374,8 +396,8 @@ We welcome contributions and enhancements to this codebase from the mainframe co
 
 1. Fork the repository
 2. Create your feature branch
-3. Implement your changes with appropriate tests
-4. Submit a pull request with a clear description of the changes
+3. Implement your changes with appropriate tests, and run `make check`
+4. Submit a pull request with a clear description of the changes (the pull request template lists the checks)
 
 Feel free to raise issues, create code, and submit merge requests for enhancements to help build this application as a resource for programmers wanting to understand and modernize their mainframes.
 
@@ -394,5 +416,4 @@ The CardDemo application has been enhanced with optional features that extend it
 
 These optional features make CardDemo an even more useful resource for customers looking to modernize their mainframe applications. With modules for DB2, MQ, IMS DB, JCL utilities, and more data formats now available, customers can leverage CardDemo to test a wider array of mainframe migration, refactoring, replatforming, and augmentation scenarios.
 
-Last updated: April 2025
-
+Last updated: October 2026

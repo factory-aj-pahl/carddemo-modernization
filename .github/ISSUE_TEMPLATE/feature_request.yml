@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a new scenario, module, or improvement
+labels: [enhancement, triage]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What modernization or learning scenario does this support?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: Programs, copybooks, jobs, or data you expect to add or change.
+    validations:
+      required: true
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - Base application
+        - Existing optional module
+        - New optional module
+        - Tooling or documentation
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Compatibility
+      description: Does this change a record layout, file key, or COMMAREA that other programs rely on?

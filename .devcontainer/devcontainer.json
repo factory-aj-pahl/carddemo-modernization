@@ -1,0 +1,27 @@
+{
+  "name": "CardDemo",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y --no-install-recommends gnucobol && make setup",
+  "containerEnv": {
+    "CARDDEMO_REQUIRE_COBC": "1"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "ms-python.python",
+        "ms-python.mypy-type-checker",
+        "bitlang.cobol"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${containerWorkspaceFolder}/.venv/bin/python",
+        "files.trimTrailingWhitespace": false,
+        "editor.insertSpaces": true,
+        "[cobol]": { "editor.rulers": [7, 72, 80] }
+      }
+    }
+  }
+}

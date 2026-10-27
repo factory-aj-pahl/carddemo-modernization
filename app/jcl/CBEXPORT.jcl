@@ -29,7 +29,7 @@
   
   DEFINE CLUSTER (NAME(AWS.M2.CARDDEMO.EXPORT.DATA) -
                   INDEXED -
-                  KEYS(4 28) -
+                  KEYS(4 27) -
                   RECORDSIZE(500 500) -
                   CYLINDERS(10 5) -
                   FREESPACE(10 10) -

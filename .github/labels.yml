@@ -1,0 +1,55 @@
+# Source of truth for repository labels; synced by .github/workflows/labels.yml.
+- name: bug
+  color: d73a4a
+  description: Something does not work as documented
+- name: enhancement
+  color: a2eeef
+  description: New feature or improvement
+- name: documentation
+  color: 0075ca
+  description: README, docs/, AGENTS.md, or runbooks
+- name: tooling
+  color: 5319e7
+  description: tools/carddemo, tests, CI, or developer setup
+- name: dependencies
+  color: 0366d6
+  description: Dependency updates (Dependabot)
+- name: breaking-change
+  color: b60205
+  description: Changes a record layout, file key, or interface other systems rely on
+- name: security
+  color: ee0701
+  description: Security or data-handling issue (report vulnerabilities privately)
+- name: triage
+  color: fbca04
+  description: New issue that needs a maintainer to review
+- name: good first issue
+  color: 7057ff
+  description: Small, well-scoped task for new contributors
+- name: help wanted
+  color: 008672
+  description: Maintainers would welcome a contribution
+- name: question
+  color: d876e3
+  description: Request for information
+- name: duplicate
+  color: cfd3d7
+  description: Already reported
+- name: wontfix
+  color: ffffff
+  description: Will not be changed
+- name: skip-changelog
+  color: ededed
+  description: Leave out of generated release notes
+- name: "module: base"
+  color: c5def5
+  description: Base CICS/VSAM/batch application
+- name: "module: authorization"
+  color: c5def5
+  description: app/app-authorization-ims-db2-mq
+- name: "module: transaction-type"
+  color: c5def5
+  description: app/app-transaction-type-db2
+- name: "module: vsam-mq"
+  color: c5def5
+  description: app/app-vsam-mq

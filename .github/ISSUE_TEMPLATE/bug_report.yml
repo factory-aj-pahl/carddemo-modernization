@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in CardDemo does not work as documented
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not paste real customer data, card numbers, or credentials. Mask job logs first
+        (see docs/data-handling.md). Report security vulnerabilities privately, as described
+        in CONTRIBUTING.md.
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module
+      options:
+        - Base application (CICS/VSAM/batch)
+        - Authorization (IMS/Db2/MQ)
+        - Transaction type (Db2)
+        - VSAM-MQ
+        - Tooling, tests, or CI (tools/, tests/, .github/)
+        - Documentation
+    validations:
+      required: true
+  - type: input
+    id: component
+    attributes:
+      label: Program, job, or file
+      placeholder: e.g. CBTRN02C / POSTTRAN / app/cpy/CVTRA05Y.cpy
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did it happen?
+      options:
+        - z/OS mainframe
+        - AWS Mainframe Modernization or another emulator (say which below)
+        - Local GnuCOBOL (make run-batch / make test)
+        - Not run, found by reading the code
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Jobs submitted, transactions entered, or commands run, in order.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behaviour
+      description: Include return codes, abend codes, file status values, or screen messages.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or release
+      placeholder: e.g. v1.0.0 or 59cc6c2
+  - type: textarea
+    id: logs
+    attributes:
+      label: Masked job log or output
+      render: text

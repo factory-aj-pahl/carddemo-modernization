@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    # Wait a week after a release before proposing it, so yanked or compromised
+    # versions are usually caught upstream first.
+    cooldown:
+      default-days: 7
+    labels: [dependencies, tooling]
+    groups:
+      dev-tools:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    labels: [dependencies, tooling]

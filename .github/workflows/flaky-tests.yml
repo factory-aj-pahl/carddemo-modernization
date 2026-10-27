@@ -1,0 +1,61 @@
+name: Flaky test detection
+
+# Runs the suite several times in parallel and reports tests whose outcome changes
+# between runs. A test that fails every time is a real failure and is left to CI.
+on:
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repeat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CARDDEMO_REQUIRE_COBC: "1"
+      RUNS: "5"
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+      - name: Install GnuCOBOL and dev tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gnucobol
+          pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: Run the suite repeatedly
+        run: |
+          mkdir -p reports
+          for i in $(seq 1 "$RUNS"); do
+            python -m pytest -n auto -q -p no:cacheprovider --junitxml="reports/run-$i.xml" || true
+          done
+      - name: Compare outcomes
+        run: |
+          python - <<'PY'
+          import glob, os, xml.etree.ElementTree as ET
+          from collections import defaultdict
+          outcomes = defaultdict(set)
+          for path in glob.glob("reports/run-*.xml"):
+              for case in ET.parse(path).iter("testcase"):
+                  name = f"{case.get('classname')}::{case.get('name')}"
+                  failed = case.find("failure") is not None or case.find("error") is not None
+                  outcomes[name].add("fail" if failed else "pass")
+          flaky = sorted(n for n, o in outcomes.items() if o == {"pass", "fail"})
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write(f"{len(outcomes)} tests, {len(flaky)} flaky\n\n")
+              summary.writelines(f"- `{n}`\n" for n in flaky)
+          for n in flaky:
+              print(f"::error title=Flaky test::{n}")
+          raise SystemExit(1 if flaky else 0)
+          PY
+      - uses: actions/upload-artifact@v7.0.2
+        if: always()
+        with:
+          name: flaky-reports
+          path: reports/

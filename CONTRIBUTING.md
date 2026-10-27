@@ -31,13 +31,39 @@ To send us a pull request, please:
 
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
-3. Ensure local tests pass.
+3. Ensure `make check` passes (see [AGENTS.md](AGENTS.md) for setup, conventions, and the individual checks).
 4. Commit to your fork using clear commit messages.
 5. Send us a pull request, answering any default questions in the pull request interface.
 6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
 
 GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
+
+
+## Conventions
+
+* COBOL, copybook, and JCL conventions (fixed format, member names, PII, debt markers) are
+  enforced by `make lint` and described in [docs/static-analysis.md](docs/static-analysis.md).
+* Test files are named `test_<subject>.py` and test functions `test_<behaviour>`.
+* Every pull request is reviewed by the owners in [.github/CODEOWNERS](.github/CODEOWNERS).
+
+
+## Dependencies
+
+* Development tools are pinned, including transitive dependencies, in `requirements-dev.txt`;
+  direct dependencies are listed in `requirements-dev.in`.
+* Do not adopt a new dependency version until it has been released for at least 7 days.
+  Dependabot enforces this for its own update pull requests with a 7-day cooldown.
+* The tooling in `tools/carddemo` uses only the Python standard library; keep it that way so it
+  runs on any machine with Python 3.10 or newer.
+
+
+## Releases
+
+Maintainers publish a release by pushing a tag such as `v1.2.0`. The release workflow creates
+the GitHub release and generates notes from the merged pull requests, grouped by label
+(`.github/release.yml`). Label pull requests with `bug`, `enhancement`, `documentation`,
+`tooling`, or `breaking-change` so they land in the right section.
 
 
 ## Finding contributions to work on

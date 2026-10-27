@@ -1,0 +1,10 @@
+# Direct development dependencies. requirements-dev.txt pins these and every
+# transitive dependency; regenerate it with:
+#   python3 -m venv /tmp/v && /tmp/v/bin/pip install -r requirements-dev.in && /tmp/v/bin/pip freeze
+# Dependabot opens update PRs only after a release is 7 days old (see .github/dependabot.yml).
+mypy
+pre-commit
+pytest
+pytest-cov
+pytest-xdist
+ruff

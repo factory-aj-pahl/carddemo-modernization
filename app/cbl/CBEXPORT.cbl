@@ -65,7 +65,7 @@
            SELECT EXPORT-OUTPUT ASSIGN TO EXPFILE
                ORGANIZATION IS INDEXED
                ACCESS MODE IS SEQUENTIAL
-               RECORD KEY IS EXPORT-SEQUENCE-NUM
+               RECORD KEY IS EXPORT-OUT-SEQUENCE-NUM
                FILE STATUS IS WS-EXPORT-STATUS.
 
        DATA DIVISION.
@@ -89,7 +89,10 @@
        FD  EXPORT-OUTPUT
            RECORDING MODE IS F
            RECORD CONTAINS 500 CHARACTERS.
-       01  EXPORT-OUTPUT-RECORD                        PIC X(500).
+       01  EXPORT-OUTPUT-RECORD.
+           05  EXPORT-OUT-PREFIX                       PIC X(27).
+           05  EXPORT-OUT-SEQUENCE-NUM                 PIC 9(9) COMP.
+           05  FILLER                                  PIC X(469).
 
        WORKING-STORAGE SECTION.
 
