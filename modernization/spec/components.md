@@ -24,12 +24,12 @@ following rewrite (lock only), o opened but never accessed.
 | Base jobs by class | setup/definition 18, batch cycle 6, utility/report 9, operations 5 | `jobs.md` section 1 |
 | Module jobs by class | setup/definition 5, batch 2, data synchronization 1 | `jobs.md` section 1 |
 | Programs with no JCL | CBTRN01C (Q-CBTRN01C-06); CSUTLDTC and CBSTM03B are called, not run | `jobs.md` section 1 |
-| Unique specification IDs | 2,179 | all spec files |
+| Unique specification IDs | 2,181 | all spec files |
 | Business rules (`BR-`) | 444 | programs |
 | Validation rules (`VR-`) | 171 | programs |
 | Navigation rules (`NAV-`) | 150 | programs |
 | Error-handling rules (`ERR-`) | 287 | programs |
-| Quirks (`Q-`) | 604 (programs 500, `entities.md` 42, `jobs.md` 62) | all spec files |
+| Quirks (`Q-`) | 606 (programs 501, `entities.md` 42, `jobs.md` 63) | all spec files |
 | Test scenarios (`TS-`) | 523 (programs 521, `jobs.md` 2) | all spec files |
 | Quirk recommendations | fix 247, decide 170, preserve 70; the rest are other wordings (replace, drop, do not port, treat as incomplete) or none | quirk bullets |
 
@@ -46,12 +46,12 @@ scenarios defined in `entities.md` and `jobs.md` are not included in these rows.
 | BC-4 Transaction (incl. CSUTLDTC) | 4 | 1,969 | 35 | 30 | 27 | 20 | 40 | 44 |
 | BC-5 Bill Payment | 1 | 572 | 10 | 3 | 7 | 8 | 13 | 11 |
 | BC-6 Reporting | 2 | 1,298 | 22 | 18 | 7 | 11 | 24 | 23 |
-| BC-7 Batch Posting and Cycle | 5 | 3,031 | 41 | 6 | 0 | 33 | 47 | 42 |
+| BC-7 Batch Posting and Cycle | 5 | 3,031 | 41 | 6 | 0 | 33 | 48 | 42 |
 | BC-8 Reference Data (Db2 module) | 3 | 4,037 | 57 | 17 | 14 | 34 | 53 | 60 |
 | BC-9 Data Exchange and Utilities | 7 | 2,080 | 38 | 1 | 0 | 28 | 46 | 42 |
 | BC-10 Authorizations (IMS/Db2/MQ module) | 8 | 4,344 | 82 | 7 | 19 | 59 | 90 | 73 |
 | BC-11 MQ Inquiry (VSAM-MQ module) | 2 | 1,144 | 26 | 5 | 2 | 22 | 33 | 29 |
-| Total | 44 | 30,181 | 444 | 171 | 150 | 287 | 500 | 521 |
+| Total | 44 | 30,181 | 444 | 171 | 150 | 287 | 501 | 521 |
 
 The largest single programs are COACTUPC (4,236 lines, 30 quirks, 31 test scenarios), COTRTLIC
 (2,098), COTRTUPC (1,702), COCRDUPC (1,560), and COCRDLIC (1,459). Together they hold about 37
