@@ -124,6 +124,16 @@ export const SCREENS: Record<string, ScreenInfo> = {
     ],
   },
   CORPT00C: { tran: 'CR00', title: 'Transaction Reports', keys: [{ key: 'ENTER', label: 'Continue' }, { key: 'F3', label: 'Back' }] },
+  COPAUS0C: {
+    tran: 'CPVS',
+    title: 'View Authorizations',
+    keys: [
+      { key: 'ENTER', label: 'Continue' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F7', label: 'Backward' },
+      { key: 'F8', label: 'Forward' },
+    ],
+  },
   COPAUS1C: {
     tran: 'CPVD',
     title: 'View Authorization Details',
