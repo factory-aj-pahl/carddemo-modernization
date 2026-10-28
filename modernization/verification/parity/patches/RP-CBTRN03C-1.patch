@@ -1,0 +1,18 @@
+--- a/app/cbl/CBTRN03C.cbl
++++ b/app/cbl/CBTRN03C.cbl
+@@ -170,11 +170,10 @@
+            PERFORM UNTIL END-OF-FILE = 'Y'                                      
+              IF END-OF-FILE = 'N'                                               
+                 PERFORM 1000-TRANFILE-GET-NEXT                                  
+-                IF TRAN-PROC-TS (1:10) >= WS-START-DATE                         
+-                   AND TRAN-PROC-TS (1:10) <= WS-END-DATE                       
+-                   CONTINUE                                                     
+-                ELSE                                                            
+-                   NEXT SENTENCE                                                
++                IF END-OF-FILE = 'N' AND                                        
++                   (TRAN-PROC-TS (1:10) < WS-START-DATE OR                      
++                    TRAN-PROC-TS (1:10) > WS-END-DATE)                          
++                   EXIT PERFORM CYCLE                                           
+                 END-IF                                                          
+                 IF END-OF-FILE = 'N'                                            
+                    DISPLAY TRAN-RECORD                                          

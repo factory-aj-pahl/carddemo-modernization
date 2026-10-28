@@ -1,0 +1,14 @@
+--- a/app/cbl/CBSTM03A.CBL
++++ b/app/cbl/CBSTM03A.CBL
+@@ -764,6 +764,11 @@
+            MOVE SPACES TO WS-M03B-FLDT.
+            CALL 'CBSTM03B' USING WS-M03B-AREA.
+ 
++           IF WS-M03B-RC = '10'
++               MOVE 0 TO CR-CNT
++               MOVE 'XREFFILE' TO WS-FL-DD
++               GO TO 0000-START
++           END-IF.
+            IF WS-M03B-RC = '00' OR '04'
+                CONTINUE
+            ELSE

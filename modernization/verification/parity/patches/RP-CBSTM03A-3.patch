@@ -1,0 +1,99 @@
+--- a/app/cbl/CBSTM03A.CBL
++++ b/app/cbl/CBSTM03A.CBL
+@@ -67,6 +67,7 @@
+            05  WS-FL-DD            PIC X(8) VALUE 'TRNXFILE'.
+            05  WS-TRN-AMT          PIC S9(9)V99 VALUE 0.
+            05  WS-SAVE-CARD VALUE SPACES PIC X(16).
++           05  WS-ST-PTR           PIC S9(4) COMP VALUE 1.
+            05  END-OF-FILE         PIC X(01) VALUE 'N'.
+        01  WS-M03B-AREA.
+            05  WS-M03B-DD          PIC X(08).
+@@ -433,26 +434,70 @@
+            INITIALIZE STATEMENT-LINES.
+            WRITE FD-STMTFILE-REC FROM ST-LINE0.
+            PERFORM 5100-WRITE-HTML-HEADER THRU 5100-EXIT.
+-           STRING CUST-FIRST-NAME DELIMITED BY ' '
+-                  ' ' DELIMITED BY SIZE
+-                  CUST-MIDDLE-NAME DELIMITED BY ' '
+-                  ' ' DELIMITED BY SIZE
+-                  CUST-LAST-NAME DELIMITED BY ' '
+-                  ' ' DELIMITED BY SIZE
+-                  INTO ST-NAME
+-           END-STRING.
++           MOVE SPACES TO ST-NAME.
++           IF CUST-MIDDLE-NAME = SPACES
++               STRING FUNCTION TRIM(CUST-FIRST-NAME TRAILING)
++                      ' '
++                      FUNCTION TRIM(CUST-LAST-NAME TRAILING)
++                      DELIMITED BY SIZE INTO ST-NAME
++               END-STRING
++           ELSE
++               STRING FUNCTION TRIM(CUST-FIRST-NAME TRAILING)
++                      ' '
++                      FUNCTION TRIM(CUST-MIDDLE-NAME TRAILING)
++                      ' '
++                      FUNCTION TRIM(CUST-LAST-NAME TRAILING)
++                      DELIMITED BY SIZE INTO ST-NAME
++               END-STRING
++           END-IF.
+            MOVE CUST-ADDR-LINE-1 TO ST-ADD1.
+            MOVE CUST-ADDR-LINE-2 TO ST-ADD2.
+-           STRING CUST-ADDR-LINE-3 DELIMITED BY ' '
+-                  ' ' DELIMITED BY SIZE
+-                  CUST-ADDR-STATE-CD DELIMITED BY ' '
+-                  ' ' DELIMITED BY SIZE
+-                  CUST-ADDR-COUNTRY-CD DELIMITED BY ' '
+-                  ' ' DELIMITED BY SIZE
+-                  CUST-ADDR-ZIP DELIMITED BY ' '
+-                  ' ' DELIMITED BY SIZE
+-                  INTO ST-ADD3
+-           END-STRING.
++           MOVE SPACES TO ST-ADD3.
++           MOVE 1 TO WS-ST-PTR.
++           IF CUST-ADDR-LINE-3 NOT = SPACES
++               IF WS-ST-PTR > 1
++                   STRING ' ' DELIMITED BY SIZE
++                       INTO ST-ADD3 WITH POINTER WS-ST-PTR
++                   END-STRING
++               END-IF
++               STRING FUNCTION TRIM(CUST-ADDR-LINE-3 TRAILING)
++                   DELIMITED BY SIZE
++                   INTO ST-ADD3 WITH POINTER WS-ST-PTR
++               END-STRING
++           END-IF.
++           IF CUST-ADDR-STATE-CD NOT = SPACES
++               IF WS-ST-PTR > 1
++                   STRING ' ' DELIMITED BY SIZE
++                       INTO ST-ADD3 WITH POINTER WS-ST-PTR
++                   END-STRING
++               END-IF
++               STRING FUNCTION TRIM(CUST-ADDR-STATE-CD TRAILING)
++                   DELIMITED BY SIZE
++                   INTO ST-ADD3 WITH POINTER WS-ST-PTR
++               END-STRING
++           END-IF.
++           IF CUST-ADDR-COUNTRY-CD NOT = SPACES
++               IF WS-ST-PTR > 1
++                   STRING ' ' DELIMITED BY SIZE
++                       INTO ST-ADD3 WITH POINTER WS-ST-PTR
++                   END-STRING
++               END-IF
++               STRING FUNCTION TRIM(CUST-ADDR-COUNTRY-CD TRAILING)
++                   DELIMITED BY SIZE
++                   INTO ST-ADD3 WITH POINTER WS-ST-PTR
++               END-STRING
++           END-IF.
++           IF CUST-ADDR-ZIP NOT = SPACES
++               IF WS-ST-PTR > 1
++                   STRING ' ' DELIMITED BY SIZE
++                       INTO ST-ADD3 WITH POINTER WS-ST-PTR
++                   END-STRING
++               END-IF
++               STRING FUNCTION TRIM(CUST-ADDR-ZIP TRAILING)
++                   DELIMITED BY SIZE
++                   INTO ST-ADD3 WITH POINTER WS-ST-PTR
++               END-STRING
++           END-IF.
+ 
+            MOVE ACCT-ID TO ST-ACCT-ID.
+            MOVE ACCT-CURR-BAL TO ST-CURR-BAL.
