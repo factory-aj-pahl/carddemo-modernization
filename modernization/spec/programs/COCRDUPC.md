@@ -206,7 +206,8 @@ copied as-is to CCUP-NEW-EXPDAY. CCUP-NEW-CVV-CD stays spaces.
 
 **`2000-DECIDE-ACTION`** (first match wins):
 1. State not-fetched, or PF12: IF both key flags are valid, `9000-READ-DATA`; IF the card was
-   found, set state `S`.
+   found, set state `S`. On PF12 from the menu path FOUND-CARDS-FOR-ACCOUNT was already set by
+   1200 (line 668), so the state becomes `S` even when the re-read fails (Q-COCRDUPC-20).
 2. State `S`: IF there is no input error and a change was detected, set `N`. This branch is not
    reachable in practice, because step 1200 already moved such a turn to `E` or `N`.
 3. State `E`: no action.
@@ -342,9 +343,10 @@ Search keys (state not-fetched only):
   `Account number not provided`; the field shows `*` in red and gets the cursor. CDEMO-ACCT-ID is
   set to 0. Source: `app/cbl/COCRDUPC.cbl:721-736 (1210-EDIT-ACCOUNT)`.
 - **VR-COCRDUPC-02**: The account must be numeric in all 11 positions. Otherwise
-  `ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER`; the field is red and is redisplayed
-  empty (because CC-ACCT-ID-N is not numeric zero, the raw input is echoed; see Open questions).
-  Source: `app/cbl/COCRDUPC.cbl:740-755`.
+  `ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER` (only if no message yet); the field is red
+  and shows the raw input as typed (3200 echoes CC-ACCT-ID unless CC-ACCT-ID-N = 0; see Open
+  questions). CDEMO-ACCT-ID is set to 0. Source: `app/cbl/COCRDUPC.cbl:740-755 (1210-EDIT-ACCOUNT)`,
+  `app/cbl/COCRDUPC.cbl:1087-1091 (3200-SETUP-SCREEN-VARS)`.
 - **VR-COCRDUPC-03**: The card is required. Blank gives `Card number not provided` (only if no
   account message), with `*` in red. Source: `app/cbl/COCRDUPC.cbl:762-780 (1220-EDIT-CARD)`.
 - **VR-COCRDUPC-04**: The card must be numeric in all 16 positions. Otherwise
@@ -354,7 +356,10 @@ Search keys (state not-fetched only):
   account message. Source: `app/cbl/COCRDUPC.cbl:655-659`.
 - **VR-COCRDUPC-06**: The card must exist. NOTFND gives
   `Did not find cards for this search condition`; both keys are red, the state stays
-  not-fetched, and the cursor is on the account. Source: `app/cbl/COCRDUPC.cbl:1395-1401`.
+  not-fetched, and the cursor is on the account. On PF12 from the menu path a NOTFND re-read gives
+  the same message (if no edit message was set first, Q-COCRDUPC-08) but sets state `S` (see
+  ERR-COCRDUPC-01, Q-COCRDUPC-20). Source: `app/cbl/COCRDUPC.cbl:1395-1401`,
+  `app/cbl/COCRDUPC.cbl:668`, `app/cbl/COCRDUPC.cbl:958-965`.
 
 Detail fields (states `S` or `E` with a change detected):
 - **VR-COCRDUPC-07**: The name is required. LOW-VALUES, spaces, `*`, or all `0` characters give
@@ -409,8 +414,13 @@ Detail fields (states `S` or `E` with a change detected):
 ### Error handling
 - **ERR-COCRDUPC-01**: A fetch READ response other than NORMAL or NOTFND gives
   `File Error: READ     on CARDDAT   returned RESP nnnnnnnnn ,RESP2 nnnnnnnnn ` (same layout as
-  COCRDLIC). The account is red and no details are shown. The state stays not-fetched on the menu
-  path, or is `S` with empty details on the list path. Source: `app/cbl/COCRDUPC.cbl:133-152`, `app/cbl/COCRDUPC.cbl:1402-1411`.
+  COCRDLIC). The message replaces any earlier message. The account is shown red only if no message
+  had been set before the read (line 1404). On the search path the state stays not-fetched and no
+  details are shown. On list entry the state is `S` with empty details (Q-COCRDUPC-09). On PF12
+  from the menu path the state also becomes `S`, because FOUND-CARDS-FOR-ACCOUNT was already set by
+  1200 (line 668); the OLD fields are then filled from the CARD-RECORD work area, which the failed
+  read did not fill (Q-COCRDUPC-20). Source: `app/cbl/COCRDUPC.cbl:133-152`, `app/cbl/COCRDUPC.cbl:1402-1411`,
+  `app/cbl/COCRDUPC.cbl:668`, `app/cbl/COCRDUPC.cbl:958-965`.
 - **ERR-COCRDUPC-02**: A READ UPDATE response other than NORMAL (for example NOTFND, or the record
   locked beyond the CICS wait) gives `Could not lock record for update` and state `L`. The info
   line is `Changes unsuccessful. Please try again`, the keys are unprotected, and the details are
@@ -532,6 +542,14 @@ Detail fields (states `S` or `E` with a change detected):
   month `5` reaches the program as `05` (accepted) or ` 5` depends on BMS padding. With GnuCOBOL,
   ` 5` fails the 1-12 test, giving `Card expiry month must be between 1 and 12`. Recommendation:
   decide (accept 1-12 as integers).
+- **Q-COCRDUPC-20**: On the menu path, PF12 in state `S`, `E`, or `N` re-reads the card, but
+  1200-EDIT-MAP-INPUTS has already set FOUND-CARDS-FOR-ACCOUNT (an 88-level of WS-INFO-MSG), and a
+  failed re-read (card deleted since the fetch, or a file error) does not clear it. The state
+  becomes `S` with the error message, editable details copied from the CARD-RECORD work area that
+  the read did not fill, info `Details of selected card shown above`, and the cursor on the name. A
+  later save of a deleted card fails with `Could not lock record for update` (ERR-COCRDUPC-02).
+  Recommendation: fix. Source: `app/cbl/COCRDUPC.cbl:668`, `app/cbl/COCRDUPC.cbl:958-965`,
+  `app/cbl/COCRDUPC.cbl:1352-1411`, `app/cbl/COCRDUPC.cbl:1145-1146`.
 
 ## Test scenarios
 Card numbers are masked first 4 + last 4; the full values are in `app/data/ASCII/carddata.txt` at
@@ -631,6 +649,12 @@ the cited line. "Record" means the CARDDAT record after the turn.
 - **TS-COCRDUPC-26** (Q-COCRDUPC-08): On the menu path in state `S`, when the name is changed to
   `123` and PF12 is pressed, then the stored values are shown in state `S`, the error line reads
   `Card name can only contain alphabets and spaces`, and no field is red.
+- **TS-COCRDUPC-27** (VR-COCRDUPC-06, ERR-COCRDUPC-01, Q-COCRDUPC-20): On the menu path, given
+  state `N` after changing the status to `N` (as in TS-COCRDUPC-07), and the card record is then
+  deleted by another user, when PF12 is pressed, then (as coded) the error line reads `Did not find
+  cards for this search condition`, both keys are red, the info line reads `Details of selected
+  card shown above`, and the state is `S` with editable details that do not come from any card
+  record.
 
 ## Open questions
 - Should the target preserve the CVV, filler, and account id on update? Almost certainly yes; the

@@ -104,7 +104,9 @@ CDRA transaction as the requester that sends the request and displays the reply;
   Source: `app/app-vsam-mq/cbl/COACCT01.cbl:222-253 (2300-OPEN-INPUT-QUEUE)`, `:255-287 (2400-OPEN-OUTPUT-QUEUE)`.
 - **BR-COACCT01-04**: Each MQGET uses MQGMO-SYNCPOINT + MQGMO-FAIL-IF-QUIESCING + MQGMO-CONVERT + MQGMO-WAIT with
   MQGMO-WAITINTERVAL = 5000 ms, buffer length 1000, MQMD-MSGID = MQMI-NONE and MQMD-CORRELID = MQCI-NONE (next
-  available message, any IDs); REQUEST-MSG-COPY is initialized (function spaces, key zero) before the call. The task
+  available message, any IDs); before the call `INITIALIZE REQUEST-MSG-COPY REPLACING NUMERIC BY ZEROES` sets only
+  the numeric key WS-KEY to zero (WS-FUNC and WS-FILLER keep their previous contents; this is not observable,
+  because a received message is copied over the whole group before WS-FUNC is read). The task
   ends when no message arrives within 5 seconds (reason MQRC-NO-MSG-AVAILABLE, 2033). Source:
   `app/app-vsam-mq/cbl/COACCT01.cbl:337-378 (3000-GET-REQUEST)`.
 - **BR-COACCT01-05**: The request is interpreted positionally: bytes 1-4 function, bytes 5-15 account ID; the rest
