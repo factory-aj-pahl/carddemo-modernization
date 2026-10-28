@@ -148,8 +148,10 @@ export function TransactionReports() {
               </thead>
               <tbody>
                 {runs.length === 0 ? (
-                  <tr className="empty-row">
-                    <td colSpan={7}>No reports requested yet.</td>
+                  <tr>
+                    <td colSpan={7} className="hint">
+                      No reports requested yet.
+                    </td>
                   </tr>
                 ) : (
                   runs.map((r) => (

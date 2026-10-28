@@ -6,7 +6,15 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
-export const fixtures: { linkedAccount: string; spareLinkedAccount: string; unlinkedAccount: string } = JSON.parse(
+export const fixtures: {
+  linkedAccount: string;
+  spareLinkedAccount: string;
+  unlinkedAccount: string;
+  /** Lowest transaction ID overall, of a USER0001 card, and of a card USER0001 cannot see. */
+  firstTranId: string;
+  userTranId: string;
+  otherTranId: string;
+} = JSON.parse(
   readFileSync(resolve(here, '../.fixtures.json'), 'utf8'),
 );
 

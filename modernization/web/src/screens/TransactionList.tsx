@@ -134,8 +134,9 @@ export function TransactionList() {
                       </td>
                       <td>
                         <div className="actions">
-                          <button type="button" className="btn btn-link btn-sm" onClick={() => view(i)} disabled={s.busy} aria-label={`View transaction ${r.tranId}`}>
+                          <button type="button" className="btn btn-link btn-sm" onClick={() => view(i)} disabled={s.busy}>
                             View <kbd>S</kbd>
+                            <span className="sr-only"> transaction {r.tranId}</span>
                           </button>
                         </div>
                       </td>
