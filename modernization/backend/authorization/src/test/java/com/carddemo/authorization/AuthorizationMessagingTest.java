@@ -179,6 +179,14 @@ class AuthorizationMessagingTest {
         return jdbc.queryForList("SELECT * FROM auth_error_log ORDER BY error_id");
     }
 
+    static List<Object> money(Map<String, Object> row, String... columns) {
+        List<Object> out = new ArrayList<>();
+        for (String c : columns) {
+            out.add(row.get(c) instanceof BigDecimal d ? d.stripTrailingZeros() : row.get(c));
+        }
+        return out;
+    }
+
     static void assertMoney(Object actual, String expected) {
         assertThat((BigDecimal) actual).isEqualByComparingTo(expected);
     }
@@ -329,6 +337,29 @@ class AuthorizationMessagingTest {
             assertThat(authorize(t, AuthFixtures.EXAMPLE)).contains(",00,0000,");
             assertThat(authorize(t, AuthFixtures.request("9999999999999999", "10.00"))).contains(",05,3100,          0.00,");
         }
+    }
+
+    @Test
+    @Covers({"ERR-COPAUA0C-04", "Q-COPAUA0C-02"})
+    void unknown_card_right_after_a_known_card_on_the_same_listener_is_declined_without_the_previous_summary() throws Exception {
+        reset();
+        // The previous request found account 7's summary; the program would reuse it for the next card.
+        assertThat(authorize(Transport.QUEUE, AuthFixtures.request(AuthFixtures.CARD_7, "5.00")))
+            .isEqualTo("4859452612877065,TXN000000000001,143015,00,0000,          5.00,");
+        String[] money = {"approved_count", "declined_count", "approved_amt", "declined_amt", "credit_balance", "cash_balance"};
+        List<Object> before = money(summary(7), money);
+        int details = count("SELECT COUNT(*) FROM pending_auth_detail");
+        jdbc.update("DELETE FROM auth_error_log");
+        assertThat(authorize(Transport.QUEUE, AuthFixtures.request("9999999999999999", "5.00")))
+            .isEqualTo("9999999999999999,TXN000000000001,143015,05,3100,          0.00,");
+        assertThat(errorLog()).singleElement().satisfies(e -> assertThat(e).containsEntry("location", "A001")
+            .containsEntry("message", "CARD NOT FOUND IN XREF").containsEntry("event_key", "************9999"));
+        assertThat(money(summary(7), money)).isEqualTo(before);
+        assertThat(count("SELECT COUNT(*) FROM pending_auth_detail")).isEqualTo(details);
+        // A declined known card (insufficient funds) before it changes nothing either.
+        assertThat(authorize(Transport.QUEUE, AuthFixtures.request(AuthFixtures.CARD_7, "999999.00"))).contains(",05,4100,");
+        assertThat(authorize(Transport.QUEUE, AuthFixtures.request("9999999999999999", "1.00")))
+            .isEqualTo("9999999999999999,TXN000000000001,143015,05,3100,          0.00,");
     }
 
     @Test
