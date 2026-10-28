@@ -22,6 +22,12 @@
             <artifactId>card</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- Runtime provider of AccountScope and AuditLog; code uses only the common interfaces. -->
+        <dependency>
+            <groupId>com.carddemo</groupId>
+            <artifactId>iam</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.carddemo</groupId>
             <artifactId>test-support</artifactId>

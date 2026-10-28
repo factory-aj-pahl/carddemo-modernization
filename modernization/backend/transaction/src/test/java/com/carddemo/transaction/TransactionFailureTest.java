@@ -10,7 +10,7 @@ import static org.mockito.Mockito.reset;
 import com.carddemo.card.api.CardDirectory;
 import com.carddemo.test.Covers;
 import com.carddemo.transaction.api.TransactionLedger;
-import com.carddemo.transaction.internal.TransactionReader;
+import com.carddemo.transaction.web.TransactionReader;
 import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;

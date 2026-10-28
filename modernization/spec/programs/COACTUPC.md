@@ -71,8 +71,8 @@ column after each BMS POS. Alignment is approximate; the field table gives exact
          Opened : 2015 - 08 - 08        Credit Limit        : +      5,174.00
          Expiry : 2025 - 02 - 11        Cash credit Limit   : +      4,129.00
          Reissue: 2025 - 02 - 11        Current Balance     : +        400.00
-                                        Current Cycle Credit: +          0.00
-         Account Group:                 Current Cycle Debit : +          0.00
+                                        Current Cycle Credit: +           .00
+         Account Group:                 Current Cycle Debit : +           .00
                                  Customer Details
          Customer id  : 000000024                SSN:   *** - ** - ****
          Date of birth: 1996 - 01 - 24           FICO Score:   711
@@ -773,7 +773,7 @@ SSNs and government ids are masked. Sample keys are from `app/data/ASCII/acctdat
 - **TS-COACTUPC-05** (BR-COACTUPC-02, -04, -17, -18): When `00000000024` is entered, then the screen
   shows state S as in the mock-up:
   - Active `Y`; Credit Limit `+      5,174.00`; Cash `+      4,129.00`; Balance `+        400.00`;
-    cycle values `+          0.00`.
+    cycle values `+           .00`.
   - Opened `2015`-`08`-`08`; Expiry and Reissue `2025`-`02`-`11`; group blank.
   - Customer `000000024`; SSN `***`-`**`-`****`; DOB `1996`-`01`-`24`; FICO `711`.
   - `Stefanie` / `Verla` / `Dickinson`; `6367 Stracke River` / `Apt. 444` / `East Otho`; `KS`;

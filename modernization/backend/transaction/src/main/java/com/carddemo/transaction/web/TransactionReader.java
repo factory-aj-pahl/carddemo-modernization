@@ -1,4 +1,4 @@
-package com.carddemo.transaction.internal;
+package com.carddemo.transaction.web;
 
 import com.carddemo.card.api.CardDirectory;
 import com.carddemo.common.security.AccountScope;
@@ -11,7 +11,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Plain reads of the transaction table for the online screens (no locks, Q-COTRN01C-01), limited to
- * the cards of the user's linked accounts for a USER (C-SCOPE, Q-COTRN00C-08).
+ * the cards of the user's linked accounts for a USER (C-SCOPE, Q-COTRN00C-08). It lives with the screens
+ * because the batch jar scans transaction.internal without the IAM account scope.
  */
 @Component
 public class TransactionReader {
