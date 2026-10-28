@@ -10,6 +10,7 @@ import static org.mockito.Mockito.reset;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
+import com.carddemo.account.api.AccountProfiles;
 import com.carddemo.authorization.internal.AuthorizationEngine;
 import com.carddemo.authorization.internal.PendingAuthRepository;
 import com.carddemo.authorization.messaging.AuthQueues;
@@ -70,6 +71,8 @@ class AuthorizationFailureTest {
     @MockitoSpyBean
     PendingAuthRepository repo;
     @MockitoSpyBean
+    AccountProfiles accounts;
+    @MockitoSpyBean
     CardDirectory cards;
     @MockitoSpyBean
     PlatformTransactionManager tm;
@@ -108,7 +111,7 @@ class AuthorizationFailureTest {
 
     @AfterEach
     void unstub() {
-        reset(repo, cards, tm);
+        reset(repo, accounts, cards, tm);
     }
 
     enum Transport { QUEUE, REST }
@@ -186,15 +189,15 @@ class AuthorizationFailureTest {
     void account_and_customer_read_failures_log_c002_and_c003() throws Exception {
         for (Transport t : Transport.values()) {
             clearLog();
-            doThrow(new DataAccessResourceFailureException("acct down")).when(repo).account(anyLong());
+            doThrow(new DataAccessResourceFailureException("acct down")).when(accounts).limits(anyLong());
             expectFailure(t, "C002");
             assertUnchanged("C002", "C", "C", "FAILED TO READ ACCT FILE");
-            reset(repo);
+            reset(accounts);
             clearLog();
-            doThrow(new DataAccessResourceFailureException("cust down")).when(repo).customer(anyLong());
+            doThrow(new DataAccessResourceFailureException("cust down")).when(accounts).contact(anyLong());
             expectFailure(t, "C003");
             assertUnchanged("C003", "C", "C", "FAILED TO READ CUST FILE");
-            reset(repo);
+            reset(accounts);
         }
     }
 

@@ -10,41 +10,14 @@ import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
-/**
- * Pending authorizations (the DBPAUTP0 summary root and detail children) plus the account and customer fields
- * the module reads. The account and customer rows are read here directly because the Account context publishes
- * no read of limits, status, or customer contact data (architecture.md, deviations in Authorizations).
- */
+/** Pending authorizations: the DBPAUTP0 summary root and detail children. */
 @Repository
 public class PendingAuthRepository {
-
-    /** ACCTDAT fields COPAUA0C and COPAUS0C use. */
-    public record AccountRow(long accountId, String activeStatus, BigDecimal currentBalance, BigDecimal creditLimit,
-            BigDecimal cashCreditLimit) {
-    }
-
-    /** CUSTDAT fields COPAUS0C shows. */
-    public record CustomerRow(long customerId, String firstName, String middleName, String lastName, String addrLine1,
-            String addrLine2, String city, String state, String zip, String phone1) {
-    }
 
     private final JdbcTemplate jdbc;
 
     public PendingAuthRepository(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
-    }
-
-    public Optional<AccountRow> account(long accountId) {
-        return jdbc.query("SELECT account_id, active_status, current_balance, credit_limit, cash_credit_limit FROM account "
-            + "WHERE account_id = ?", (rs, i) -> new AccountRow(rs.getLong(1), rs.getString(2), rs.getBigDecimal(3),
-                rs.getBigDecimal(4), rs.getBigDecimal(5)), accountId).stream().findFirst();
-    }
-
-    public Optional<CustomerRow> customer(long customerId) {
-        return jdbc.query("SELECT customer_id, first_name, middle_name, last_name, addr_line1, addr_line2, city, state_cd, zip, "
-            + "phone1 FROM customer WHERE customer_id = ?", (rs, i) -> new CustomerRow(rs.getLong(1), rs.getString(2),
-                rs.getString(3), rs.getString(4), rs.getString(5), rs.getString(6), rs.getString(7), rs.getString(8),
-                rs.getString(9), rs.getString(10)), customerId).stream().findFirst();
     }
 
     public Optional<Summary> summary(long accountId) {

@@ -116,11 +116,12 @@ Deviations in Authorizations (with reasons):
   example `-000208` for a missing table) and the 5-character SQLSTATE. `auth_fraud_report` is
   keyed by card number, `auth_ts`, and `auth_id`, because two authorizations of a card can share a
   timestamp (Q-COPAUS2C-03).
-- COPAUS0C reads the account and customer rows directly through the authorization repository (the
-  Account context publishes no read API yet) and the cross-reference through `card/api`
-  `CardDirectory`. A USER sees only linked accounts; any other account is answered as not found in
-  the cross-reference, the same text as a missing account. Move the reads to `account/api` when it
-  exists.
+- COPAUS0C and the COPAUA0C engine read the account status and limits and the customer name,
+  address and phone through `account/api` `AccountProfiles`, and the cross-reference through
+  `card/api` `CardDirectory`; the authorization module's SQL touches only its own tables. The
+  engine's reads are plain reads inside its per-request transaction (it never updates the account).
+  A USER sees only linked accounts; any other account is answered as not found in the
+  cross-reference, the same text as a missing account.
 - The account in view and the selected authorization (CDEMO-ACCT-ID, CDEMO-CPVS-PAU-SELECTED) are
   kept in the server session instead of the COMMAREA. Entering COPAUS0C from the menu with no
   account in the session shows the empty prompt.

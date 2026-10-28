@@ -3,7 +3,8 @@ package com.carddemo.authorization.internal;
 import com.carddemo.authorization.internal.AuthErrorLog.Entry;
 import com.carddemo.authorization.internal.AuthErrorLog.Level;
 import com.carddemo.authorization.internal.AuthErrorLog.Subsystem;
-import com.carddemo.authorization.internal.PendingAuthRepository.AccountRow;
+import com.carddemo.account.api.AccountLimits;
+import com.carddemo.account.api.AccountProfiles;
 import com.carddemo.card.api.CardDirectory;
 import com.carddemo.card.api.CardXref;
 import com.carddemo.common.format.Pic;
@@ -54,14 +55,16 @@ public class AuthorizationEngine {
     public static final String REASON_OTHER = "9000";
 
     private final CardDirectory cards;
+    private final AccountProfiles accounts;
     private final PendingAuthRepository repo;
     private final AuthErrorLog errors;
     private final PlatformTransactionManager tm;
     private final Clock clock;
 
-    AuthorizationEngine(CardDirectory cards, PendingAuthRepository repo, AuthErrorLog errors, PlatformTransactionManager tm,
-            Clock clock) {
+    AuthorizationEngine(CardDirectory cards, AccountProfiles accounts, PendingAuthRepository repo, AuthErrorLog errors,
+            PlatformTransactionManager tm, Clock clock) {
         this.cards = cards;
+        this.accounts = accounts;
         this.repo = repo;
         this.errors = errors;
         this.tm = tm;
@@ -106,7 +109,7 @@ public class AuthorizationEngine {
         } catch (DataAccessException e) {
             throw critical("C001", Subsystem.CICS, e, "FAILED TO READ XREF FILE", eventKey);
         }
-        AccountRow account = null;
+        AccountLimits account = null;
         boolean customerFound = false;
         Summary summary = null;
         if (xref.isEmpty()) {
@@ -114,7 +117,7 @@ public class AuthorizationEngine {
         } else {
             CardXref x = xref.get();
             try {
-                account = repo.account(x.accountId()).orElse(null);
+                account = accounts.limits(x.accountId()).orElse(null);
             } catch (DataAccessException e) {
                 throw critical("C002", Subsystem.CICS, e, "FAILED TO READ ACCT FILE", Pic.accountId(x.accountId()));
             }
@@ -122,7 +125,7 @@ public class AuthorizationEngine {
                 errors.log("A002", Level.WARNING, Subsystem.APP, "", "", "ACCT NOT FOUND IN XREF", Pic.accountId(x.accountId()));
             }
             try {
-                customerFound = repo.customer(x.customerId()).isPresent();
+                customerFound = accounts.contact(x.customerId()).isPresent();
             } catch (DataAccessException e) {
                 throw critical("C003", Subsystem.CICS, e, "FAILED TO READ CUST FILE", String.format("%09d", x.customerId()));
             }
@@ -170,7 +173,7 @@ public class AuthorizationEngine {
     }
 
     /** 8400-UPDATE-SUMMARY and 8500-INSERT-AUTH. */
-    private void record(AuthRequest rq, CardXref x, AccountRow account, Summary found, AuthReply reply, BigDecimal amount,
+    private void record(AuthRequest rq, CardXref x, AccountLimits account, Summary found, AuthReply reply, BigDecimal amount,
             String eventKey) {
         Summary s = found != null ? found : new Summary(x.accountId(), (int) x.customerId(), "", "", BigDecimal.ZERO,
             BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO, null, null, null);

@@ -16,6 +16,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 
+import com.carddemo.account.api.AccountProfiles;
 import com.carddemo.authorization.internal.FraudReports;
 import com.carddemo.authorization.internal.PendingAuthRepository;
 import com.carddemo.card.api.CardDirectory;
@@ -49,6 +50,8 @@ class PendingAuthScreenFailureTest extends AuthScreenTestSupport {
     @MockitoSpyBean
     PendingAuthRepository repo;
     @MockitoSpyBean
+    AccountProfiles accounts;
+    @MockitoSpyBean
     CardDirectory cards;
     @MockitoSpyBean
     PlatformTransactionManager tm;
@@ -57,7 +60,7 @@ class PendingAuthScreenFailureTest extends AuthScreenTestSupport {
 
     @AfterEach
     void unstub() {
-        reset(repo, cards, tm, fraud);
+        reset(repo, accounts, cards, tm, fraud);
     }
 
     static DataAccessResourceFailureException down() {
@@ -105,7 +108,7 @@ class PendingAuthScreenFailureTest extends AuthScreenTestSupport {
     @Test
     @Covers({"ERR-COPAUS0C-03", "Q-COPAUS0C-07"})
     void a_missing_account_record_is_reported_and_the_list_still_shows() {
-        doReturn(Optional.empty()).when(repo).account(7L);
+        doReturn(Optional.empty()).when(accounts).limits(7L);
         JsonNode r = list("ENTER", ACCT7);
         assertThat(r.at("/message").asText()).isEqualTo("Account:00000000007 not found in ACCT file. " + NOTFND);
         assertThat(r.at("/fields/creditLimit").asText()).isEmpty();
@@ -117,7 +120,7 @@ class PendingAuthScreenFailureTest extends AuthScreenTestSupport {
     @Test
     @Covers({"ERR-COPAUS0C-03"})
     void an_account_read_failure_sets_the_error_flag_and_shows_no_list() {
-        doThrow(down()).when(repo).account(7L);
+        doThrow(down()).when(accounts).limits(7L);
         JsonNode r = list("ENTER", ACCT7);
         assertThat(r.at("/message").asText())
             .isEqualTo("Account:00000000007 System error while reading ACCT file. " + IOERR);
@@ -127,13 +130,13 @@ class PendingAuthScreenFailureTest extends AuthScreenTestSupport {
     @Test
     @Covers({"ERR-COPAUS0C-04"})
     void customer_not_found_and_customer_read_failure_have_their_messages() {
-        doReturn(Optional.empty()).when(repo).customer(7L);
+        doReturn(Optional.empty()).when(accounts).contact(7L);
         JsonNode missing = list("ENTER", ACCT7);
         assertThat(missing.at("/message").asText()).isEqualTo("Customer:000000007 not found in CUST file. " + NOTFND);
         assertThat(missing.at("/fields/name").asText()).isEmpty();
         assertThat(txns(missing)).containsExactlyElementsOf(rows(ACCOUNT_7, 1, 5));
 
-        doThrow(down()).when(repo).customer(7L);
+        doThrow(down()).when(accounts).contact(7L);
         JsonNode failed = list("ENTER", ACCT7);
         assertThat(failed.at("/message").asText())
             .isEqualTo("Customer:000000007 System error while reading CUST file. " + IOERR);

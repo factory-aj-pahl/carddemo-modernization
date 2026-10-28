@@ -1,10 +1,11 @@
 package com.carddemo.authorization.web;
 
+import com.carddemo.account.api.AccountLimits;
+import com.carddemo.account.api.AccountProfiles;
+import com.carddemo.account.api.CustomerContact;
 import com.carddemo.authorization.internal.PendingAuthBrowser;
 import com.carddemo.authorization.internal.PendingAuthBrowser.Page;
 import com.carddemo.authorization.internal.PendingAuthRepository;
-import com.carddemo.authorization.internal.PendingAuthRepository.AccountRow;
-import com.carddemo.authorization.internal.PendingAuthRepository.CustomerRow;
 import com.carddemo.authorization.web.AuthScreens.AccountContext;
 import com.carddemo.card.api.CardDirectory;
 import com.carddemo.card.api.CardXref;
@@ -91,13 +92,15 @@ public class PendingAuthListController {
     static final String STATE = "carddemo.COPAUS0C";
 
     private final CardDirectory cards;
+    private final AccountProfiles accounts;
     private final PendingAuthRepository repo;
     private final PendingAuthBrowser browser;
     private final ObjectProvider<AccountScope> scope;
 
-    public PendingAuthListController(CardDirectory cards, PendingAuthRepository repo, PendingAuthBrowser browser,
-            ObjectProvider<AccountScope> scope) {
+    public PendingAuthListController(CardDirectory cards, AccountProfiles accounts, PendingAuthRepository repo,
+            PendingAuthBrowser browser, ObjectProvider<AccountScope> scope) {
         this.cards = cards;
+        this.accounts = accounts;
         this.repo = repo;
         this.browser = browser;
         this.scope = scope;
@@ -263,9 +266,9 @@ public class PendingAuthListController {
         String message = null;
         boolean error = false;
         String xrefAcct = String.format("%011d", x.accountId());
-        AccountRow a = null;
+        AccountLimits a = null;
         try {
-            a = repo.account(x.accountId()).orElse(null);
+            a = accounts.limits(x.accountId()).orElse(null);
             if (a == null) {
                 message = "Account:" + xrefAcct + " not found in ACCT file. " + NOTFND;
             }
@@ -274,9 +277,9 @@ public class PendingAuthListController {
             message = "Account:" + xrefAcct + " System error while reading ACCT file. " + IOERR;
         }
         String cust9 = String.format("%09d", x.customerId());
-        CustomerRow c = null;
+        CustomerContact c = null;
         try {
-            c = repo.customer(x.customerId()).orElse(null);
+            c = accounts.contact(x.customerId()).orElse(null);
             if (c == null) {
                 message = "Customer:" + cust9 + " not found in CUST file. " + NOTFND;
             }
@@ -288,7 +291,7 @@ public class PendingAuthListController {
             c == null ? "" : name(c),
             c == null ? "" : String.format("%09d", c.customerId()),
             c == null ? "" : AuthFormat.field(AuthFormat.upTo(c.addrLine1(), "  ") + "," + AuthFormat.upTo(c.addrLine2(), "  "), 25),
-            c == null ? "" : AuthFormat.field(AuthFormat.upTo(c.city(), "  ") + "," + AuthFormat.fixed(c.state(), 2) + ","
+            c == null ? "" : AuthFormat.field(AuthFormat.upTo(c.city(), "  ") + "," + AuthFormat.fixed(c.stateCd(), 2) + ","
                 + AuthFormat.fixed(c.zip(), 5), 25),
             a == null ? "" : AuthFormat.field(a.activeStatus(), 1),
             c == null ? "" : AuthFormat.field(c.phone1(), 13),
@@ -300,7 +303,7 @@ public class PendingAuthListController {
     }
 
     /** BR-COPAUS0C-05 / Q-COPAUS0C-10: first and last name up to their first space, middle initial between. */
-    private static String name(CustomerRow c) {
+    private static String name(CustomerContact c) {
         String middle = c.middleName() == null || c.middleName().isEmpty() ? " " : c.middleName().substring(0, 1);
         return AuthFormat.field(AuthFormat.upTo(c.firstName(), " ") + " " + middle + " " + AuthFormat.upTo(c.lastName(), " "), 25);
     }
