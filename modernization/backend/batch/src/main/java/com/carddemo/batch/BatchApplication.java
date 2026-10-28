@@ -14,7 +14,7 @@ import org.springframework.context.annotation.FilterType;
 @SpringBootConfiguration
 @EnableAutoConfiguration
 @ComponentScan(basePackages = {"com.carddemo.common", "com.carddemo.account", "com.carddemo.card",
-    "com.carddemo.transaction", "com.carddemo.cycle", "com.carddemo.batch"},
+    "com.carddemo.transaction", "com.carddemo.cycle", "com.carddemo.dataexchange", "com.carddemo.batch"},
     excludeFilters = @ComponentScan.Filter(type = FilterType.REGEX, pattern = "com\\.carddemo\\..*\\.web\\..*"))
 public class BatchApplication {
 

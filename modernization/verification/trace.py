@@ -172,6 +172,8 @@ def expand(cell: str) -> set[str]:
 
 def batch_tests(results: Path) -> list[Test]:
     data = json.loads(results.read_text())
+    if "pairs" in data:
+        data = {f"{p['program']}/{p['dataset']}": p["findings"] for p in data["pairs"]}
     rules: dict[str, set[str]] = {}
     in_table = False
     for line in (HERE / "parity" / "datasets.md").read_text().splitlines():

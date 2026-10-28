@@ -38,6 +38,9 @@ class File:
     name: str  # file name in the dataset / output directory
     record_length: int
     key_length: int | None = None  # None = sequential
+    key_offset: int = 0
+    binary: bool = False  # fixed-length records without line terminators (COMP/COMP-3 content)
+    missing_if_absent: bool = False  # absent from the dataset -> the DD names no file (open status 35)
 
     @property
     def indexed(self) -> bool:
@@ -59,6 +62,10 @@ XREF = File("XREFFILE", "cardxref.txt", 50, 16)
 ACCT = File("ACCTFILE", "acctdata.txt", 300, 11)
 TCAT = File("TCATBALF", "tcatbal.txt", 50, 17)
 DALY = File("DALYTRAN", "dailytran.txt", 350)
+CARD = File("CARDFILE", "carddata.txt", 150, 16)
+CUST = File("CUSTFILE", "custdata.txt", 500, 9)
+TRAN = File("TRANSACT", "transact.txt", 350, 16)
+EXPF = File("EXPFILE", "expfile.dat", 500, 4, key_offset=27, binary=True, missing_if_absent=True)
 
 PROGRAMS = {
     p.member: p
@@ -70,6 +77,25 @@ PROGRAMS = {
             unload=("TRANFILE", "ACCTFILE", "TCATBALF", "DALYREJS"),
             patches=("RP-CBTRN02C-1", "RP-CBTRN02C-2"),
             data_patches=("RP-DATA-1",),
+        ),
+        Program("CBACT02C", inputs=(CARD,), outputs=(), unload=(), patches=("RP-CBACT02C-1",)),
+        Program("CBACT03C", inputs=(XREF,), outputs=(), unload=(), patches=("RP-CBACT03C-1", "RP-CBACT03C-2")),
+        Program("CBCUS01C", inputs=(CUST,), outputs=(), unload=(), patches=("RP-CBCUS01C-1", "RP-CBCUS01C-2")),
+        Program(
+            "CBEXPORT",
+            inputs=(CUST, ACCT, XREF, TRAN, CARD),
+            outputs=(EXPF,),
+            unload=("EXPFILE",),
+            data_patches=("RP-DATA-1",),
+        ),
+        Program(
+            "CBIMPORT",
+            inputs=(EXPF,),
+            outputs=(File("CUSTOUT", "custout.txt", 500), File("ACCTOUT", "acctout.txt", 300),
+                     File("XREFOUT", "xrefout.txt", 50), File("TRNXOUT", "trnxout.txt", 350),
+                     File("CARDOUT", "cardout.txt", 150), File("ERROUT", "errout.txt", 132)),
+            unload=("CUSTOUT", "ACCTOUT", "XREFOUT", "TRNXOUT", "CARDOUT", "ERROUT"),
+            patches=("RP-CBIMPORT-1", "RP-CBIMPORT-2"),
         ),
     )
 }
@@ -84,10 +110,17 @@ def run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subproc
                           encoding="latin-1", check=False)
 
 
-def records(path: Path, length: int) -> list[str]:
-    """Lines of an ASCII sample-format file as fixed-length records (CR stripped, short lines padded)."""
+def records(path: Path, length: int, binary: bool = False) -> list[str]:
+    """Lines of an ASCII sample-format file as fixed-length records (CR stripped, short lines padded).
+
+    A binary file is cut into fixed-length records instead (no line terminators)."""
     if not path.exists():
         return []
+    if binary:
+        data = path.read_bytes().decode("latin-1")
+        if len(data) % length:
+            raise ValueError(f"{path.name}: {len(data)} bytes is not a multiple of {length}")
+        return [data[i:i + length] for i in range(0, len(data), length)]
     out = []
     for line in path.read_bytes().decode("latin-1").split("\n"):
         line = line.rstrip("\r")
@@ -123,7 +156,7 @@ _LOADER = """\
                FILE STATUS IS SEQ-STATUS.
            SELECT KSDS-FILE ASSIGN TO KSDSFILE
                ORGANIZATION IS INDEXED
-               ACCESS MODE IS SEQUENTIAL
+               ACCESS MODE IS DYNAMIC
                RECORD KEY IS KSDS-KEY
                FILE STATUS IS KSDS-STATUS.
        DATA DIVISION.
@@ -132,7 +165,7 @@ _LOADER = """\
        01  SEQ-REC                PIC X({reclen}).
        FD  KSDS-FILE.
        01  KSDS-REC.
-           05  KSDS-KEY           PIC X({keylen}).
+{prefix}           05  KSDS-KEY           PIC X({keylen}).
            05  FILLER             PIC X({rest}).
        WORKING-STORAGE SECTION.
        01  SEQ-STATUS             PIC XX VALUE '00'.
@@ -140,6 +173,17 @@ _LOADER = """\
        PROCEDURE DIVISION.
 {body}
            GOBACK.
+"""
+
+# B-ABEND: the harness stands in for the Language Environment abend service. Off z/OS a CALL 'CEE3ABD'
+# otherwise fails with "module not found" and exit code 1; the stub ends the run unit with exit code 99,
+# the target's abend exit code, and displays nothing (the DISPLAY lines before it are the evidence).
+_CEE3ABD = """\
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. CEE3ABD.
+       PROCEDURE DIVISION.
+           MOVE 99 TO RETURN-CODE
+           STOP RUN.
 """
 
 _LOAD_BODY = """\
@@ -184,17 +228,32 @@ class Runner:
         self.sign = sign
         self.patched = patched
 
-    def _utility(self, kind: str, rec: int, key: int) -> Path:
-        name = f"{kind}{rec}K{key}"
+    def _utility(self, kind: str, rec: int, key: int, offset: int = 0) -> Path:
+        name = f"{kind}{rec}K{key}" + (f"O{offset}" if offset else "")
         exe = self.build / name
         if not exe.exists():
             body = _LOAD_BODY if kind == "LOAD" else _UNLOAD_BODY
             src = exe.with_suffix(".cbl")
-            src.write_text(_LOADER.format(name=name, reclen=rec, keylen=key, rest=rec - key, body=body))
+            prefix = f"           05  FILLER             PIC X({offset}).\n" if offset else ""
+            src.write_text(_LOADER.format(name=name, reclen=rec, keylen=key, rest=rec - key - offset, body=body,
+                                          prefix=prefix))
             p = run([self.cobc, "-x", "-o", str(exe), str(src)], self.build)
             if p.returncode != 0:
                 raise RuntimeError(f"building {name} failed:\n{p.stdout}{p.stderr}")
         return exe
+
+    def abend_stub(self) -> Path:
+        """Directory holding the CEE3ABD module, for COB_LIBRARY_PATH."""
+        lib = self.build / "lib"
+        module = lib / "CEE3ABD.so"
+        if not module.exists():
+            lib.mkdir(exist_ok=True)
+            src = lib / "CEE3ABD.cbl"
+            src.write_text(_CEE3ABD)
+            p = run([self.cobc, "-m", "-o", str(module), str(src)], lib)
+            if p.returncode != 0:
+                raise RuntimeError(f"building CEE3ABD stub failed:\n{p.stdout}{p.stderr}")
+        return lib
 
     def source(self, prog: Program) -> Path:
         """The program source to compile: the original, or a patched copy outside app/."""
@@ -222,18 +281,22 @@ class Runner:
         return exe
 
     def stage(self, prog: Program, dataset: Path) -> dict[str, str]:
-        staged = {f.name: records(dataset / f.name, f.record_length) for f in prog.inputs}
+        staged = {f.name: records(dataset / f.name, f.record_length, f.binary) for f in prog.inputs}
         if self.patched:
             for dp in prog.data_patches:
                 DATA_PATCHES[dp](dataset, staged)
         env = {}
         for f in prog.inputs:
             target = self.workdir / f.dd
+            if f.missing_if_absent and not (dataset / f.name).exists():
+                target.unlink(missing_ok=True)
+                env[f"DD_{f.dd}"] = str(target)
+                continue
             seq = self.build / f"{f.dd}.seq"
             seq.write_bytes("".join(staged[f.name]).encode("latin-1"))
             if f.indexed:
                 target.unlink(missing_ok=True)
-                p = run([str(self._utility("LOAD", f.record_length, f.key_length))], self.build,
+                p = run([str(self._utility("LOAD", f.record_length, f.key_length, f.key_offset))], self.build,
                         {"DD_SEQFILE": str(seq), "DD_KSDSFILE": str(target)})
                 if p.returncode != 0:
                     raise RuntimeError(f"loading {f.dd} failed:\n{p.stdout}{p.stderr}")
@@ -251,7 +314,7 @@ class Runner:
             return
         if f.indexed:
             seq = self.build / f"{f.dd}.unl"
-            p = run([str(self._utility("UNLD", f.record_length, f.key_length))], self.build,
+            p = run([str(self._utility("UNLD", f.record_length, f.key_length, f.key_offset))], self.build,
                     {"DD_SEQFILE": str(seq), "DD_KSDSFILE": str(src)})
             if p.returncode != 0:
                 raise RuntimeError(f"unloading {f.dd} failed:\n{p.stdout}{p.stderr}")
@@ -262,12 +325,13 @@ class Runner:
         if len(data) % n:
             raise RuntimeError(f"{f.dd}: {len(data)} bytes is not a multiple of {n}")
         recs = [data[i:i + n] for i in range(0, len(data), n)]
-        (out / f.name).write_bytes("".join(r + "\n" for r in recs).encode("latin-1"))
+        sep = "" if f.binary else "\n"
+        (out / f.name).write_bytes("".join(r + sep for r in recs).encode("latin-1"))
 
     def run(self, member: str, dataset: Path, out: Path) -> int:
         prog = PROGRAMS[member]
         exe = self.compile(prog)
-        env = {**self.stage(prog, dataset), **prog.env}
+        env = {**self.stage(prog, dataset), "COB_LIBRARY_PATH": str(self.abend_stub()), **prog.env}
         p = run([str(exe)], self.workdir, env)
         out.mkdir(parents=True, exist_ok=True)
         (out / "sysout.txt").write_text(clean(p.stdout + p.stderr), encoding="latin-1")

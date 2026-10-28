@@ -1,0 +1,13 @@
+--- a/app/cbl/CBCUS01C.cbl
++++ b/app/cbl/CBCUS01C.cbl
+@@ -75,6 +75,10 @@
+                IF  END-OF-FILE = 'N'
+                    PERFORM 1000-CUSTFILE-GET-NEXT
+                    IF  END-OF-FILE = 'N'
++                       MOVE '*****' TO CUSTOMER-RECORD(280:5)
++                       MOVE ALL '*' TO CUSTOMER-RECORD(289:20)
++                       MOVE ALL '*' TO CUSTOMER-RECORD(309:10)
++                       MOVE '******' TO CUSTOMER-RECORD(319:6)
+                        DISPLAY CUSTOMER-RECORD 
+                    END-IF
+                END-IF

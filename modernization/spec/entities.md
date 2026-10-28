@@ -284,7 +284,7 @@ Interest rate per disclosure group, transaction type, and category.
 | 10 | `DIS-ACCT-GROUP-ID` | `X(10)` | 0 | 10 | Group (`A000000000`, `DEFAULT`, `ZEROAPR` in sample) | `VARCHAR(10)` |
 | 10 | `DIS-TRAN-TYPE-CD` | `X(02)` | 10 | 2 | Transaction type | `CHAR(2)` |
 | 10 | `DIS-TRAN-CAT-CD` | `9(04)` | 12 | 4 | Category | `SMALLINT` |
-| 05 | `DIS-INT-RATE` | `S9(04)V99` | 16 | 6 | Annual percentage rate, e.g. `00150{` = 1.50 % | `DECIMAL(6,2)` |
+| 05 | `DIS-INT-RATE` | `S9(04)V99` | 16 | 6 | Annual percentage rate, e.g. `00150{` = 15.00 % (S9(04)V99: digits `001500`; corrected from 1.50, see `programs/CBACT04C.md` BR-CBACT04C-02) | `DECIMAL(6,2)` |
 | 05 | `FILLER` | `X(28)` | 22 | 28 | `0` characters in ASCII sample (Q-ENT-12) | not migrated |
 
 The group `DEFAULT` is a reserved key: when the account's group is not found (status `23`), CBACT04C re-reads with `DIS-ACCT-GROUP-ID = 'DEFAULT'` (`app/cbl/CBACT04C.cbl:437`).
@@ -1105,12 +1105,12 @@ EBCDIC files are fixed-length binary records in code page 037 (no delimiters). A
 | `cardxref.txt` | 50 | Lines 36 bytes (filler trimmed). Card, customer, and account IDs pair 1:1:1 with customer ID = account ID; every reference resolves. |
 | `custdata.txt` | 50 | Country `USA`; ZIP `99999` or `99999-9999`; phones `(999)999-9999`; DOB 1960-2001; primary holder `Y`; FICO values range from 001 to 793, so some are below the online minimum of 300. Only 45 of 50 state codes are in `VALID-US-STATE-CODE` (sample includes codes such as `FM`, `MH`, `PW`, `AP`); only 2 of 50 state + ZIP pairs pass the combination list; 55 of 100 phone area codes are in the general-purpose list; 4 SSNs fail the part-1 rule. These records could not be saved unchanged through COACTUPC (Q-ENT-37). |
 | `dailytran.txt` | 300 | 250 records type `01` category `0001`, source `POS TERM`, positive, description `Purchase at ...`; 50 records type `03` category `0001`, source `OPERATOR`, negative, `Return item at ...`. Six records for each of the 50 cards. Merchant ID `800000000` on all. `ORIG-TS` identical on all; `PROC-TS` blank. |
-| `discgrp.txt` | 51 | 17 rows each for `A000000000`, `DEFAULT`, `ZEROAPR`. Rates 0.00, 1.50, 2.50 (all positive). FILLER is 28 `0` characters. |
+| `discgrp.txt` | 51 | 17 rows each for `A000000000`, `DEFAULT`, `ZEROAPR`. Rates 0.00, 15.00, 25.00 (all positive; `00150{` and `00250{` under S9(04)V99, corrected from 1.50 and 2.50). FILLER is 28 `0` characters. |
 | `tcatbal.txt` | 50 | One row per account, type `01` category `0001`, balance 0; FILLER zeros; mixed line endings. |
 | `trancatg.txt` | 18 | Mixed-case descriptions; FILLER `0000`; CRLF. |
 | `trantype.txt` | 7 | `Reversal` spelled correctly; FILLER `00000000`. |
 
-EBCDIC-only findings (`app/data/EBCDIC`): `ACCDATA.PS` duplicates `ACCTDATA.PS`; `USRSEC.PS` 10 x 80; `EXPORT.DATA.PS` 500 records whose account snapshot differs from the ASCII account file (different dates and balances, blank ZIP, LOW-VALUES group); account 49 has `ZEROAPR` at offset 102 where ASCII has `A000000000`; the `DEFAULT`/`07`/`0001` disclosure rate is 1.50 in EBCDIC and 0.00 in ASCII (Q-ENT-13). `DALYTRAN.PS.INIT` is one record of 350 X'00' bytes.
+EBCDIC-only findings (`app/data/EBCDIC`): `ACCDATA.PS` duplicates `ACCTDATA.PS`; `USRSEC.PS` 10 x 80; `EXPORT.DATA.PS` 500 records whose account snapshot differs from the ASCII account file (different dates and balances, blank ZIP, LOW-VALUES group); account 49 has `ZEROAPR` at offset 102 where ASCII has `A000000000`; the `DEFAULT`/`07`/`0001` disclosure rate is 15.00 in EBCDIC (`00150{`, corrected from 1.50) and 0.00 in ASCII (Q-ENT-13). `DALYTRAN.PS.INIT` is one record of 350 X'00' bytes.
 
 ---
 

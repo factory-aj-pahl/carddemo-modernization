@@ -38,6 +38,17 @@ JOBS = {
         outputs={"rejectsFile": "dalyrejs.txt"},
         exports=("transact.txt", "acctdata.txt", "tcatbal.txt"),
     ),
+    "CBACT02C": Job("READCARD", inputs={}, outputs={}, exports=()),
+    "CBACT03C": Job("READXREF", inputs={}, outputs={}, exports=()),
+    "CBCUS01C": Job("READCUST", inputs={}, outputs={}, exports=()),
+    "CBEXPORT": Job("CBEXPORT", inputs={}, outputs={"exportFile": "expfile.dat"}, exports=()),
+    "CBIMPORT": Job(
+        "CBIMPORT",
+        inputs={"exportFile": "expfile.dat"},
+        outputs={"custOut": "custout.txt", "acctOut": "acctout.txt", "xrefOut": "xrefout.txt",
+                 "trnxOut": "trnxout.txt", "cardOut": "cardout.txt", "errOut": "errout.txt"},
+        exports=(),
+    ),
 }
 
 
@@ -75,7 +86,8 @@ class JavaRunner:
         if p.stderr:
             (logs / "stderr.log").write_text(p.stderr, encoding="latin-1")
             print(f"stderr kept in {logs / 'stderr.log'}", file=sys.stderr)
-        self.jar_run("export", str(out), "files=" + ",".join(job.exports), log_dir=logs)
+        if job.exports:
+            self.jar_run("export", str(out), "files=" + ",".join(job.exports), log_dir=logs)
         return p.returncode
 
 

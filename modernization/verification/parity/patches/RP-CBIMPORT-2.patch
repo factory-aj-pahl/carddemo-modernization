@@ -1,0 +1,15 @@
+--- a/app/cbl/CBIMPORT.cbl
++++ b/app/cbl/CBIMPORT.cbl
+@@ -157,10 +157,10 @@
+            05  FILLER                              PIC X(01) VALUE '|'. 
+            05  ERR-RECORD-TYPE                         PIC X(01).
+            05  FILLER                              PIC X(01) VALUE '|'. 
+-           05  ERR-SEQUENCE                            PIC 9(07).
++           05  ERR-SEQUENCE                            PIC 9(09).
+            05  FILLER                              PIC X(01) VALUE '|'. 
+            05  ERR-MESSAGE                             PIC X(50).
+-           05  FILLER                          PIC X(43) VALUE SPACES.
++           05  FILLER                          PIC X(41) VALUE SPACES.
+ 
+        PROCEDURE DIVISION.
+ 
