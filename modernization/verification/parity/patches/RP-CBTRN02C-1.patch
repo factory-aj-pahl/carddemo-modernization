@@ -1,0 +1,11 @@
+--- a/app/cbl/CBTRN02C.cbl	2026-10-28 16:33:04.795287639 +0000
++++ b/app/cbl/CBTRN02C.cbl	2026-10-28 16:33:04.799287681 +0000
+@@ -184,7 +184,7 @@
+         01 WS-COUNTERS.                                                         
+            05 WS-TRANSACTION-COUNT          PIC 9(09) VALUE 0.                  
+            05 WS-REJECT-COUNT               PIC 9(09) VALUE 0.                  
+-           05 WS-TEMP-BAL                   PIC S9(09)V99.                      
++           05 WS-TEMP-BAL                   PIC S9(11)V99.                      
+                                                                                 
+         01 WS-FLAGS.                                                            
+            05 WS-CREATE-TRANCAT-REC         PIC X(01) VALUE 'N'.                

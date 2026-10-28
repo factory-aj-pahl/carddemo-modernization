@@ -1,0 +1,10 @@
+--- a/app/cbl/CBTRN02C.cbl	2026-10-28 16:34:25.556147021 +0000
++++ b/app/cbl/CBTRN02C.cbl	2026-10-28 16:34:25.564147106 +0000
+@@ -501,6 +501,7 @@
+            EXIT.                                                                
+       *---------------------------------------------------------------*         
+        2700-A-CREATE-TCATBAL-REC.                                               
++           MOVE SPACES TO TRAN-CAT-BAL-RECORD                                   
+            INITIALIZE TRAN-CAT-BAL-RECORD                                       
+            MOVE XREF-ACCT-ID TO TRANCAT-ACCT-ID                                 
+            MOVE DALYTRAN-TYPE-CD TO TRANCAT-TYPE-CD                             

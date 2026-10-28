@@ -223,6 +223,7 @@ COPAUS1C).
 | Q-CBTRN02C-09 | TRAN-RECORD FILLER never initialized | functional-defect | FIX | FILLER written as spaces. | none needed (GnuCOBOL output already has spaces) |
 | Q-CBTRN02C-10 | Category key from xref; rejects contain full card numbers | security | FIX | Key derivation preserved. Reject records keep their layout and card number; reject files are written mode 600 and the rejects table is readable only by the batch and ADMIN roles. | none needed (content unchanged) |
 | Q-CBTRN02C-11 | WS-TEMP-BAL too small | data-corruption | FIX | Limit sum uses full precision (13 digits); no high-order truncation. Sample output unchanged (300 processed, 38 rejected, RC 4). | RP-CBTRN02C-1 |
+| Q-CBTRN02C-12 | New category-balance record keeps leftover FILLER | functional-defect | FIX | A new category-balance record's FILLER is spaces, as for TRAN-RECORD (Q-CBTRN02C-09). Sample: the 50 created records end in 22 spaces instead of 22 zeros; SYSOUT, counts, and balances unchanged. | RP-CBTRN02C-2 |
 
 ## CBTRN03C
 
@@ -679,6 +680,7 @@ B-PARITY.
 | RP-CBTRN01C-1 | Q-CBTRN01C-01 | Move the lookup block (MOVE to XREF-CARD-NUM through the "could not be verified" DISPLAY) inside the inner `IF END-OF-DAILY-TRANS-FILE = 'N'`. | 301 to 300 xref reads; 1808 to 1803 lines. |
 | RP-CBTRN01C-2 | Q-CBTRN01C-05 | Add `01 WS-MASKED-REC PIC X(350).`; display the daily record through it with `(263:12)` set to `************`; print `'************' XREF-CARD-NUM(13:4)` and `'************' DALYTRAN-CARD-NUM(13:4)` in the two card messages. | All card numbers masked. |
 | RP-CBTRN02C-1 | Q-CBTRN02C-11 | `WS-TEMP-BAL PIC S9(09)V99` to `PIC S9(11)V99` (line 187). | Output unchanged: 300 processed, 38 rejected, RC 4. |
+| RP-CBTRN02C-2 | Q-CBTRN02C-12 | In 2700-A-CREATE-TCATBAL-REC, before `INITIALIZE TRAN-CAT-BAL-RECORD` (line 504): `MOVE SPACES TO TRAN-CAT-BAL-RECORD`. | The 50 created records have space FILLER; everything else unchanged. |
 | RP-CBACT04C-1 | Q-CBACT04C-01 | After the main loop's `END-PERFORM.` (line 222): `IF WS-FIRST-TIME = 'N' PERFORM 1050-UPDATE-ACCOUNT END-IF.` | Only account 50 differs: balance 1945.87 to 1964.64, cycle credit and debit to 0.00; SYSTRAN identical except timestamps; SYSOUT identical (303 lines). Harness passes PARM `2022071800`. |
 | RP-CBACT04C-2 | Q-CBACT04C-03 | RP-CBACT04C-1 plus `WITH DUPLICATES` on `ALTERNATE RECORD KEY IS FD-XREF-ACCT-ID` and `IF XREFFILE-STATUS = '00' OR '02'` in 1110-GET-XREF-DATA. | Compile-checked; sample has one card per account. Stamps the first card in alternate-key order; the target uses the lowest card number. |
 | RP-CBTRN03C-1 | Q-CBTRN03C-01 | Replace the IF / CONTINUE / ELSE NEXT SENTENCE block (lines 173-178) with `IF END-OF-FILE = 'N' AND (TRAN-PROC-TS (1:10) < WS-START-DATE OR TRAN-PROC-TS (1:10) > WS-END-DATE) EXIT PERFORM CYCLE END-IF`. | A first out-of-range record: original gives a 0-byte report, patched skips it (261 detail lines). |
@@ -723,17 +725,17 @@ Still open: none.
 
 ## Counts
 
-Rows by category and decision (385 rows).
+Rows by category and decision (386 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 19 | 4 | 0 | 0 | 0 | 23 |
 | data-corruption | 37 | 0 | 0 | 0 | 0 | 37 |
 | concurrency | 4 | 0 | 0 | 0 | 0 | 4 |
-| functional-defect | 86 | 0 | 0 | 0 | 0 | 86 |
+| functional-defect | 87 | 0 | 0 | 0 | 0 | 87 |
 | cosmetic | 0 | 14 | 0 | 0 | 0 | 14 |
 | business-choice | 0 | 45 | 0 | 0 | 0 | 45 |
 | platform | 0 | 0 | 0 | 114 | 0 | 114 |
 | dead-code | 0 | 0 | 0 | 0 | 30 | 30 |
 | user-decision | 0 | 0 | 32 | 0 | 0 | 32 |
-| Total | 146 | 63 | 32 | 114 | 30 | 385 |
+| Total | 147 | 63 | 32 | 114 | 30 | 386 |

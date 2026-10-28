@@ -85,7 +85,8 @@ when anything was rejected.
 - **BR-CBTRN02C-06**: Category balance. Key = XREF-ACCT-ID (account from the cross-reference, not from the
   daily record) + DALYTRAN-TYPE-CD + DALYTRAN-CAT-CD. IF the key does not exist (status `23`), DISPLAY
   `TCATBAL record not found for key : ` + the 17-byte key + `.. Creating.` and WRITE a new record: key as
-  above, TRAN-CAT-BAL = 0 + DALYTRAN-AMT, filler spaces (INITIALIZE). OTHERWISE TRAN-CAT-BAL = TRAN-CAT-BAL +
+  above, TRAN-CAT-BAL = 0 + DALYTRAN-AMT; INITIALIZE does not reset the 22-byte FILLER, which keeps the content
+  left in TRAN-CAT-BAL-RECORD by the previous READ INTO (Q-CBTRN02C-12). OTHERWISE TRAN-CAT-BAL = TRAN-CAT-BAL +
   DALYTRAN-AMT and REWRITE. Source: `app/cbl/CBTRN02C.cbl:467-501 (2700-UPDATE-TCATBAL)`,
   `app/cbl/CBTRN02C.cbl:503-524 (2700-A-CREATE-TCATBAL-REC)`, `app/cbl/CBTRN02C.cbl:526-542 (2700-B-UPDATE-TCATBAL-REC)`.
 - **BR-CBTRN02C-07**: Account update. ACCT-CURR-BAL = ACCT-CURR-BAL + DALYTRAN-AMT. IF DALYTRAN-AMT >= 0,
@@ -206,6 +207,11 @@ run reposts already-posted transactions to TCATBALF and ACCTFILE.
 - **Q-CBTRN02C-11**: WS-TEMP-BAL is S9(9)V99 while account amounts are S9(10)V99; a sum of 1,000,000,000.00 or more
   loses its high-order digit silently (no ON SIZE ERROR), which can let an overlimit transaction pass.
   Recommendation: fix (use the full precision). Source: `app/cbl/CBTRN02C.cbl:187`, `app/cbl/CBTRN02C.cbl:403-405`.
+- **Q-CBTRN02C-12**: 2700-A-CREATE-TCATBAL-REC INITIALIZEs TRAN-CAT-BAL-RECORD, which leaves its FILLER unchanged, so a
+  new category-balance record carries the FILLER of the last record read (22 zeros with the sample data; spaces if no record
+  was read yet; unpredictable on z/OS without WSCLEAR). Found by the parity harness: all 50 records created from the sample
+  end in `0000000000000000000000`. Recommendation: fix (write spaces, as Q-CBTRN02C-09). Source: `app/cbl/CBTRN02C.cbl:503-509`,
+  `app/cpy/CVTRA01Y.cpy:10`.
 
 ## Test scenarios
 Sample data (`app/data/ASCII`): 300 daily transactions, 50 cards/xrefs/accounts, 50 category-balance records
