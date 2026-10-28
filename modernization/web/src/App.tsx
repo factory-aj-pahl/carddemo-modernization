@@ -6,6 +6,8 @@ import { CardUpdate } from './screens/CardUpdate';
 import { CardView } from './screens/CardView';
 import { Menu } from './screens/Menu';
 import { NotAvailable } from './screens/NotAvailable';
+import { PendingAuthDetail } from './screens/PendingAuthDetail';
+import { PendingAuthList } from './screens/PendingAuthList';
 import { SignOn } from './screens/SignOn';
 import { SignedOff } from './screens/SignedOff';
 import { UserAdd } from './screens/UserAdd';
@@ -26,6 +28,8 @@ const REGISTRY: Record<string, ComponentType> = {
   COCRDLIC: CardList,
   COCRDSLC: CardView,
   COCRDUPC: CardUpdate,
+  COPAUS0C: PendingAuthList,
+  COPAUS1C: PendingAuthDetail,
 };
 
 function ScreenRoute() {

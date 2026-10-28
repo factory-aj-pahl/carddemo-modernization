@@ -16,7 +16,12 @@ const batch = (...args) =>
   execFileSync('java', ['-jar', jar, '--spring.flyway.clean-disabled=false', ...args], { env, stdio: ['ignore', 'pipe', 'inherit'] });
 
 batch('reset');
-batch('load', resolve(repo, 'app/data/ASCII'), `usrsec=${resolve(repo, 'app/data/EBCDIC/AWS.M2.CARDDEMO.USRSEC.PS')}`);
+batch(
+  'load',
+  resolve(repo, 'app/data/ASCII'),
+  `usrsec=${resolve(repo, 'app/data/EBCDIC/AWS.M2.CARDDEMO.USRSEC.PS')}`,
+  `ims=${resolve(repo, 'app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat')}`,
+);
 
 const sqlcmd = process.env.SQLCMD ?? (existsSync('/opt/mssql-tools18/bin/sqlcmd') ? '/opt/mssql-tools18/bin/sqlcmd' : 'sqlcmd');
 const sql = (query) =>
