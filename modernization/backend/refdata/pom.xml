@@ -19,6 +19,12 @@
         </dependency>
         <dependency>
             <groupId>com.carddemo</groupId>
+            <artifactId>iam</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.carddemo</groupId>
             <artifactId>test-support</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>

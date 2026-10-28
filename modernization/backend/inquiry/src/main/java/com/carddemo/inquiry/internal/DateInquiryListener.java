@@ -1,51 +1,39 @@
 package com.carddemo.inquiry.internal;
 
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 
-/** CODATE01 listener (CDRD): every request gets one date reply; the request content is not read (Q-CODATE01-02). */
+/**
+ * CODATE01 listener (CDRD): every request gets one date reply; the request content, including its size, is not
+ * read (Q-CODATE01-02, -07). A failed put of the reply is reported on the error queue (Q-CODATE01-06).
+ */
 @Component
 class DateInquiryListener {
 
-    private final RabbitTemplate rabbit;
     private final DateInquiry date;
+    private final InquiryReplies replies;
     private final InquiryQueues queues;
+    private final RequesterRateLimit rateLimit;
 
-    DateInquiryListener(RabbitTemplate rabbit, DateInquiry date, InquiryQueues queues) {
-        this.rabbit = rabbit;
+    DateInquiryListener(DateInquiry date, InquiryReplies replies, InquiryQueues queues, RequesterRateLimit rateLimit) {
         this.date = date;
+        this.replies = replies;
         this.queues = queues;
+        this.rateLimit = rateLimit;
     }
 
     @RabbitListener(queues = "#{@inquiryQueues.dateRequest()}")
     void onRequest(Message request) {
         MessageProperties in = request.getMessageProperties();
-        rabbit.send("", replyQueue(in, queues.dateReply()), new Message(date.legacyReply().getBytes(StandardCharsets.US_ASCII),
-            replyProperties(in)));
-    }
-
-    /** Q-CODATE01-04: the request's reply_to, else the fixed reply queue. */
-    static String replyQueue(MessageProperties request, String fallback) {
-        String replyTo = request.getReplyTo();
-        return replyTo == null || replyTo.isBlank() ? fallback : replyTo;
-    }
-
-    /** Q-CODATE01-05: correlation_id = the request's message_id (its correlation_id if it has none), new message_id. */
-    static MessageProperties replyProperties(MessageProperties request) {
-        MessageProperties out = new MessageProperties();
-        out.setContentType(MessageProperties.CONTENT_TYPE_TEXT_PLAIN);
-        out.setContentEncoding(StandardCharsets.US_ASCII.name());
-        out.setMessageId(UUID.randomUUID().toString());
-        out.setType("reply");
-        String correlation = request.getMessageId() != null ? request.getMessageId() : request.getCorrelationId();
-        if (correlation != null) {
-            out.setCorrelationId(correlation);
+        String replyQueue = InquiryReplies.replyQueue(in, queues.dateReply());
+        if (!rateLimit.tryAcquire(in)) {
+            ErrorRecord limited = ErrorRecord.broker(RequesterRateLimit.RATE_EXCEEDED, 0, queues.dateRequest());
+            replies.reportError(limited, in);
+            replies.reply(in, replyQueue, limited.text(), "error");
+            return;
         }
-        return out;
+        replies.reply(in, replyQueue, date.legacyReply(), "reply");
     }
 }

@@ -124,6 +124,19 @@ export const SCREENS: Record<string, ScreenInfo> = {
     ],
   },
   CORPT00C: { tran: 'CR00', title: 'Transaction Reports', keys: [{ key: 'ENTER', label: 'Continue' }, { key: 'F3', label: 'Back' }] },
+  COTRTLIC: {
+    tran: 'CTLI',
+    title: 'Maintain Transaction Type',
+    keys: [
+      { key: 'F2', label: 'Add' },
+      { key: 'F3', label: 'Exit' },
+      { key: 'F7', label: 'Page Up' },
+      { key: 'F8', label: 'Page Dn' },
+      { key: 'F10', label: 'Save' },
+    ],
+  },
+  // The COTRTUPC key legend depends on the state (BR-COTRTUPC-26); the screen passes it to ScreenFrame.
+  COTRTUPC: { tran: 'CTTU', title: 'Maintain Transaction Type', keys: [] },
 };
 
 /** Legend key text to the attention identifier the server expects. */

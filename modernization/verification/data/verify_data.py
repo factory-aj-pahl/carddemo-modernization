@@ -4,6 +4,8 @@ For a fresh schema (carddemo-batch reset), loads the owed files with the jar's l
 target table has one row per record, exports the tables with the jar's exporter, and compares the export
 with the source byte for byte after only LF and right-pad normalization (plus the documented Q-ENT-02
 group-ID move in acctdata.txt). Also checks overpunch spot values in the database and the USRSEC users.
+The Db2 module seed files (DB2LTTYP.ctl, DB2LTCAT.ctl, SQL text) are checked on a second fresh schema:
+loaded with `carddemo-batch loaddb2`, exported, and compared byte for byte with no normalization.
 The owed set is the table in owed-files.md; a missing or unlisted file is a failure.
 
 Needs CARDDEMO_DB_PASSWORD (source ~/.carddemo/secrets.env); the database is CARDDEMO_DB_PARITY
@@ -44,6 +46,9 @@ SPOTS = [
     # S9(04)V99: 00150{ is 0015.00 (entities.md said 1.50; corrected there).
     ("discgrp.txt", "00150{", (16, 22), "disclosure_group", None, "int_rate", "15.00"),
 ]
+
+# Db2 seed SQL files (JOB-CREADB21): loaddb2 parameter and target table.
+DB2_SEEDS = {"DB2LTTYP.ctl": ("types", "transaction_type"), "DB2LTCAT.ctl": ("categories", "transaction_category")}
 
 BCRYPT = re.compile(r"\$2[aby]\$\d\d\$[./A-Za-z0-9]{53}")
 
@@ -177,6 +182,35 @@ def check_usrsec(row: Row, db: Db) -> tuple[list[str], int]:
     return findings, len(users)
 
 
+def check_db2_seeds(rows: list[Row], jar: Jar, db: Db, out: Path) -> tuple[dict[str, list[str]], dict[str, tuple[int, int]]]:
+    """Fresh schema, load the seed SQL files, export them, compare bytes exactly; returns findings and counts."""
+    jar.run("reset")
+    loaded = dict(re.findall(r"^LOADED (\S+) (\d+)$",
+                             jar.run("loaddb2", *[f"{DB2_SEEDS[r.name][0]}={REPO / r.path}" for r in rows]), re.M))
+    jar.run("export", str(out), "files=" + ",".join(r.name for r in rows))
+    findings: dict[str, list[str]] = {}
+    counts: dict[str, tuple[int, int]] = {}
+    for r in rows:
+        f = findings.setdefault(r.path, [])
+        n_loaded = int(loaded.get(r.name, -1))
+        n_rows = int(db.scalar(f"SELECT COUNT(*) FROM {DB2_SEEDS[r.name][1]}"))
+        counts[r.path] = (n_loaded, n_rows)
+        if r.records is not None and n_loaded != r.records:
+            f.append(f"loader reported {loaded.get(r.name, 'nothing')} rows, owed-files.md says {r.records}")
+        if n_rows != n_loaded:
+            f.append(f"{DB2_SEEDS[r.name][1]} has {n_rows} rows, loader reported {n_loaded}")
+        exported = out / r.name
+        if not exported.exists():
+            f.append("not exported")
+            continue
+        src, act = (REPO / r.path).read_bytes(), exported.read_bytes()
+        if src != act:
+            pos = next((i for i in range(min(len(src), len(act))) if src[i] != act[i]), min(len(src), len(act)))
+            f.append(f"export differs at byte {pos + 1}: expected {src[max(0, pos - 10):pos + 20]!r}, "
+                     f"exported {act[max(0, pos - 10):pos + 20]!r} ({len(act)} vs {len(src)} bytes)")
+    return findings, counts
+
+
 def check_spots(stage: Path, db: Db) -> list[str]:
     findings = []
     for name, raw, (lo, hi), table, key, column, value in SPOTS:
@@ -223,7 +257,8 @@ def main(argv: list[str] | None = None) -> int:
         failures["listing"].append("owed-files.md has no owed rows")
     fixed = [r for r in owed if r.path.startswith("app/data/ASCII/")]
     usrsec = [r for r in owed if r.name.endswith("USRSEC.PS")]
-    unknown = [r for r in owed if r not in fixed and r not in usrsec]
+    db2_seeds = [r for r in owed if r.name in DB2_SEEDS and r.path.startswith("app/app-transaction-type-db2/")]
+    unknown = [r for r in owed if r not in fixed and r not in usrsec and r not in db2_seeds]
     failures["listing"] += [f"{r.path}: owed but verify_data.py has no check for it" for r in unknown]
     for r in fixed:
         if (REPO / r.path).exists():
@@ -277,12 +312,19 @@ def main(argv: list[str] | None = None) -> int:
     print("  overpunch spot values:")
     failures["spots"] = check_spots(stage, db)
 
+    if db2_seeds:
+        seed_findings, seed_counts = check_db2_seeds(db2_seeds, jar, db, root / "export-db2")
+        failures.update(seed_findings)
+        for r in db2_seeds:
+            report.append((r, seed_counts[r.path][0], seed_counts[r.path][1], None))
+
     print("\nPer-file results")
     print(f"{'file':<62} {'records':>7} {'rows':>5}  result")
     for r, nrec, nrows, moved in report:
         res = "OK" if not failures.get(r.path) else "FAIL"
         extra = f" (Q-ENT-02 rule changed {moved} records)" if moved else ""
         extra += " (staged as transact.txt)" if staged_name(r) != r.name else ""
+        extra += " (Db2 seed SQL, fresh schema, exact bytes)" if r in db2_seeds else ""
         print(f"{r.path:<62} {nrec if nrec is not None else '-':>7} {nrows if nrows is not None else '-':>5}  {res}{extra}")
     for r in rows:
         if r.status == "pending":

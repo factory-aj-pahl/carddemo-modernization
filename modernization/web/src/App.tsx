@@ -18,6 +18,8 @@ import { UserAdd } from './screens/UserAdd';
 import { UserDelete } from './screens/UserDelete';
 import { UserList } from './screens/UserList';
 import { UserUpdate } from './screens/UserUpdate';
+import { TranTypeList } from './screens/TranTypeList';
+import { TranTypeMaint } from './screens/TranTypeMaint';
 import { SessionContext, useSessionTracker } from './session';
 
 const REGISTRY: Record<string, ComponentType> = {
@@ -38,6 +40,8 @@ const REGISTRY: Record<string, ComponentType> = {
   COTRN01C: TransactionView,
   COTRN02C: TransactionAdd,
   CORPT00C: TransactionReports,
+  COTRTLIC: TranTypeList,
+  COTRTUPC: TranTypeMaint,
 };
 
 function ScreenRoute() {

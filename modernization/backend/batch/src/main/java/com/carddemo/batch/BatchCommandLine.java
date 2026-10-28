@@ -9,10 +9,12 @@ import com.carddemo.dataexchange.api.AccountExtractFiles;
 import com.carddemo.dataexchange.api.DataExchangeJobs;
 import com.carddemo.dataexchange.api.ImportFiles;
 import com.carddemo.dataexchange.api.JobResult;
+import com.carddemo.migration.Db2Seeds;
 import com.carddemo.migration.Layout;
 import com.carddemo.migration.Layouts;
 import com.carddemo.migration.SampleDataLoader;
 import com.carddemo.migration.TableExporter;
+import com.carddemo.refdata.api.TranTypeBatchUpdate;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -54,8 +56,13 @@ import org.springframework.stereotype.Component;
  * <li>{@code TRANVERIFY dailyFile=PATH}: read-only check of a daily file (CBTRN01C)</li>
  * <li>{@code TRANREPT startDate=YYYY-MM-DD endDate=YYYY-MM-DD reportFile=PATH [userId=ID]}: report (CBTRN03C)</li>
  * <li>{@code BACKUP businessDate=YYYY-MM-DD}: pre-cycle snapshot; {@code RESTORE backupId=N | businessDate=YYYY-MM-DD}</li>
+ * <li>{@code COBTUPDT inputFile=PATH}: apply transaction type add, update, and delete records (JOB-MNTTRDB2); exit
+ * code 0, 4 when a record was rejected, 12 when the run stopped and was rolled back</li>
  * <li>{@code load DIR [usrsec=FILE]}: load sample-format files (seed and migration step)</li>
- * <li>{@code export DIR [files=a.txt,b.txt]}: write tables back in their legacy layouts</li>
+ * <li>{@code loaddb2 [types=FILE] [categories=FILE]}: replace the transaction types and categories with the Db2
+ * module seed files (DB2LTTYP.ctl, DB2LTCAT.ctl)</li>
+ * <li>{@code export DIR [files=a.txt,b.txt]}: write tables back in their legacy layouts ({@code DB2LTTYP.ctl} and
+ * {@code DB2LTCAT.ctl} are written as the Db2 seed SQL)</li>
  * <li>{@code reset}: drop and re-create the schema (only with {@code --spring.flyway.clean-disabled=false})</li>
  * </ul>
  */
@@ -73,11 +80,13 @@ public class BatchCommandLine {
     private final Flyway flyway;
     private final DataExchangeJobs dataExchange;
     private final CycleBackupService backups;
+    private final TranTypeBatchUpdate tranTypeUpdate;
 
     BatchCommandLine(JobLauncher launcher, @Qualifier(PosttranJobConfig.JOB) Job posttran,
             @Qualifier(CycleJobsConfig.INTCALC) Job intcalc, @Qualifier(CycleJobsConfig.CREASTMT) Job creastmt,
             @Qualifier(CycleJobsConfig.TRANVERIFY) Job tranverify, @Qualifier(CycleJobsConfig.TRANREPT) Job tranrept,
-            JobLog log, JdbcTemplate jdbc, Flyway flyway, CycleBackupService backups, DataExchangeJobs dataExchange) {
+            JobLog log, JdbcTemplate jdbc, Flyway flyway, CycleBackupService backups, DataExchangeJobs dataExchange,
+            TranTypeBatchUpdate tranTypeUpdate) {
         this.launcher = launcher;
         this.jobs = Map.of(PosttranJobConfig.JOB, posttran, CycleJobsConfig.INTCALC, intcalc, CycleJobsConfig.CREASTMT, creastmt,
             CycleJobsConfig.TRANVERIFY, tranverify, CycleJobsConfig.TRANREPT, tranrept);
@@ -86,6 +95,7 @@ public class BatchCommandLine {
         this.flyway = flyway;
         this.dataExchange = dataExchange;
         this.backups = backups;
+        this.tranTypeUpdate = tranTypeUpdate;
     }
 
     public int execute(String... args) {
@@ -113,7 +123,9 @@ public class BatchCommandLine {
                 case "TRANREPT" -> tranrept(params);
                 case "BACKUP" -> backup(params);
                 case "RESTORE" -> restore(params);
+                case "COBTUPDT" -> cobtupdt(params);
                 case "load" -> load(params);
+                case "loaddb2" -> loadDb2(params);
                 case "export" -> export(params);
                 case "reset" -> reset();
                 default -> usage("unknown command " + words.get(0));
@@ -133,7 +145,8 @@ public class BatchCommandLine {
             + " | READCARD | READXREF | READCUST | READACCT outFile=PATH arryFile=PATH vbrcFile=PATH"
             + " | CBEXPORT exportFile=PATH"
             + " | CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH"
-            + " | load DIR [usrsec=FILE] | export DIR [files=NAMES] | reset");
+            + " | COBTUPDT inputFile=PATH"
+            + " | load DIR [usrsec=FILE] | loaddb2 [types=FILE] [categories=FILE] | export DIR [files=NAMES] | reset");
         return ExitCodes.USAGE;
     }
 
@@ -301,6 +314,15 @@ public class BatchCommandLine {
             p.get("xrefOut"), p.get("trnxOut"), p.get("cardOut"), p.get("errOut"))));
     }
 
+    private int cobtupdt(Map<String, String> params) {
+        Map<String, Path> p = paths(params, "inputFile");
+        if (p == null) {
+            return usage("COBTUPDT needs inputFile");
+        }
+        int rc = tranTypeUpdate.apply(p.get("inputFile")).returnCode();
+        return rc == 12 ? ExitCodes.STOPPED : rc == 4 ? ExitCodes.WARNING : ExitCodes.OK;
+    }
+
     /** The named path parameters, or null when one is missing. */
     private static Map<String, Path> paths(Map<String, String> params, String... names) {
         Map<String, Path> out = new LinkedHashMap<>();
@@ -387,6 +409,17 @@ public class BatchCommandLine {
         return ExitCodes.OK;
     }
 
+    private int loadDb2(Map<String, String> params) throws IOException {
+        String types = params.get("types");
+        String categories = params.get("categories");
+        if (types == null && categories == null) {
+            return usage("loaddb2 needs types=FILE or categories=FILE");
+        }
+        Db2Seeds.load(jdbc, types == null ? null : Path.of(types), categories == null ? null : Path.of(categories))
+            .forEach((f, n) -> System.out.println("LOADED " + f + " " + n));
+        return ExitCodes.OK;
+    }
+
     private int export(Map<String, String> params) throws IOException {
         String dir = params.get("");
         if (dir == null) {
@@ -396,6 +429,14 @@ public class BatchCommandLine {
             : Layouts.BASE.stream().map(Layout::fileName).toList();
         TableExporter exporter = new TableExporter(jdbc);
         for (String name : names) {
+            if (name.equals(Db2Seeds.TYPES_FILE)) {
+                System.out.println("EXPORTED " + name + " " + Db2Seeds.exportTypes(jdbc, Path.of(dir, name)));
+                continue;
+            }
+            if (name.equals(Db2Seeds.CATEGORIES_FILE)) {
+                System.out.println("EXPORTED " + name + " " + Db2Seeds.exportCategories(jdbc, Path.of(dir, name)));
+                continue;
+            }
             Layout layout = Layouts.BASE.stream().filter(l -> l.fileName().equals(name)).findFirst().orElse(null);
             if (layout == null) {
                 return usage("no layout for " + name);

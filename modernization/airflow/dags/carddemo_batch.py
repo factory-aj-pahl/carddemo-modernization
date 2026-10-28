@@ -1,7 +1,8 @@
 """Runs one carddemo-batch command for an Airflow task and maps its exit code (ExitCodes.java).
 
 0 and 4 succeed (4 = completed with warnings, like a JCL step RC 4). Anything else fails the task
-without retry: 8 = refused (already completed), 12 = invalid business date or report range, 16 = usage error,
+without retry: 8 = refused (already completed), 12 = invalid business date or report range, or a COBTUPDT
+run that stopped and was rolled back, 16 = usage error,
 99 = abend (B-ABEND). After an abend the operator fixes the input and clears the task; Spring
 Batch then restarts the job from its last committed record.
 """
@@ -21,7 +22,7 @@ log = logging.getLogger(__name__)
 
 _REPO_JAR = Path(__file__).resolve().parents[2] / "backend" / "batch" / "target" / "carddemo-batch.jar"
 SUCCESS = {0: "completed", 4: "completed with warnings"}
-FAILURE = {8: "refused", 12: "invalid date or date range", 16: "usage error", 99: "abend"}
+FAILURE = {8: "refused", 12: "invalid date or date range, or stopped run", 16: "usage error", 99: "abend"}
 
 
 def inbox() -> Path:

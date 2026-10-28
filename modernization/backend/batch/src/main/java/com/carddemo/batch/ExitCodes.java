@@ -10,6 +10,8 @@ public final class ExitCodes {
     public static final int REFUSED = 8;
     /** B-DATE: missing or invalid business date. */
     public static final int INVALID_DATE = 12;
+    /** COBTUPDT: the input could not be read or a SQL error stopped the run, which was rolled back (Q-COBTUPDT-01, -04). */
+    public static final int STOPPED = 12;
     /** Unknown command or missing parameter. */
     public static final int USAGE = 16;
     /** B-ABEND: the COBOL would have abended (U999). */
