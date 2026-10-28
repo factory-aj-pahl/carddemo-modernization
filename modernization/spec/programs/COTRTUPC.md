@@ -522,6 +522,14 @@ Unnamed literals: `Tran:` (1,1), `Date:` (1,65), `Prog:` (2,1), `Time:` (2,65) b
 Unless stated otherwise: Db2 loaded by JOB-CREADB21 with the 7 seed types (`01 PURCHASE`, `02 PAYMENT`,
 `03 CREDIT`, `04 AUTHORIZATION`, `05 REFUND`, `06 REVERAL`, `07 ADJUSTMENT`) and the 18 seed categories (each type
 01-07 has at least one), user `ADMIN001` on the admin menu.
+Port note (W5): the ledger fixes change the expected outcome of some scenarios; the port's tests assert the fixed
+behaviour. TS-COTRTUPC-02 shows info "Update transaction type details shown." (Q-COTRTUPC-18); TS-COTRTUPC-13 ends
+in state `6` and the next ENTER shows the empty prompt instead of abending (Q-COTRTUPC-06); TS-COTRTUPC-19 rejects
+`AB` with "Tran Type code must be numeric." (Q-COTRTUPC-01); TS-COTRTUPC-21 shows info "Changes unsuccessful"
+(state `F`, Q-COTRTUPC-02); TS-COTRTUPC-24 rejects `-3` with "Tran Type code must be numeric." (Q-COTRTUPC-14);
+TS-COTRTUPC-22 needs a signed-on administrator (Q-COTRTUPC-05, -10). A lookup error keeps the typed type in error
+with the prompt and no add (state `K` reused, Q-COTRTUPC-09); after "Delete successful." the fields are empty and
+the type field is open (Q-COTRTUPC-19).
 - **TS-COTRTUPC-01** (covers BR-COTRTUPC-02, -21, -23, -26): Given the admin menu, when option 6 is chosen, then
   the screen shows empty type and description, info "Enter transaction type to be maintained", only
   `ENTER=Process F3=Exit`, cursor on the type field, and the COMMAREA keeps user `ADMIN001` with FROM `CA00`/`COADM01C`.
