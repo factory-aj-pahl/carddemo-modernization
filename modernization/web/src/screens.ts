@@ -20,6 +20,72 @@ export const SCREENS: Record<string, ScreenInfo> = {
     title: 'Bill Payment',
     keys: [{ key: 'ENTER', label: 'Continue' }, { key: 'F3', label: 'Back' }, { key: 'F4', label: 'Clear' }],
   },
+  COUSR00C: {
+    tran: 'CU00',
+    title: 'List Users',
+    keys: [
+      { key: 'ENTER', label: 'Continue' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F7', label: 'Backward' },
+      { key: 'F8', label: 'Forward' },
+    ],
+  },
+  COUSR01C: {
+    tran: 'CU01',
+    title: 'Add User',
+    keys: [
+      { key: 'ENTER', label: 'Add User' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F4', label: 'Clear' },
+      { key: 'F12', label: 'Exit' },
+    ],
+  },
+  COUSR02C: {
+    tran: 'CU02',
+    title: 'Update User',
+    keys: [
+      { key: 'ENTER', label: 'Fetch' },
+      { key: 'F3', label: 'Save&Exit' },
+      { key: 'F4', label: 'Clear' },
+      { key: 'F5', label: 'Save' },
+      { key: 'F12', label: 'Cancel' },
+    ],
+  },
+  COUSR03C: {
+    tran: 'CU03',
+    title: 'Delete User',
+    keys: [
+      { key: 'ENTER', label: 'Fetch' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F4', label: 'Clear' },
+      { key: 'F5', label: 'Delete' },
+    ],
+  },
+  COCRDLIC: {
+    tran: 'CCLI',
+    title: 'List Credit Cards',
+    keys: [
+      { key: 'F3', label: 'Exit' },
+      { key: 'F7', label: 'Backward' },
+      { key: 'F8', label: 'Forward' },
+    ],
+  },
+  COCRDSLC: {
+    tran: 'CCDL',
+    title: 'View Credit Card Detail',
+    keys: [
+      { key: 'ENTER', label: 'Search Cards' },
+      { key: 'F3', label: 'Exit' },
+    ],
+  },
+  COCRDUPC: {
+    tran: 'CCUP',
+    title: 'Update Credit Card Details',
+    keys: [
+      { key: 'ENTER', label: 'Process' },
+      { key: 'F3', label: 'Exit' },
+    ],
+  },
 };
 
 /** Legend key text to the attention identifier the server expects. */

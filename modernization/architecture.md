@@ -85,6 +85,22 @@ job log) is in `common`; the schema is in `schema` (Flyway), the sample-data loa
 Screen endpoints follow the screen API above; the sketches in the last column describe the
 non-screen endpoints and jobs.
 
+Deviations in IAM and Card (with reasons):
+
+- User update (COUSR02C) checks concurrency with a version that is a SHA-256 fingerprint of names,
+  type, password hash, and account links, not a `rowversion`: the links live in `user_account`
+  rows, so a `rowversion` on the user row would miss a concurrent link change.
+- Card update (COCRDUPC) keeps the COBOL read-compare-rewrite: the row is read with an update lock
+  and compared with the fetched CVV, name, expiry, and status (BR-COCRDUPC-06), because the spec
+  makes only those fields part of the check (a change to the account ID does not block a save).
+- The user screens check that linked accounts exist by reading the `account` table directly,
+  since the Account context publishes no existence check yet. Move this to `account/api` when it does.
+- Card components resolve `AccountScope` and `AuditLog` (implemented in IAM) per call through
+  `ObjectProvider`, so contexts that depend on Card without IAM (account, transaction, cycle, ...)
+  still start.
+- Only the screen endpoints exist for these contexts; the `/api/users` and `/api/cards` sketches
+  are not built.
+
 ### Messaging (D-MQ)
 
 RabbitMQ (vhost `carddemo`) keeps the COBOL queue names. A reply goes to the request's `reply_to`

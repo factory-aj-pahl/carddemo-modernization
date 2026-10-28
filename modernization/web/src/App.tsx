@@ -1,10 +1,17 @@
 import type { ComponentType } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 import { BillPayment } from './screens/BillPayment';
+import { CardList } from './screens/CardList';
+import { CardUpdate } from './screens/CardUpdate';
+import { CardView } from './screens/CardView';
 import { Menu } from './screens/Menu';
 import { NotAvailable } from './screens/NotAvailable';
 import { SignOn } from './screens/SignOn';
 import { SignedOff } from './screens/SignedOff';
+import { UserAdd } from './screens/UserAdd';
+import { UserDelete } from './screens/UserDelete';
+import { UserList } from './screens/UserList';
+import { UserUpdate } from './screens/UserUpdate';
 import { SessionContext, useSessionTracker } from './session';
 
 const REGISTRY: Record<string, ComponentType> = {
@@ -12,6 +19,13 @@ const REGISTRY: Record<string, ComponentType> = {
   COMEN01C: () => <Menu program="COMEN01C" />,
   COADM01C: () => <Menu program="COADM01C" />,
   COBIL00C: BillPayment,
+  COUSR00C: UserList,
+  COUSR01C: UserAdd,
+  COUSR02C: UserUpdate,
+  COUSR03C: UserDelete,
+  COCRDLIC: CardList,
+  COCRDSLC: CardView,
+  COCRDUPC: CardUpdate,
 };
 
 function ScreenRoute() {
