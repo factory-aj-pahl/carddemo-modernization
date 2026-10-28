@@ -114,13 +114,14 @@ class PosttranJobTest {
     }
 
     @Test
-    @Covers({"TS-CBTRN02C-09", "ERR-CBTRN02C-06", "Q-CBTRN02C-07", "B-UOW", "B-ABEND"})
+    @Covers({"TS-CBTRN02C-09", "ERR-CBTRN02C-06", "BR-CBTRN02C-08", "Q-CBTRN02C-07", "B-UOW", "B-ABEND"})
     void duplicate_id_abends_after_committing_earlier_records_and_a_restart_resumes() throws IOException {
         List<String> recs = new ArrayList<>(DailyRecords.sample().subList(0, 5));
         String first = recs.get(0);
         recs.set(2, first);
         Path f = daily(recs);
         BigDecimal balanceBefore = jdbc.queryForObject("SELECT SUM(current_balance) FROM account", BigDecimal.class);
+        BigDecimal categoriesBefore = jdbc.queryForObject("SELECT SUM(balance) FROM tran_cat_balance", BigDecimal.class);
 
         assertThat(posttran(f, "2022-06-10")).isEqualTo(99);
         List<String> out = log.captured();
@@ -133,6 +134,10 @@ class PosttranJobTest {
         BigDecimal posted = jdbc.queryForObject("SELECT SUM(amount) FROM card_transaction", BigDecimal.class);
         assertThat(jdbc.queryForObject("SELECT SUM(current_balance) FROM account", BigDecimal.class))
             .isEqualByComparingTo(balanceBefore.add(posted));
+        // The failing record's category balance and account updates, made before its transaction write, are
+        // rolled back with it (BR-CBTRN02C-08 order, Q-CBTRN02C-07 unit of work).
+        assertThat(jdbc.queryForObject("SELECT SUM(balance) FROM tran_cat_balance", BigDecimal.class))
+            .isEqualByComparingTo(categoriesBefore.add(posted));
 
         recs.set(2, DailyRecords.sample().get(2));
         daily(recs);

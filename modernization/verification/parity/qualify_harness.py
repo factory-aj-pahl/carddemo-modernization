@@ -1,6 +1,6 @@
 """Qualifies the batch parity harness (refrun.py, compare.py) before its verdicts are trusted.
 
-Four checks, each printed as PASS or FAIL with its evidence:
+Five checks, each printed as PASS or FAIL with its evidence:
 
 1. Known outcomes of the unmodified COBOL: CBTRN02C on the sample data with -fsign=EBCDIC gives
    RC 4, 300 processed, 38 rejects all with reason 0102; with the cobc default sign it gives 43.
@@ -13,6 +13,10 @@ Four checks, each printed as PASS or FAIL with its evidence:
    matches; a flipped byte, a dropped record, an added trailing record, a renamed output file, a
    removed table row, and a malformed normalized timestamp are each reported with the file name
    (and record number where one exists).
+5. The reference-side steps of the abend pairs: clean() drops only the libcob implicit-CLOSE warnings,
+   bmask() masks only the card number after a listed prefix; a CBTRN03C abend (tranrept-badcard) ends with
+   RC 99, no report file (abnormal disposition), no libcob lines, and the masked card line, while a normal
+   run keeps its report; an unmasked card line or a report left on the actual side is a finding.
 
 Usage: python3 qualify_harness.py [--out DIR]. Exit code 0 only when every check passes.
 """
@@ -31,6 +35,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
 import compare  # noqa: E402
+import make_cycle_datasets  # noqa: E402
 import make_datasets  # noqa: E402
 import refrun  # noqa: E402
 
@@ -229,13 +234,44 @@ def comparator(root: Path) -> None:
     mutation(root, "rc", export, lambda d: (d / "rc.txt").write_text("99\n"), "rc.txt", "record 1")
 
 
+def abend_steps(root: Path) -> None:
+    """Check 5: the reference-side steps of the abend pairs (refrun.py docstring, datasets.md "Abend pairs")."""
+    raw = ("START OF EXECUTION OF PROGRAM CBTRN03C\nABENDING PROGRAM\n"
+           "libcob: warning: implicit CLOSE of TRANREPT-FILE ('TRANREPT')\nlibcob: error: something else\n")
+    kept = refrun.clean(raw).splitlines()
+    check("5 runtime noise", kept == ["START OF EXECUTION OF PROGRAM CBTRN03C", "ABENDING PROGRAM", "libcob: error: something else"],
+          f"clean() keeps {kept}")
+    masked = refrun.bmask("INVALID CARD NUMBER : 4444333322221111\nCARD 4444333322221111\nINVALID CARD NUMBER : \n",
+                          ("INVALID CARD NUMBER : ",)).splitlines()
+    check("5 B-MASK post-filter", masked == ["INVALID CARD NUMBER : ************1111", "CARD 4444333322221111",
+                                             "INVALID CARD NUMBER : "], f"bmask() gives {masked}")
+    ds = make_cycle_datasets.build(root / "cycle-datasets")
+    abend = root / "abend-tranrept-badcard"
+    lines = ref(root / "w-abend-tranrept", "CBTRN03C", abend, dataset=ds["tranrept-badcard"], patched=True)
+    rc = int((abend / "rc.txt").read_text())
+    noise = [ln for ln in lines if ln.startswith("libcob")]
+    ok = (rc == refrun.ABEND_RC and not (abend / "tranrept.txt").exists() and not noise and lines[-1:] == ["ABENDING PROGRAM"]
+          and "INVALID CARD NUMBER : ************9999" in lines)
+    check("5 abend: abnormal disposition, noise, mask", ok,
+          f"RC {rc}, tranrept.txt {'present' if (abend / 'tranrept.txt').exists() else 'deleted'}, libcob lines {len(noise)}, "
+          f"masked card line {'present' if 'INVALID CARD NUMBER : ************9999' in lines else 'MISSING'}, last line {lines[-1:]}")
+    normal = root / "normal-tranrept-sample"
+    ref(root / "w-normal-tranrept", "CBTRN03C", normal, dataset=ds["report-sample"], patched=True)
+    rc = int((normal / "rc.txt").read_text())
+    check("5 normal end keeps the outputs", rc == 0 and (normal / "tranrept.txt").exists(),
+          f"RC {rc}, tranrept.txt {'present' if (normal / 'tranrept.txt').exists() else 'MISSING'}")
+    mutation(root, "unmasked-card-sysout", abend,
+             lambda d: rewrite(d / "sysout.txt", lambda s: s.replace("************9999", "9999999999999999")), "sysout.txt")
+    mutation(root, "report-left-after-abend", abend, lambda d: (d / "tranrept.txt").write_text("x\n"),
+             "tranrept.txt: unexpected")
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, help="keep work files here (default: a temporary directory)")
     a = ap.parse_args(argv)
     root = (a.out or Path(tempfile.mkdtemp(prefix="qualify-harness-"))).resolve()
     root.mkdir(parents=True, exist_ok=True)
-    for step in (known_outcomes, listing_counts, patches, comparator):
+    for step in (known_outcomes, listing_counts, patches, comparator, abend_steps):
         try:
             step(root)
         except Exception as e:  # a check that cannot run is a failure

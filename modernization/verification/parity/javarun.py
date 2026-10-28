@@ -61,13 +61,15 @@ JOBS = {
         exports=("transact.txt", "acctdata.txt", "tcatbal.txt"),
         params=business_date,
     ),
-    "CBTRN01C": Job("TRANVERIFY", inputs={"dailyFile": "dailytran.txt"}, outputs={}, exports=()),
+    # The tables TRANVERIFY reads, exported after the run: nothing is written (BR-CBTRN01C-05).
+    "CBTRN01C": Job("TRANVERIFY", inputs={"dailyFile": "dailytran.txt"}, outputs={},
+                    exports=("custdata.txt", "cardxref.txt", "carddata.txt", "acctdata.txt", "transact.txt")),
     # The reference writes only the new interest rows (SYSTRAN), so the dataset's transactions are not loaded.
     "CBACT04C": Job(
         "INTCALC",
         inputs={},
         outputs={},
-        exports=("transact.txt", "acctdata.txt"),
+        exports=("transact.txt", "acctdata.txt", "tcatbal.txt"),
         renames={"transact.txt": "systran.txt"},
         skip_load=("transact.txt",),
         params=intcalc_date,

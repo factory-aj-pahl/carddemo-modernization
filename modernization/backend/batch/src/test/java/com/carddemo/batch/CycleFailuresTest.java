@@ -160,7 +160,7 @@ class CycleFailuresTest extends CycleJobTestSupport {
     }
 
     @Test
-    @Covers({"Q-CBTRN01C-03", "B-ABEND"})
+    @Covers({"ERR-CBTRN01C-04", "Q-CBTRN01C-03", "B-ABEND"})
     void tranverify_abends_on_a_failed_lookup_instead_of_reusing_the_previous_record() throws IOException {
         Path one = daily(DailyRecords.sample().subList(0, 1));
         unavailable("card_xref");
@@ -263,7 +263,7 @@ class CycleFailuresTest extends CycleJobTestSupport {
     }
 
     @Test
-    @Covers({"Q-CBTRN02C-06", "B-ABEND"})
+    @Covers({"ERR-CBTRN02C-07", "Q-CBTRN02C-06", "B-ABEND"})
     void posttran_abends_on_a_failed_lookup_instead_of_posting_to_the_previous_account() throws IOException {
         Path one = daily(List.of(DailyRecords.sample("0000000000683580")));
         unavailable("card_xref");

@@ -11,6 +11,7 @@ database steps need the secrets (`set -a; . ~/.carddemo/secrets.env; set +a`) an
 | `compare.py` | Comparator: every file of both directories, record by record; reports missing and unexpected files, record counts, the first differing byte per record, and malformed run-time timestamps |
 | `verify_batch.py` | Driver for `make -C modernization verify-batch`: rebuilds the generated datasets, then runs every owed pair in `datasets.md` and writes `results.json` |
 | `make_datasets.py` | Builds the generated edge datasets under `generated/` (deterministic; `--check` builds twice and compares) |
+| `make_cycle_datasets.py` | Builds the cycle-job datasets, including the abend datasets, under `generated-cycle/` (deterministic; `--check`) |
 | `qualify_harness.py` | Qualification of the harness itself (`make -C modernization verify-harness`) |
 | `patches/RP-*.patch` | Reference patches from the ledger's RP- table, applied with `patch -p1` to a temporary copy, never to `app/` |
 | `datasets.md` | Datasets, the owed (program, dataset) pairs with the rules each exercises, and the rules no dataset can reach with their covering Java tests |
@@ -34,8 +35,20 @@ python3 modernization/verification/parity/compare.py /tmp/ref /tmp/java         
   fails with exit code 1. `refrun.py` builds a one-line COBOL module (`MOVE 99 TO RETURN-CODE`,
   `STOP RUN`) on `COB_LIBRARY_PATH`, so a reference abend ends with exit code 99 like B-ABEND. The stub
   displays nothing; the program's own DISPLAY lines before the call are the compared evidence.
-- An input marked `missing_if_absent` (the CBIMPORT export file) that is absent from the dataset leaves
-  its DD pointing to no file, so OPEN returns status 35.
+- An input marked `missing_if_absent` (the CBIMPORT export file, DALYTRAN) that is absent from the dataset
+  leaves its DD pointing to no file, so OPEN returns status 35.
+- SYSOUT clean-up: compiler warnings and the `libcob: warning: implicit CLOSE of ...` lines are removed.
+  GnuCOBOL prints the latter on stderr when a run unit ends with files open, which every abend does; z/OS
+  closes the files at step end without a message, so they are runtime noise, not program output.
+- Abnormal disposition: after an abend (exit code 99), outputs whose DD is `DISP=(NEW,CATLG,DELETE)` and
+  that are files in the target too (`File.abnormal_delete`: DALYREJS, TRANREPT, STMTFILE, HTMLFILE, the
+  CBIMPORT outputs) are deleted and not unloaded, as z/OS does. The INTCALC SYSTRAN generation is kept: the
+  target writes interest rows into the transaction table, and those of committed accounts stay (B-UOW).
+  A KSDS the program never opened (an abend before its OPEN) unloads as an empty file: on z/OS the cluster
+  exists before the step.
+- B-MASK post-filter (`Program.sysout_mask`): the CBTRN03C line `INVALID CARD NUMBER : ` + card number is
+  masked to `************` + last 4 in the reference SYSOUT. B-MASK forbids full card numbers in SYSOUT;
+  RP-CBTRN03C-3 masks only the raw record display.
 - Indexed outputs are unloaded in key order, which is byte order and the order the Java table export
   and `JdbcTables` use.
 
@@ -69,3 +82,7 @@ Card numbers and SSNs in printed findings are masked (B-MASK applies to evidence
    `export-sample`): the unmodified pair matches; a flipped byte, a dropped record, an added trailing
    record, a renamed output file, a removed table row (`acctdata.txt`), a partial binary record, a changed
    return code, and a malformed normalized timestamp are each reported, naming the file and the record.
+5. The reference steps above: `clean()` removes only the implicit-CLOSE warnings, `bmask()` masks only
+   the card number after a listed prefix; the reference CBTRN03C on `tranrept-badcard` ends with RC 99,
+   no `tranrept.txt`, no `libcob` line, and the masked card line, while `report-sample` keeps its report;
+   an unmasked card line or a report file left on the actual side is reported by the comparator.
