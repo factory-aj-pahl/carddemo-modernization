@@ -104,7 +104,8 @@ class AuthPurgeJobTest {
 
     @Test
     @Covers({"TS-CBPAUP0C-01", "TS-CBPAUP0C-08", "BR-CBPAUP0C-03", "BR-CBPAUP0C-04", "BR-CBPAUP0C-06", "BR-CBPAUP0C-07",
-        "BR-CBPAUP0C-08", "Q-CBPAUP0C-04", "Q-CBPAUP0J-02", "Q-ENT-42", "Q-CBPAUP0C-02"})
+        "BR-CBPAUP0C-08", "Q-CBPAUP0C-04", "Q-CBPAUP0J-02", "Q-ENT-42", "Q-CBPAUP0C-02", "Q-CBPAUP0C-05", "Q-CBPAUP0C-06",
+        "Q-CBPAUP0C-07"})
     void jcl_card_purges_every_detail_and_every_summary_with_a_checkpoint_per_summary() {
         assertThat(jobs.purgeExpired("00,00001,00001,Y").returnCode()).isZero();
         List<String> expected = new ArrayList<>(List.of("STARTING PROGRAM CBPAUP0C::", DASHES,
@@ -119,6 +120,9 @@ class AuthPurgeJobTest {
         assertThat(log.captured()).containsExactlyElementsOf(expected);
         assertThat(details()).isZero();
         assertThat(summaries()).isZero();
+        // A rerun is the restart: it finds nothing more to purge and ends normally.
+        assertThat(jobs.purgeExpired("00,00001,00001,Y").returnCode()).isZero();
+        assertThat(log.captured()).contains("# TOTAL SUMMARY READ  :+00000000");
     }
 
     @Test

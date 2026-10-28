@@ -103,7 +103,7 @@ class PendingAuthScreenFailureTest extends AuthScreenTestSupport {
     }
 
     @Test
-    @Covers({"ERR-COPAUS0C-03"})
+    @Covers({"ERR-COPAUS0C-03", "Q-COPAUS0C-07"})
     void a_missing_account_record_is_reported_and_the_list_still_shows() {
         doReturn(Optional.empty()).when(repo).account(7L);
         JsonNode r = list("ENTER", ACCT7);

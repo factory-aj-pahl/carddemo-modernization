@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 
 import com.carddemo.authorization.api.AuthorizationJobs;
@@ -98,6 +99,39 @@ class AuthUnloadLoadTest {
 
     String today() {
         return "TODAYS DATE            :" + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyMMdd"));
+    }
+
+    @Test
+    @Covers({"ERR-PAUDBUNL-06"})
+    void a_close_error_is_reported_and_the_run_continues_with_rc0() throws IOException {
+        List<FileChannel> real = new ArrayList<>();
+        doAnswer(inv -> {
+            FileChannel ch = (FileChannel) inv.callRealMethod();
+            if (!inv.<Path>getArgument(0).getFileName().toString().startsWith("root")) {
+                return ch;
+            }
+            real.add(ch);
+            // Every call goes to the real channel except close, which fails as a CLOSE with a bad status would.
+            return mock(FileChannel.class, call -> {
+                if (call.getMethod().getName().equals("close")) {
+                    throw new IOException("close failed");
+                }
+                return call.getMethod().invoke(ch, call.getArguments());
+            });
+        }).when(files).create(any());
+        Path root = dir.resolve("root.fileo");
+        Path child = dir.resolve("child.fileo");
+        try {
+            assertThat(jobs.unload(root, child).returnCode()).isZero();
+        } finally {
+            for (FileChannel ch : real) {
+                ch.close();
+            }
+        }
+        assertThat(log.captured()).endsWith("CLOSING THE FILE", "ERROR IN CLOSING 1ST FILE:30", "ROOT SEGMENTS UNLOADED  :000000021",
+            "CHILD SEGMENTS UNLOADED :000000202");
+        assertThat(records(root, 100)).hasSize(21);
+        assertThat(records(child, CHILD)).hasSize(202);
     }
 
     @Test
@@ -328,7 +362,7 @@ class AuthUnloadLoadTest {
 
     @Test
     @Covers({"TS-PAUDBLOD-01", "BR-PAUDBLOD-01", "BR-PAUDBLOD-02", "BR-PAUDBLOD-05", "BR-PAUDBLOD-09", "BR-PAUDBLOD-10",
-        "Q-PAUDBLOD-09", "Q-PAUDBLOD-06", "Q-PAUDBLOD-11"})
+        "Q-PAUDBLOD-09", "Q-PAUDBLOD-06", "Q-PAUDBLOD-11", "Q-PAUDBLOD-01"})
     void load_into_empty_tables_inserts_every_root_and_child_and_round_trips() throws IOException {
         Path[] f = unloadSample();
         emptyTables();

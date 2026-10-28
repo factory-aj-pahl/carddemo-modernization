@@ -66,7 +66,8 @@ class PendingAuthDetailTest extends AuthScreenTestSupport {
     @Test
     @Covers({"TS-COPAUS1C-02", "BR-COPAUS1C-05", "BR-COPAUS1C-06", "BR-COPAUS1C-07", "NAV-COPAUS1C-05", "TS-COPAUS2C-01",
         "BR-COPAUS2C-01", "BR-COPAUS2C-02", "BR-COPAUS2C-03", "BR-COPAUS2C-04", "NAV-COPAUS2C-01", "ERR-COPAUS2C-03",
-        "Q-COPAUS2C-01", "Q-COPAUS2C-03", "Q-ENT-28", "Q-COPAUS1C-09"})
+        "Q-COPAUS2C-01", "Q-COPAUS2C-03", "Q-ENT-28", "Q-COPAUS1C-09", "Q-COPAUS1C-06", "Q-COPAUS1C-07", "Q-COPAUS2C-02",
+        "Q-COPAUS2C-06"})
     void pf5_marks_fraud_in_both_tables_with_one_report_date(CapturedOutput out) {
         openDetail(admin, 1);
         Map<String, Object> before = detailRow(NEWEST_TXN);

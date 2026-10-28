@@ -286,6 +286,42 @@ class AuthorizationMessagingTest {
     }
 
     @Test
+    @Covers({"ERR-COPAUA0C-12"})
+    void a_failure_to_store_the_error_record_is_ignored() throws Exception {
+        for (Transport t : Transport.values()) {
+            reset();
+            jdbc.execute("EXEC sp_rename 'auth_error_log', 'auth_error_log_off'");
+            String reply;
+            try {
+                reply = authorize(t, AuthFixtures.request("9999999999999999", "10.00"));
+            } finally {
+                jdbc.execute("EXEC sp_rename 'auth_error_log_off', 'auth_error_log'");
+            }
+            assertThat(reply).as(t.name()).isEqualTo("9999999999999999,TXN000000000001,143015,05,3100,          0.00,");
+            assertThat(errorLog()).isEmpty();
+        }
+    }
+
+    @Test
+    @Covers({"Q-ENT-26"})
+    void limits_and_amounts_of_a_billion_or_more_are_kept_exactly() throws Exception {
+        for (Transport t : Transport.values()) {
+            reset();
+            jdbc.update("DELETE FROM pending_auth_detail WHERE account_id = 7");
+            jdbc.update("DELETE FROM pending_auth_summary WHERE account_id = 7");
+            jdbc.update("UPDATE account SET credit_limit = 2000000000.00, cash_credit_limit = 1500000000.50 WHERE account_id = 7");
+            assertThat(authorize(t, AuthFixtures.request(AuthFixtures.CARD_7, "1999999000.00"))).as(t.name())
+                .isEqualTo("4859452612877065,TXN000000000001,143015,00,0000, 1999999000.00,");
+            Map<String, Object> s = summary(7);
+            assertMoney(s.get("credit_limit"), "2000000000.00");
+            assertMoney(s.get("cash_limit"), "1500000000.50");
+            assertMoney(s.get("approved_amt"), "1999999000.00");
+            assertMoney(s.get("credit_balance"), "1999999000.00");
+            assertMoney(newestDetail(7).get("transaction_amt"), "1999999000.00");
+        }
+    }
+
+    @Test
     @Covers({"TS-COPAUA0C-05", "Q-COPAUA0C-02", "BR-COPAUA0C-04"})
     void unknown_card_after_an_approval_is_still_declined() throws Exception {
         for (Transport t : Transport.values()) {
