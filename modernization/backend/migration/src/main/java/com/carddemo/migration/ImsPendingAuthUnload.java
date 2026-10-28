@@ -16,7 +16,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * records with a 4-byte length prefix; a statistics header, one record per segment in hierarchic order
  * (35-byte unload prefix naming the segment, a 2-byte value of the source database, the segment, one
  * zero byte), and a statistics trailer with the root and child counts. Loading skips a root whose key is
- * not a valid account number (the sample's all-X'40' root, Q-PAUDBUNL-02) and its children; the 2-byte
+ * not a valid account number (the sample's root with an X'40' key, Q-PAUDBUNL-02) and its children; the 2-byte
  * value is kept in {@code legacy_rba} so the export reproduces the file.
  */
 public class ImsPendingAuthUnload {

@@ -701,7 +701,7 @@ One pending authorization; IMS child segment `PAUTDTL1` of `PAUTSUM0`.
 | 05 | `PA-FRAUD-RPT-DATE` | `X(08)` | 175 | 8 | Fraud report date `MM/DD/YY` | `DATE NULL` |
 | 05 | `FILLER` | `X(17)` | 183 | 17 | Unused | not migrated |
 
-Sample unload: `app/app-authorization-ims-db2-mq/data/EBCDIC` contains a 51,736-byte unload with 22 summary segments (21 valid and one root whose bytes are all EBCDIC spaces) and 202 detail segments. (Correction: given as "about 23 summary and 203 detail"; counted from the unload by the migration and by CBPAUP0C TS-CBPAUP0C-01.)
+Sample unload: `app/app-authorization-ims-db2-mq/data/EBCDIC` contains a 51,736-byte unload with 22 summary segments (21 valid and one root whose key and amounts are EBCDIC spaces, X'40') and 202 detail segments. (Correction: given as "about 23 summary and 203 detail"; counted from the unload by the migration and by CBPAUP0C TS-CBPAUP0C-01.)
 
 ### ENT-AUTH-FRAUD
 

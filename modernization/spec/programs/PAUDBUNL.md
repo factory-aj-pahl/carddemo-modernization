@@ -153,7 +153,7 @@ changed.
   reconcile with the load. Recommendation: fix (count roots and children separately and display
   them). Source: `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:225-226, 268-269`.
 - **Q-PAUDBUNL-02**: Roots whose key is not valid packed decimal are dropped silently together with
-  their children. The sample database contains one such root (all bytes X'40'), so the unload has
+  their children. The sample database contains one such root (key and amounts X'40'; bytes 6-21 X'F0'), so the unload has
   one root fewer than the database. Recommendation: decide (the record is garbage; a warning line
   would make the drop visible). Source: `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:232-237`.
 - **Q-PAUDBUNL-03**: The error IF at line 243 has no END-IF and is closed by the period at line 247.
@@ -187,11 +187,11 @@ changed.
 ## Test scenarios
 Sample IMS data: `app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat`
 (a DFSURGU0 unload, not PAUDBUNL output) holds 21 valid roots (accounts 1, 5, 7, 13, 15, 16, 17, 18,
-23, 29, 30, 31, 32, 33, 34, 38, 42, 45, 46, 47, 48) with 202 details in total, plus one root made of
-X'40' bytes with no details.
+23, 29, 30, 31, 32, 33, 34, 38, 42, 45, 46, 47, 48) with 202 details in total, plus one root whose key
+and amounts are X'40' bytes, with no details.
 - **TS-PAUDBUNL-01** (BR-01 to BR-04, BR-07): Given DBPAUTP0 loaded with the sample data, when UNLDPADB
   runs, then OUTFIL1 has 21 records in account order 1, 5, 7, ..., 48, OUTFIL2 has 202 records,
-  'CHILD SEG FLAG GE : Y' appears 21 times, the X'40' root is absent from both files, and the step
+  'CHILD SEG FLAG GE : Y' appears 21 times, the X'40'-key root is absent from both files, and the step
   ends with RC 0.
 - **TS-PAUDBUNL-02** (BR-03, BR-06): Given account 7 has 50 details, then OUTFIL2 contains 50
   consecutive records whose bytes 1-6 are X'00000000007C', positioned after the records of account 5

@@ -509,7 +509,7 @@ COPAUS1C).
 | Q ID | Summary | Category | Decision | Target behavior | Reference patch |
 |:--|:--|:--|:--|:--|:--|
 | Q-PAUDBUNL-01 | Children counted as summaries; no counts shown | functional-defect | FIX | **NEW** end-of-run lines with root and child counts. | n/a (spec-derived tests; IMS) |
-| Q-PAUDBUNL-02 | Invalid-key root dropped silently | platform | PLATFORM | The target holds no invalid keys; migration reports and skips the all-X'40' root (Q-PAUDBLOD-07). | n/a |
+| Q-PAUDBUNL-02 | Invalid-key root dropped silently | platform | PLATFORM | The target holds no invalid keys; migration reports and skips the root with the X'40' key (Q-PAUDBLOD-07). | n/a |
 | Q-PAUDBUNL-03 | IF closed by a period | dead-code | NOT-PORTED | No behavior. | n/a |
 | Q-PAUDBUNL-04 | WRITE status unchecked | functional-defect | FIX | A write error ends with exit code 16. | n/a |
 | Q-PAUDBUNL-05 | Abend text names IMSUNLOD; unused items | cosmetic | PRESERVE | Text kept verbatim; unused items not ported. | n/a |

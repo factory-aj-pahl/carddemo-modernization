@@ -154,7 +154,7 @@ the record order. The database itself is not changed.
   run gives no record counts. Recommendation: fix. Source:
   `app/app-authorization-ims-db2-mq/cbl/DBUNLDGS.CBL:234-235, 278-279`.
 - **Q-DBUNLDGS-04**: Roots with an invalid packed key are dropped silently with their children (the
-  sample database has one all-X'40' root). Recommendation: decide.
+  sample database has one root with an X'40' key). Recommendation: decide.
 - **Q-DBUNLDGS-05**: The GSAM output datasets are allocated `DISP=(OLD,KEEP,KEEP)`, must be created
   beforehand by a job that is not in the repository, and are kept even when the step ends with RC 16,
   holding a partial unload. Recommendation: decide (operational).
@@ -175,7 +175,7 @@ the record order. The database itself is not changed.
 
 ## Test scenarios
 Sample IMS data as described in `modernization/spec/programs/PAUDBUNL.md` (21 valid roots, 202
-details, one all-X'40' root without details).
+details, one root with an X'40' key and no details).
 - **TS-DBUNLDGS-01** (BR-01 to BR-06): Given DBPAUTP0 loaded with the sample data and both GSAM datasets
   pre-allocated, when UNLDGSAM runs, then the summary GSAM file holds 21 records in account order 1,
   5, 7, ..., 48, the detail GSAM file holds 202 records, 'CHILD SEG FLAG GE : Y' appears 21 times, and

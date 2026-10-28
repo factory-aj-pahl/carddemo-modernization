@@ -195,8 +195,8 @@ already exist are reported and skipped, so the load can be rerun.
   example approved count against the number of approved details); COPAUA0C later overwrites
   PA-CASH-BALANCE with 0 on every approval (Q-COPAUA0C-17). Recommendation: preserve.
 - **Q-PAUDBLOD-07**: Root records are not checked for a valid packed key, unlike child records and unlike
-  PAUDBUNL. A root of all X'40' bytes would be inserted; the sample database contains exactly such a
-  root, which may have entered this way. Recommendation: fix (reject invalid keys).
+  PAUDBUNL. A root with an X'40' key would be inserted; the sample database contains such a root
+  (key and amounts X'40'), which may have entered this way. Recommendation: fix (reject invalid keys).
 - **Q-PAUDBLOD-08**: A GU is issued for every child record, even when consecutive children have the same
   parent. Recommendation: preserve (performance only).
 - **Q-PAUDBLOD-09**: No counts are kept or displayed, and the console gets three or four lines per

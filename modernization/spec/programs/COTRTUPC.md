@@ -526,8 +526,9 @@ Port note (W5): the ledger fixes change the expected outcome of some scenarios; 
 behaviour. TS-COTRTUPC-02 shows info "Update transaction type details shown." (Q-COTRTUPC-18); TS-COTRTUPC-13 ends
 in state `6` and the next ENTER shows the empty prompt instead of abending (Q-COTRTUPC-06); TS-COTRTUPC-19 rejects
 `AB` with "Tran Type code must be numeric." (Q-COTRTUPC-01); TS-COTRTUPC-21 shows info "Changes unsuccessful"
-(state `F`, Q-COTRTUPC-02) and the error line "Update of record failed. " followed by the SQL message (not cut
-at 75; a failed insert likewise); TS-COTRTUPC-24 rejects `-3` with "Tran Type code must be numeric." (Q-COTRTUPC-14);
+(state `F`, Q-COTRTUPC-02) and the error line `Update of record failed` followed by the SQL message (a failed insert likewise; the
+port's ". " separator and showing the whole combined text rather than cutting it at 75 are presentation
+choices, not COBOL text); TS-COTRTUPC-24 rejects `-3` with "Tran Type code must be numeric." (Q-COTRTUPC-14);
 TS-COTRTUPC-22 needs a signed-on administrator (Q-COTRTUPC-05, -10). A lookup error keeps the typed type in error
 with the prompt and no add (state `K` reused, Q-COTRTUPC-09); after "Delete successful." the fields are empty and
 the type field is open (Q-COTRTUPC-19).

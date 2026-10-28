@@ -31,7 +31,7 @@ following rewrite (lock only), o opened but never accessed.
 | Error-handling rules (`ERR-`) | 287 | programs |
 | Quirks (`Q-`) | 611 (programs 506, `entities.md` 42, `jobs.md` 63) | all spec files |
 | Test scenarios (`TS-`) | 528 (programs 526, `jobs.md` 2) | all spec files |
-| Quirk recommendations | fix 252, decide 170, preserve 70; the rest are other wordings (replace, drop, do not port, treat as incomplete) or none | quirk bullets |
+| Quirk recommendations | fix 252, decide 170, preserve 70 (plus one "preserve or decide", Q-COPAUS1C-03); the rest are other wordings (replace, drop, do not port, treat as incomplete) or none | quirk bullets |
 
 ### Metrics by bounded context
 

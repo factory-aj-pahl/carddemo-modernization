@@ -214,7 +214,7 @@ Sample IMS data (DFSURGU0 unload `app/app-authorization-ims-db2-mq/data/EBCDIC/A
 (2023-10-19 to 2024-04-05; key dates 76707 to 75903). (Correction: the range was given as 23299 to
 23320; the unload's detail keys and PA-AUTH-ORIG-DATE values span 2023-10-19 to 2024-04-05.)
 Account 7 has 50 approved details. The unload also holds one
-unusable root whose bytes are all EBCDIC spaces (X'40'): its key is not valid packed decimal and its
+unusable root whose key and amounts are EBCDIC spaces (X'40'; bytes 6-21 are X'F0'): its key is not valid packed decimal and its
 approved count reads as 16448 (X'4040'); it has no details.
 - **TS-CBPAUP0C-01** (BR-04 to BR-08): Given the sample database and SYSIN `00,00001,00001,Y` run in
   2025, when CBPAUP0J runs, then every detail is deleted, every valid summary's approved count reaches 0 so
