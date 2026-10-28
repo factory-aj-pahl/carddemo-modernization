@@ -171,7 +171,9 @@ flowchart LR
   they can be compared with the COBOL originals.
 - Batch commands run as `java -jar carddemo-batch.jar <JOB> businessDate=YYYY-MM-DD ...` with exit
   codes 0 (ok), 4 (warnings), 8 (refused, for example already completed), 12 (invalid business date,
-  B-DATE), 16 (usage), 99 (abend, B-ABEND). Each daily record commits with its effects (B-UOW), so a
+  B-DATE), 16 (usage; for the IMS module programs CBPAUP0C, PAUDBUNL, PAUDBLOD, and DBUNLDGS also the
+  program's own RETURN-CODE 16 from 9999-ABEND, `ExitCodes.PROGRAM_RC16`, told apart by the `usage:` line
+  a usage error writes to stderr), 99 (abend, B-ABEND). Each daily record commits with its effects (B-UOW), so a
   failed run restarts from its last committed record. The jar also carries `load`, `export`, and
   `reset` for the data migration.
 - Airflow tasks call the jar through `airflow/dags/carddemo_batch.py`: 0 and 4 succeed, every other
