@@ -1,5 +1,7 @@
 package com.carddemo.card.api;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /** Published card lookups for other contexts (CXACAIX alternate-index path over the cross-reference). */
@@ -13,4 +15,7 @@ public interface CardDirectory {
 
     /** The cross-reference record of a card (XREFFILE read by card number). Empty when not found. */
     Optional<CardXref> findXref(String cardNum);
+
+    /** Card numbers of the given accounts in the cross-reference, ascending. Empty for no accounts. */
+    List<String> cardsOfAccounts(Collection<Long> accountIds);
 }

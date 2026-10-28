@@ -2,6 +2,8 @@ package com.carddemo.card.internal;
 
 import com.carddemo.card.api.CardDirectory;
 import com.carddemo.card.api.CardXref;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Component;
@@ -27,5 +29,14 @@ class JdbcCardDirectory implements CardDirectory {
             .param(cardNum)
             .query((rs, i) -> new CardXref(rs.getString(1), rs.getLong(2), rs.getLong(3)))
             .optional();
+    }
+
+    @Override
+    public List<String> cardsOfAccounts(Collection<Long> accountIds) {
+        if (accountIds.isEmpty()) {
+            return List.of();
+        }
+        return jdbc.sql("SELECT card_num FROM card_xref WHERE account_id IN (:ids) ORDER BY card_num")
+            .param("ids", List.copyOf(accountIds)).query(String.class).list();
     }
 }

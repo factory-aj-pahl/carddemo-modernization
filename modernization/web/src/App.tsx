@@ -5,6 +5,9 @@ import { Menu } from './screens/Menu';
 import { NotAvailable } from './screens/NotAvailable';
 import { SignOn } from './screens/SignOn';
 import { SignedOff } from './screens/SignedOff';
+import { TransactionAdd } from './screens/TransactionAdd';
+import { TransactionList } from './screens/TransactionList';
+import { TransactionView } from './screens/TransactionView';
 import { SessionContext, useSessionTracker } from './session';
 
 const REGISTRY: Record<string, ComponentType> = {
@@ -12,6 +15,9 @@ const REGISTRY: Record<string, ComponentType> = {
   COMEN01C: () => <Menu program="COMEN01C" />,
   COADM01C: () => <Menu program="COADM01C" />,
   COBIL00C: BillPayment,
+  COTRN00C: TransactionList,
+  COTRN01C: TransactionView,
+  COTRN02C: TransactionAdd,
 };
 
 function ScreenRoute() {

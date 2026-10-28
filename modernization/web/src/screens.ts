@@ -20,6 +20,36 @@ export const SCREENS: Record<string, ScreenInfo> = {
     title: 'Bill Payment',
     keys: [{ key: 'ENTER', label: 'Continue' }, { key: 'F3', label: 'Back' }, { key: 'F4', label: 'Clear' }],
   },
+  COTRN00C: {
+    tran: 'CT00',
+    title: 'List Transactions',
+    keys: [
+      { key: 'ENTER', label: 'Continue' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F7', label: 'Backward' },
+      { key: 'F8', label: 'Forward' },
+    ],
+  },
+  COTRN01C: {
+    tran: 'CT01',
+    title: 'View Transaction',
+    keys: [
+      { key: 'ENTER', label: 'Fetch' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F4', label: 'Clear' },
+      { key: 'F5', label: 'Browse Tran.' },
+    ],
+  },
+  COTRN02C: {
+    tran: 'CT02',
+    title: 'Add Transaction',
+    keys: [
+      { key: 'ENTER', label: 'Continue' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F4', label: 'Clear' },
+      { key: 'F5', label: 'Copy Last Tran.' },
+    ],
+  },
 };
 
 /** Legend key text to the attention identifier the server expects. */
