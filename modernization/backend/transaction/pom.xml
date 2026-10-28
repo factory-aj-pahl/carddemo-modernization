@@ -24,6 +24,18 @@
         </dependency>
         <dependency>
             <groupId>com.carddemo</groupId>
+            <artifactId>refdata</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- Runtime provider of AccountScope; modules that depend on transaction (cycle, reporting,
+             dataexchange) then get it in their test contexts too. Code uses only the common interface. -->
+        <dependency>
+            <groupId>com.carddemo</groupId>
+            <artifactId>iam</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.carddemo</groupId>
             <artifactId>test-support</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
