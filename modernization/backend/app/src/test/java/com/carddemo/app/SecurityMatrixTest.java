@@ -108,6 +108,10 @@ class SecurityMatrixTest extends SecurityTestBase {
         op("POST /api/screens/COUSR02C", ADMIN_ONLY, t -> screen("userId", OTHER_USER)),
         op("GET /api/screens/COUSR03C", ADMIN_ONLY),
         op("POST /api/screens/COUSR03C", ADMIN_ONLY, t -> screen("userId", OTHER_USER)),
+        op("GET /api/screens/COTRTLIC", ADMIN_ONLY),
+        op("POST /api/screens/COTRTLIC", ADMIN_ONLY, t -> screen("typeFilter", "", "descFilter", "")),
+        op("GET /api/screens/COTRTUPC", ADMIN_ONLY),
+        op("POST /api/screens/COTRTUPC", ADMIN_ONLY, t -> screen("typeCode", "")),
         // Account
         op("GET /api/screens/COACTVWC", AUTHENTICATED),
         op("POST /api/screens/COACTVWC", ACCOUNT_SCOPED, t -> screen("accountId", t.accountId())),
@@ -143,7 +147,8 @@ class SecurityMatrixTest extends SecurityTestBase {
         op("GET /api/reports/{runId}", ACCOUNT_SCOPED),
         op("GET /api/reports/{runId}/TRANREPT.txt", ACCOUNT_SCOPED),
         // MQ inquiry REST equivalents (D-MQ)
-        op("GET /api/inquiry/date", AUTHENTICATED));
+        op("GET /api/inquiry/date", AUTHENTICATED),
+        op("GET /api/inquiry/account/{id}", ACCOUNT_SCOPED));
 
     /** Endpoints outside the OpenAPI document that must stay public and leak-free. */
     static final List<String> INFRASTRUCTURE = List.of("GET /actuator/health", "GET /v3/api-docs");
@@ -358,7 +363,7 @@ class SecurityMatrixTest extends SecurityTestBase {
 
     MockHttpServletResponse call(ScreenClient c, String op, Rule rule, Target t) {
         String[] parts = op.split(" ", 2);
-        String path = parts[1].replace("{runId}", t.runId());
+        String path = parts[1].replace("{runId}", t.runId()).replace("{id}", t.accountId());
         MockHttpServletRequestBuilder req = switch (parts[0]) {
             case "GET" -> MockMvcRequestBuilders.get(path);
             case "POST" -> MockMvcRequestBuilders.post(path);
