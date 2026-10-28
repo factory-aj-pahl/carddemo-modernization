@@ -4,7 +4,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 
 /** DISPLAY renderings shared by the authorization batch programs (as GnuCOBOL prints them). */
-final class LegacyDisplay {
+public final class LegacyDisplay {
 
     static final String DASHES = "*-------------------------------------*";
 
@@ -32,7 +32,7 @@ final class LegacyDisplay {
     }
 
     /** The status shown where the program shows a DL/I status: the SQLSTATE of the failure, else its type. */
-    static String status(Throwable e) {
+    public static String status(Throwable e) {
         for (Throwable t = e; t != null; t = t.getCause()) {
             if (t instanceof SQLException sql && sql.getSQLState() != null) {
                 return sql.getSQLState();
