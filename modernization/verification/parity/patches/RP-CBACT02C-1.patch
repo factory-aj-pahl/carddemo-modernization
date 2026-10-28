@@ -1,0 +1,11 @@
+--- a/app/cbl/CBACT02C.cbl
++++ b/app/cbl/CBACT02C.cbl
+@@ -75,6 +75,8 @@
+                IF  END-OF-FILE = 'N'                                            
+                    PERFORM 1000-CARDFILE-GET-NEXT                               
+                    IF  END-OF-FILE = 'N'                                        
++                       MOVE '************' TO CARD-RECORD(1:12)                 
++                       MOVE '***' TO CARD-RECORD(28:3)                          
+                        DISPLAY CARD-RECORD                                      
+                    END-IF                                                       
+                END-IF                                                           

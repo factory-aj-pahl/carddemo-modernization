@@ -1,0 +1,42 @@
+--- a/app/cbl/CBIMPORT.cbl
++++ b/app/cbl/CBIMPORT.cbl
+@@ -290,6 +290,7 @@
+       *****************************************************************
+        2300-PROCESS-CUSTOMER-RECORD.
+       *****************************************************************
++           MOVE SPACES TO CUSTOMER-RECORD
+            INITIALIZE CUSTOMER-RECORD
+            
+       *    Map export fields to customer record
+@@ -325,6 +326,7 @@
+       *****************************************************************
+        2400-PROCESS-ACCOUNT-RECORD.
+       *****************************************************************
++           MOVE SPACES TO ACCOUNT-RECORD
+            INITIALIZE ACCOUNT-RECORD
+            
+       *    Map export fields to account record
+@@ -354,6 +356,7 @@
+       *****************************************************************
+        2500-PROCESS-XREF-RECORD.
+       *****************************************************************
++           MOVE SPACES TO CARD-XREF-RECORD
+            INITIALIZE CARD-XREF-RECORD
+            
+       *    Map export fields to xref record
+@@ -374,6 +377,7 @@
+       *****************************************************************
+        2600-PROCESS-TRAN-RECORD.
+       *****************************************************************
++           MOVE SPACES TO TRAN-RECORD
+            INITIALIZE TRAN-RECORD
+            
+       *    Map export fields to transaction record
+@@ -404,6 +408,7 @@
+       *****************************************************************
+        2650-PROCESS-CARD-RECORD.
+       *****************************************************************
++           MOVE SPACES TO CARD-RECORD
+            INITIALIZE CARD-RECORD
+            
+       *    Map export fields to card record

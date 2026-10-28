@@ -1,0 +1,10 @@
+--- a/app/cbl/CBACT03C.cbl
++++ b/app/cbl/CBACT03C.cbl
+@@ -75,6 +75,7 @@
+                IF  END-OF-FILE = 'N'                                            
+                    PERFORM 1000-XREFFILE-GET-NEXT                               
+                    IF  END-OF-FILE = 'N'                                        
++                       MOVE '************' TO CARD-XREF-RECORD(1:12)            
+                        DISPLAY CARD-XREF-RECORD                                 
+                    END-IF                                                       
+                END-IF                                                           

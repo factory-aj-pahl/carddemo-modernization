@@ -1,8 +1,9 @@
 """Comparator for batch parity: expected (reference) output directory vs actual (Java) output directory.
 
-Every file in either directory is compared record by record (LF-terminated lines). A file present
-on one side only, a different record count, or any differing byte is a finding. The only
-normalizations are the generated-timestamp fields listed in NORMALIZE: both sides must hold a
+Every file in either directory is compared record by record (LF-terminated lines, or fixed-length
+records for the binary files in BINARY). A file present on one side only, a different record count,
+or any differing byte is a finding. The only normalizations are the run-time date and time fields
+listed in NORMALIZE (byte ranges) and SYSOUT_NORMALIZE (job-log lines): both sides must hold a
 well-formed value there, and the value itself is not compared.
 """
 
@@ -14,11 +15,28 @@ import sys
 from pathlib import Path
 
 DB2_TS = re.compile(r"\d{4}-\d\d-\d\d-\d\d\.\d\d\.\d\d\.\d\d0000")
+EXPORT_TS = re.compile(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.00    ")
+CURRENT_DATE = re.compile(r"\d{16}[+-]\d{4}")
+ISO_DATE = re.compile(r"\d{4}-\d\d-\d\d")
+CLOCK = re.compile(r"\d\d:\d\d:\d\d")
 
 # file name -> list of (start, end, pattern): zero-based byte ranges holding run-time timestamps.
 NORMALIZE = {
     "transact.txt": [(304, 330, DB2_TS)],  # TRAN-PROC-TS, BR-CBTRN02C-05
+    "expfile.dat": [(1, 27, EXPORT_TS)],  # export timestamp, BR-CBEXPORT-01
+    "errout.txt": [(0, 21, CURRENT_DATE)],  # FUNCTION CURRENT-DATE, BR-CBIMPORT-07
 }
+
+# Job-log lines that show the run's own date or time: (line prefix, pattern of the rest).
+SYSOUT_NORMALIZE = [
+    ("CBEXPORT: Export Date: ", ISO_DATE),  # BR-CBEXPORT-01
+    ("CBEXPORT: Export Time: ", CLOCK),
+    ("CBIMPORT: Import Date: ", ISO_DATE),  # BR-CBIMPORT-10
+    ("CBIMPORT: Import Time: ", CLOCK),
+]
+
+# Files of fixed-length records without line terminators: name -> record length.
+BINARY = {"expfile.dat": 500}
 
 
 # Card-number fields, masked in printed findings (B-MASK applies to evidence output too).
@@ -31,8 +49,15 @@ CARD_FIELDS = {
 }
 
 
+# CVEXPORT records: PAN and SSN fields by record type (BR-CBEXPORT-04..08).
+EXPORT_FIELDS = {"C": [(314, 323)], "X": [(40, 56)], "T": [(292, 308)], "D": [(40, 56)]}
+
+
 def _mask(name: str, rec: str) -> str:
-    for start, end in CARD_FIELDS.get(name, []):
+    fields = CARD_FIELDS.get(name, [])
+    if name in BINARY and rec:
+        fields = EXPORT_FIELDS.get(rec[0], [])
+    for start, end in fields:
         if len(rec) >= end:
             rec = rec[:start] + "*" * (end - start - 4) + rec[end - 4:]
     return rec
@@ -40,6 +65,12 @@ def _mask(name: str, rec: str) -> str:
 
 def _lines(path: Path) -> list[str]:
     data = path.read_bytes().decode("latin-1")
+    if path.name in BINARY:
+        n = BINARY[path.name]
+        recs = [data[i:i + n] for i in range(0, len(data), n)]
+        if recs and len(recs[-1]) != n:
+            recs[-1] += "\x00(partial record)"
+        return recs
     if data and not data.endswith("\n"):
         data += "\n"
     return data.split("\n")[:-1] if data else []
@@ -50,6 +81,8 @@ def compare_file(name: str, exp: list[str], act: list[str], limit: int = 5) -> l
     if len(exp) != len(act):
         findings.append(f"{name}: {len(act)} records, expected {len(exp)}")
     rules = NORMALIZE.get(name, [])
+    if name == "sysout.txt":
+        exp, act = _normalize_sysout(name, exp, act, findings)
     shown = 0
     for i in range(max(len(exp), len(act))):
         e = exp[i] if i < len(exp) else None
@@ -77,6 +110,22 @@ def compare_file(name: str, exp: list[str], act: list[str], limit: int = 5) -> l
     if shown > limit:
         findings.append(f"{name}: {shown - limit} more differing records")
     return findings
+
+
+def _normalize_sysout(name: str, exp: list[str], act: list[str], findings: list[str]) -> tuple[list[str], list[str]]:
+    def norm(lines: list[str], side: str) -> list[str]:
+        out = []
+        for i, line in enumerate(lines):
+            for prefix, pat in SYSOUT_NORMALIZE:
+                if line.startswith(prefix):
+                    if not pat.fullmatch(line[len(prefix):]):
+                        findings.append(f"{name}: line {i + 1} {side} {line!r} does not match {prefix}{pat.pattern}")
+                    line = prefix + "~"
+                    break
+            out.append(line)
+        return out
+
+    return norm(exp, "expected"), norm(act, "actual")
 
 
 def compare_dirs(expected: Path, actual: Path) -> tuple[list[str], list[str]]:
