@@ -20,6 +20,13 @@ export const SCREENS: Record<string, ScreenInfo> = {
     title: 'Bill Payment',
     keys: [{ key: 'ENTER', label: 'Continue' }, { key: 'F3', label: 'Back' }, { key: 'F4', label: 'Clear' }],
   },
+  COACTVWC: { tran: 'CAVW', title: 'View Account', keys: [{ key: 'ENTER', label: 'View' }, { key: 'F3', label: 'Exit' }] },
+  COACTUPC: {
+    tran: 'CAUP',
+    title: 'Update Account',
+    // F5=Save and F12=Cancel are added by the screen when the server shows them (BR-COACTUPC-21).
+    keys: [{ key: 'ENTER', label: 'Process' }, { key: 'F3', label: 'Exit' }],
+  },
   COTRN00C: {
     tran: 'CT00',
     title: 'List Transactions',
@@ -50,6 +57,7 @@ export const SCREENS: Record<string, ScreenInfo> = {
       { key: 'F5', label: 'Copy Last Tran.' },
     ],
   },
+  CORPT00C: { tran: 'CR00', title: 'Transaction Reports', keys: [{ key: 'ENTER', label: 'Continue' }, { key: 'F3', label: 'Back' }] },
 };
 
 /** Legend key text to the attention identifier the server expects. */

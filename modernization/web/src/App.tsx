@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
+import { AccountUpdate } from './screens/AccountUpdate';
+import { AccountView } from './screens/AccountView';
 import { BillPayment } from './screens/BillPayment';
 import { Menu } from './screens/Menu';
 import { NotAvailable } from './screens/NotAvailable';
@@ -7,6 +9,7 @@ import { SignOn } from './screens/SignOn';
 import { SignedOff } from './screens/SignedOff';
 import { TransactionAdd } from './screens/TransactionAdd';
 import { TransactionList } from './screens/TransactionList';
+import { TransactionReports } from './screens/TransactionReports';
 import { TransactionView } from './screens/TransactionView';
 import { SessionContext, useSessionTracker } from './session';
 
@@ -15,9 +18,12 @@ const REGISTRY: Record<string, ComponentType> = {
   COMEN01C: () => <Menu program="COMEN01C" />,
   COADM01C: () => <Menu program="COADM01C" />,
   COBIL00C: BillPayment,
+  COACTVWC: AccountView,
+  COACTUPC: AccountUpdate,
   COTRN00C: TransactionList,
   COTRN01C: TransactionView,
   COTRN02C: TransactionAdd,
+  CORPT00C: TransactionReports,
 };
 
 function ScreenRoute() {
