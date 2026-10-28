@@ -124,7 +124,7 @@ PROGRAMS = {
         ),
         Program(
             "CBACT04C",
-            inputs=(TCAT, File("XREFFILE", "cardxref.txt", 50, 16, (25, 11, True)), ACCT,
+            inputs=(TCAT, File("XREFFILE", "cardxref.txt", 50, 16, alt_key=(25, 11, True)), ACCT,
                     File("DISCGRP", "discgrp.txt", 50, 16)),
             outputs=(File("TRANSACT", "systran.txt", 350),),  # the SYSTRAN generation
             unload=("TRANSACT", "ACCTFILE"),
