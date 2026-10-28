@@ -101,6 +101,40 @@ Deviations in IAM and Card (with reasons):
 - Only the screen endpoints exist for these contexts; the `/api/users` and `/api/cards` sketches
   are not built.
 
+Deviations in Authorizations (with reasons):
+
+- The IMS database becomes `pending_auth_summary` (root, key account ID) and `pending_auth_detail`
+  (child). The inverted-time detail key is replaced by an identity `auth_id` and the insert
+  timestamp `auth_ts`; "IMS key order" is `auth_ts DESC, auth_id DESC`, so two authorizations in the
+  same millisecond keep a stable order. The migration rejects the unload's all-spaces root (its key
+  is not valid packed decimal), so the sample loads 21 summaries and 202 details.
+- A PSB schedule is the start of a database transaction and SYNCPOINT its commit or rollback.
+  Where a program shows a DL/I status the target shows the SQLSTATE of the failure, or the exception
+  class name when there is none; `GE` is still shown for "not found". The batch `KFB AREA` lines show
+  the account ID only (the root key), not the whole key feedback area.
+- COPAUS2C messages show the SQL Server error number with the Db2 negative sign as `+9(06)` (for
+  example `-000208` for a missing table) and the 5-character SQLSTATE. `auth_fraud_report` is
+  keyed by card number, `auth_ts`, and `auth_id`, because two authorizations of a card can share a
+  timestamp (Q-COPAUS2C-03).
+- COPAUS0C reads the account and customer rows directly through the authorization repository (the
+  Account context publishes no read API yet) and the cross-reference through `card/api`
+  `CardDirectory`. A USER sees only linked accounts; any other account is answered as not found in
+  the cross-reference, the same text as a missing account. Move the reads to `account/api` when it
+  exists.
+- The account in view and the selected authorization (CDEMO-ACCT-ID, CDEMO-CPVS-PAU-SELECTED) are
+  kept in the server session instead of the COMMAREA. Entering COPAUS0C from the menu with no
+  account in the session shows the empty prompt.
+- PAUDBUNL and DBUNLDGS read both tables in one SERIALIZABLE read-only transaction, so the output
+  files are a consistent snapshot (SQL Server snapshot isolation is not enabled on the database).
+  The NEW end-of-run count lines are `ROOT SEGMENTS UNLOADED  :` and `CHILD SEGMENTS UNLOADED :`
+  (PAUDBUNL, DBUNLDGS), and `ROOT SEGMENTS INSERTED  :`, `CHILD SEGMENTS INSERTED :`,
+  `DUPLICATES SKIPPED      :`, `ORPHAN CHILDREN SKIPPED :`, `INVALID KEYS REJECTED   :` (PAUDBLOD),
+  each followed by a 9-digit count. CBPAUP0C prints its counters as GnuCOBOL displays a
+  `PIC S9(8) COMP` field (`+00000022`).
+- The batch jar runs the IMS jobs as `CBPAUP0C [sysin=...]`, `PAUDBUNL`, `DBUNLDGS`, and `PAUDBLOD`
+  (`rootFile=` and `childFile=` paths); Airflow DAG `carddemo_auth_purge` runs CBPAUP0J with the
+  SYSIN card built from its params. The job log replaces SYSOUT.
+
 ### Messaging (D-MQ)
 
 RabbitMQ (vhost `carddemo`) keeps the COBOL queue names. A reply goes to the request's `reply_to`

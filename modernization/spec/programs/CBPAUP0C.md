@@ -194,20 +194,25 @@ Final totals printed (171-178):
 ## Test scenarios
 Sample IMS data (DFSURGU0 unload `app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat`):
 21 account summaries (accounts 1, 5, 7, 13, 15, 16, 17, 18, 23, 29, 30, 31, 32, 33, 34, 38, 42, 45,
-46, 47, 48), 202 details, all approved ('00') with match status 'P', dated YYDDD 23299 to 23320
-(key dates 76700 to 76679). Account 7 has 50 approved details. The unload also holds one
+46, 47, 48), 202 details, all approved ('00') with match status 'P', dated YYDDD 23292 to 24096
+(2023-10-19 to 2024-04-05; key dates 76707 to 75903). (Correction: the range was given as 23299 to
+23320; the unload's detail keys and PA-AUTH-ORIG-DATE values span 2023-10-19 to 2024-04-05.)
+Account 7 has 50 approved details. The unload also holds one
 unusable root whose bytes are all EBCDIC spaces (X'40'): its key is not valid packed decimal and its
 approved count reads as 16448 (X'4040'); it has no details.
 - **TS-CBPAUP0C-01** (BR-04 to BR-08): Given the sample database and SYSIN `00,00001,00001,Y` run in
   2025, when CBPAUP0J runs, then every detail is deleted, every valid summary's approved count reaches 0 so
   those 21 summaries are deleted (subject to Q-CBPAUP0C-05), the all-spaces root is kept (approved
   count 16448 > 0), and the totals show summaries read 22, summaries deleted 21, details read 202,
-  details deleted 202, RC 0.
+  details deleted 202, RC 0. (Target note: the migration rejects the all-spaces root because its key
+  is not valid packed decimal, so the target run reads 21 summaries: totals 21, 21, 202, 202.)
 - **TS-CBPAUP0C-02** (BR-04): Given today is 23325 and SYSIN `05,00001,00001,N`, when the job runs,
   then details dated 23320 (age 5) are deleted and details dated 23321 or later would be kept.
 - **TS-CBPAUP0C-03** (Q-CBPAUP0C-01): Given account 7 has 50 approved details of which 10 are expired,
   when the job runs, then 10 details are deleted and the stored summary still shows approved count
-  50, approved amount 74.79 and credit balance 74.79.
+  50, approved amount 74.79 and credit balance 74.79. (Target note: under the ledger FIX for
+  Q-CBPAUP0C-01 the kept summary is saved with the purged approvals taken out: approved count 40,
+  approved amount 74.79 less the 10 purged amounts, credit balance 74.79 unchanged.)
 - **TS-CBPAUP0C-04** (Q-CBPAUP0C-02): Given an account whose summary has approved count 0 and three
   unexpired declined details, when the job runs, then the summary and all three details are deleted.
 - **TS-CBPAUP0C-05** (VR-01, BR-02): Given SYSIN `XX,     ,     ,N`, then expiry 5, checkpoint
