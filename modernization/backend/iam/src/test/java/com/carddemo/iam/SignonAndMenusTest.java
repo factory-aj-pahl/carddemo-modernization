@@ -172,6 +172,14 @@ class SignonAndMenusTest {
         assertThat(r.at("/fields/options/9").asText()).isEqualTo("10. Bill Payment");
         assertThat(r.at("/fields/options/10").asText()).isEqualTo("11. Pending Authorization View");
         assertThat(r.has("message")).isFalse();
+        assertThat(r.at("/fields/option").isTextual()).isTrue();
+        assertThat(r.at("/fields/option").asText()).as("BR-COMEN01C-02: empty option field").isEmpty();
+        assertThat(r.at("/focus").asText()).isEqualTo("option");
+        // Coming back after a selected function shows the menu again with the option field empty.
+        assertThat(client.post("COMEN01C", "ENTER", Map.of("option", "10")).at("/navigate").asText()).isEqualTo("COBIL00C");
+        JsonNode back = client.show("COMEN01C");
+        assertThat(back.at("/fields/option").asText()).isEmpty();
+        assertThat(back.has("message")).isFalse();
     }
 
     @Test

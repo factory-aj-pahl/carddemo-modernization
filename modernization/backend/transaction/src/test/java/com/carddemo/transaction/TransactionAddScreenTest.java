@@ -173,7 +173,23 @@ class TransactionAddScreenTest extends TransactionScreenTestBase {
     void a_changed_account_derives_its_own_card() {
         client.signOn(ADMIN);
         JsonNode r = enter(form(ACCT1, "", Map.of()));
-        JsonNode other = enter(echo(r, Map.of("accountId", "00000000002", "confirm", "Y")));
+        String masked = "************" + cardOf(1).substring(12);
+        assertThat(r.at("/fields/cardNum").asText()).isEqualTo(masked);
+        assertThat(r.toString()).doesNotContain(cardOf(1));
+
+        // The masked value sent back unchanged for the same account means the held card.
+        JsonNode same = enter(echo(r, Map.of("confirm", "Y")));
+        String sameId = same.at("/message").asText().replaceAll("\\D", "");
+        assertThat(jdbc.queryForObject("SELECT card_num FROM card_transaction WHERE tran_id = ?", String.class, sameId))
+            .isEqualTo(cardOf(1));
+
+        r = enter(form(ACCT1, "", Map.of()));
+        assertThat(r.at("/fields/cardNum").asText()).isEqualTo(masked);
+        JsonNode changed = enter(echo(r, Map.of("accountId", "00000000002")));
+        assertThat(changed.at("/fields/cardNum").asText()).as("the held card is not reused for another account")
+            .isEqualTo("************" + cardOf(2).substring(12));
+        assertThat(changed.toString()).doesNotContain(cardOf(2));
+        JsonNode other = enter(echo(changed, Map.of("confirm", "Y")));
         String id = other.at("/message").asText().replaceAll("\\D", "");
         assertThat(jdbc.queryForObject("SELECT card_num FROM card_transaction WHERE tran_id = ?", String.class, id))
             .isEqualTo(cardOf(2));

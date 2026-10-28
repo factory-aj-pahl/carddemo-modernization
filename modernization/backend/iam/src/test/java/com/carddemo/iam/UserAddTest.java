@@ -40,7 +40,7 @@ class UserAddTest extends UserScreenTestSupport {
 
     @Test
     @Covers({"VR-COUSR01C-01", "VR-COUSR01C-02", "VR-COUSR01C-03", "VR-COUSR01C-04", "VR-COUSR01C-05", "TS-COUSR01C-02",
-        "TS-COUSR01C-03", "TS-COUSR01C-04", "TS-COUSR01C-05", "TS-COUSR01C-06", "NAV-COUSR01C-01", "NAV-COUSR01C-05"})
+        "TS-COUSR01C-03", "TS-COUSR01C-04", "TS-COUSR01C-05", "TS-COUSR01C-06", "NAV-COUSR01C-01"})
     void mandatory_fields_are_checked_in_screen_order() {
         record Step(Map<String, Object> input, String message, String focus) {
         }
@@ -58,6 +58,21 @@ class UserAddTest extends UserScreenTestSupport {
             assertThat(r.at("/fields/firstName").asText()).isEqualTo(s.input().get("firstName"));
         }
         assertThat(exists("TEST0001")).isFalse();
+    }
+
+    @Test
+    @Covers({"NAV-COUSR01C-05", "C-SESSION"})
+    void a_redisplay_keeps_the_conversation_on_the_add_screen_for_the_signed_on_admin() {
+        JsonNode first = admin.post("COUSR01C", "ENTER", form("", "", "", "", ""));
+        assertThat(first.at("/message").asText()).isEqualTo("First Name can NOT be empty...");
+        assertThat(first.has("navigate")).as("the screen is redisplayed, not left").isFalse();
+        JsonNode next = admin.post("COUSR01C", "ENTER", form("TEST", "USER", "TEST0005", "PASSWORD", "U"));
+        assertThat(next.at("/message").asText()).as("the next key is handled by the add screen")
+            .isEqualTo("User TEST0005 has been added ...");
+        assertThat(next.has("navigate")).isFalse();
+        assertThat(jdbc.queryForObject("SELECT actor FROM audit_log WHERE action = 'USER_ADD' AND target = 'TEST0005'", String.class))
+            .as("same signed-on user across the turns").isEqualTo("ADMIN001");
+        assertThat(admin.post("COUSR01C", "PF3", Map.of()).at("/navigate").asText()).isEqualTo("COADM01C");
     }
 
     @Test

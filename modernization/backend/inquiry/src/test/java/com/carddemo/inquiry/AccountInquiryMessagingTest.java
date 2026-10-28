@@ -417,7 +417,7 @@ class AccountInquiryMessagingTest {
     }
 
     @Test
-    @Covers({"TS-COACCT01-11", "BR-COACCT01-01", "BR-COACCT01-03", "Q-COACCT01-17", "Q-COACCT01-10"})
+    @Covers({"BR-COACCT01-01", "BR-COACCT01-03", "Q-COACCT01-17", "Q-COACCT01-10"})
     void inquiry_queues_are_declared_at_startup_with_the_dead_letter_and_bound_settings() {
         for (String q : List.of(queues.accountRequest(), queues.accountReply(), queues.error(), queues.deadLetter())) {
             assertThat(admin.getQueueInfo(q)).as(q).isNotNull();
@@ -449,7 +449,7 @@ class AccountInquiryMessagingTest {
     }
 
     @Test
-    @Covers({"ERR-COACCT01-01", "ERR-COACCT01-08"})
+    @Covers({"TS-COACCT01-11", "ERR-COACCT01-01", "ERR-COACCT01-08"})
     void an_error_record_the_error_queue_cannot_take_sends_the_request_to_the_dead_letter_queue() {
         admin.deleteQueue(queues.error());
         try {

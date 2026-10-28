@@ -399,6 +399,24 @@ class AccountUpdateScreenTest extends AccountScreenTestBase {
     }
 
     @Test
+    @Covers({"VR-COACTUPC-26", "BR-COACTUPC-20"})
+    void zip_edits() {
+        JsonNode s = fetched24();
+        JsonNode r = change(s, f -> f.put("zip", ""));
+        assertEdit(r, "Zip must be supplied.", "zip");
+        assertThat(list(r, "errorFields")).containsExactly("zip");
+        assertThat(values(r).get("zip")).isEqualTo("*");
+        r = change(s, f -> f.put("zip", "6604A"));
+        assertEdit(r, "Zip must be all numeric.", "zip");
+        assertThat(list(r, "errorFields")).containsExactly("zip");
+        assertThat(values(r).get("zip")).isEqualTo("6604A");
+        r = change(s, f -> f.put("zip", "00000"));
+        assertEdit(r, "Zip must not be zero.", "zip");
+        assertThat(list(r, "errorFields")).containsExactly("zip");
+        assertThat(customer(24).get("zip")).isEqualTo("15414");
+    }
+
+    @Test
     @Covers({"TS-COACTUPC-21", "VR-COACTUPC-07", "Q-COACTUPC-25", "BR-COACTUPC-20"})
     void account_status_edit() {
         JsonNode s = fetched24();

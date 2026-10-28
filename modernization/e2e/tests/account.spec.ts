@@ -73,8 +73,17 @@ test.describe('COACTUPC account update', () => {
 
   const form = (page: import('@playwright/test').Page) => page.getByTestId('form');
 
-  test('TS-COACTUPC-01 NAV-COACTUPC-03 BR-COACTUPC-23 first entry shows the empty search screen', async ({ page }) => {
+  test('TS-COACTUPC-01 NAV-COACTUPC-03 BR-COACTUPC-23 BR-COACTUPC-06 first entry shows the empty search screen', async ({ page }) => {
     await expect(form(page)).toHaveAttribute('data-mode', 'SEARCH');
+    await expect(page.locator('.app-header')).toContainText('CardDemo');
+    await expect(page.locator('.app-header')).toContainText('AWS Mainframe Modernization');
+    await expect(page.getByTestId('tran')).toHaveText('CAUP · COACTUPC');
+    await expect(page.getByLabel('Date and time')).toHaveText(/^\d\d\/\d\d\/\d\d {2}\d\d:\d\d:\d\d$/);
+    for (const [id, placeholder] of [['#ssn1', '999'], ['#ssn2', '99'], ['#ssn3', '9999']]) {
+      await expect(page.locator(id)).toHaveValue('');
+      await expect(page.locator(id)).toHaveAttribute('placeholder', placeholder);
+    }
+    await expect(page.getByLabel('First Name')).toHaveValue('');
     await expect(page.getByLabel('Account Number')).toBeFocused();
     await expect(page.getByTestId('info')).toHaveText('Enter or update id of account to update');
     await expect(page.getByLabel('First Name')).toHaveAttribute('readonly', '');
@@ -119,6 +128,14 @@ test.describe('COACTUPC account update', () => {
     await page.keyboard.press('F5');
     await expect(form(page)).toHaveAttribute('data-mode', 'C');
     await expect(page.getByTestId('info')).toHaveText('Changes committed to database');
+    await expect(page.getByLabel('Middle Name')).toHaveValue('Playwright');
+
+    // The saved value is what a fresh fetch reads back.
+    await page.keyboard.press('Enter');
+    await expect(form(page)).toHaveAttribute('data-mode', 'SEARCH');
+    await page.getByLabel('Account Number').fill(fixtures.unlinkedAccount);
+    await page.keyboard.press('Enter');
+    await expect(form(page)).toHaveAttribute('data-mode', 'S');
     await expect(page.getByLabel('Middle Name')).toHaveValue('Playwright');
   });
 

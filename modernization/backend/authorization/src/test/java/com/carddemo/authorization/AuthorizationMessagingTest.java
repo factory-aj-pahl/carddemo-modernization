@@ -26,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
@@ -135,12 +136,19 @@ class AuthorizationMessagingTest {
             Message m = receive(replyTo);
             assertThat(m.getMessageProperties().getCorrelationId()).isEqualTo(id);
             assertThat(m.getMessageProperties().getType()).isEqualTo("reply");
+            assertReplyDelivery(m);
             assertThat(rabbit.receive(replyTo, 300)).as("exactly one reply").isNull();
             return new String(m.getBody(), StandardCharsets.US_ASCII);
         }
         JsonNode r = json.readTree(rest(request).getContentAsString());
         return new AuthReply(r.get("cardNum").asText(), r.get("transactionId").asText(), r.get("authIdCode").asText(),
             r.get("respCode").asText(), r.get("reasonCode").asText(), new BigDecimal(r.get("approvedAmount").asText())).text();
+    }
+
+    /** BR-COPAUA0C-12: the reply is non-persistent and expires after 5 seconds. */
+    static void assertReplyDelivery(Message m) {
+        assertThat(m.getMessageProperties().getReceivedDeliveryMode()).isEqualTo(MessageDeliveryMode.NON_PERSISTENT);
+        assertThat(m.getMessageProperties().getExpiration()).isEqualTo("5000");
     }
 
     MockHttpServletResponse rest(String request) throws Exception {
@@ -467,7 +475,39 @@ class AuthorizationMessagingTest {
     }
 
     @Test
-    @Covers({"TS-COPAUA0C-12", "Q-COPAUA0C-12", "Q-COPAUA0C-08"})
+    @Covers({"Q-COPAUA0C-08", "Q-ENT-36"})
+    void inactive_card_closed_account_and_expired_card_are_approved_without_status_checks() throws Exception {
+        String expiredRequest = AuthFixtures.EXAMPLE.replace(",1226,", ",0120,");
+        for (Transport t : Transport.values()) {
+            for (String situation : List.of("inactive card", "closed account", "expired card")) {
+                reset();
+                String request = AuthFixtures.EXAMPLE;
+                switch (situation) {
+                    case "inactive card" -> jdbc.update("UPDATE card SET active_status = 'N' WHERE card_num = ?", AuthFixtures.CARD_7);
+                    case "closed account" -> jdbc.update(
+                        "UPDATE account SET active_status = 'N', expiration_date = '2020-01-31' WHERE account_id = 7");
+                    default -> {
+                        jdbc.update("UPDATE card SET expiration_date = '2020-01-31' WHERE card_num = ?", AuthFixtures.CARD_7);
+                        request = expiredRequest;
+                    }
+                }
+                String as = t + " " + situation;
+                assertThat(authorize(t, request)).as(as).isEqualTo("4859452612877065,TXN000000000001,143015,00,0000,        100.00,");
+                Map<String, Object> s = summary(7);
+                assertThat(s.get("approved_count")).as(as).isEqualTo(51);
+                assertThat(s.get("declined_count")).as(as).isEqualTo(0);
+                assertMoney(s.get("approved_amt"), "174.79");
+                assertMoney(s.get("credit_balance"), "174.79");
+                assertThat(newestDetail(7)).as(as).containsEntry("auth_resp_code", "00").containsEntry("auth_resp_reason", "0000")
+                    .containsEntry("match_status", "P")
+                    .containsEntry("card_expiry_date", situation.equals("expired card") ? "0120" : "1226");
+                assertThat(errorLog()).as(as).isEmpty();
+            }
+        }
+    }
+
+    @Test
+    @Covers({"TS-COPAUA0C-12", "Q-COPAUA0C-12"})
     void negative_zero_and_non_numeric_amounts_are_declined_9000_without_records() throws Exception {
         for (Transport t : Transport.values()) {
             reset();
@@ -493,6 +533,8 @@ class AuthorizationMessagingTest {
         publish(AuthFixtures.EXAMPLE.getBytes(StandardCharsets.US_ASCII), id, null);
         Message m = receive(queues.reply());
         assertThat(m.getMessageProperties().getCorrelationId()).isEqualTo(id);
+        assertThat(m.getMessageProperties().getType()).isEqualTo("reply");
+        assertReplyDelivery(m);
         assertThat(new String(m.getBody(), StandardCharsets.US_ASCII)).startsWith("4859452612877065,TXN000000000001,143015,00,");
     }
 
