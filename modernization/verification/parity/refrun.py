@@ -12,6 +12,17 @@ A program that takes a PARM (CBACT04C) is called through a generated driver that
 PARM as the z/OS LINKAGE area (halfword length + text); the PARM comes from the dataset's
 parm.txt (first line) or the program default.
 
+Three steps reproduce what z/OS does around the program and GnuCOBOL does not (B-PARITY):
+- runtime noise is removed from SYSOUT: compiler warnings and the `libcob: warning: implicit CLOSE of ...`
+  lines GnuCOBOL prints at the end of a run unit that left files open (every abend); z/OS closes the files
+  at step end without a message;
+- after an abend (exit code 99 from the CEE3ABD stub), outputs whose DD is DISP=(NEW,CATLG,DELETE) and that
+  stay files in the target (`File.abnormal_delete`) are deleted, as the abnormal disposition does
+  (spec/jobs.md, "Step DISP"); a KSDS output the program never opened unloads as empty, since on z/OS the
+  cluster exists before the step;
+- B-MASK lines the ledger fixes without a reference patch (`Program.sysout_mask`) are masked in the
+  reference SYSOUT, so the comparison expects `************` + last 4.
+
 Output directory layout:
     sysout.txt   program DISPLAY output (compiler/runtime noise removed)
     rc.txt       process return code
@@ -36,7 +47,10 @@ APP = REPO / "app"
 PATCHES = HERE / "patches"
 SAMPLE = APP / "data" / "ASCII"
 
-_NOISE = ("_FORTIFY_SOURCE", "this is the location of the previous definition")
+_NOISE = ("_FORTIFY_SOURCE", "this is the location of the previous definition", "libcob: warning: implicit CLOSE of ")
+
+# Exit code of the CEE3ABD stub (B-ABEND).
+ABEND_RC = 99
 
 
 @dataclass(frozen=True)
@@ -49,6 +63,7 @@ class File:
     binary: bool = False  # fixed-length records without line terminators (COMP/COMP-3 content)
     missing_if_absent: bool = False  # absent from the dataset -> the DD names no file (open status 35)
     alt_key: tuple[int, int, bool] | None = None  # (offset, length, with duplicates)
+    abnormal_delete: bool = False  # DISP=(NEW,CATLG,DELETE): deleted when the step abends
 
     @property
     def indexed(self) -> bool:
@@ -67,6 +82,7 @@ class Program:
     sources: tuple[str, ...] = ()  # source files in app/cbl, main program first (default <member>.cbl)
     parm: str | None = None  # default PARM; the program is then called through a PARM driver
     prepare: str | None = None  # PREPARE function deriving inputs the JCL builds before the step
+    sysout_mask: tuple[str, ...] = ()  # SYSOUT line prefixes followed by a card number to mask (B-MASK)
 
     @property
     def source_files(self) -> tuple[str, ...]:
@@ -76,7 +92,7 @@ class Program:
 XREF = File("XREFFILE", "cardxref.txt", 50, 16)
 ACCT = File("ACCTFILE", "acctdata.txt", 300, 11)
 TCAT = File("TCATBALF", "tcatbal.txt", 50, 17)
-DALY = File("DALYTRAN", "dailytran.txt", 350)
+DALY = File("DALYTRAN", "dailytran.txt", 350, missing_if_absent=True)
 CARD = File("CARDFILE", "carddata.txt", 150, 16)
 CUST = File("CUSTFILE", "custdata.txt", 500, 9)
 TRAN = File("TRANSACT", "transact.txt", 350, 16)
@@ -91,7 +107,7 @@ PROGRAMS = {
         Program(
             "CBTRN02C",
             inputs=(DALY, XREF, ACCT, TCAT),
-            outputs=(File("TRANFILE", "transact.txt", 350, 16), File("DALYREJS", "dalyrejs.txt", 430)),
+            outputs=(File("TRANFILE", "transact.txt", 350, 16), File("DALYREJS", "dalyrejs.txt", 430, abnormal_delete=True)),
             unload=("TRANFILE", "ACCTFILE", "TCATBALF", "DALYREJS"),
             patches=("RP-CBTRN02C-1", "RP-CBTRN02C-2"),
             data_patches=("RP-DATA-1",),
@@ -109,9 +125,9 @@ PROGRAMS = {
         Program(
             "CBIMPORT",
             inputs=(EXPF,),
-            outputs=(File("CUSTOUT", "custout.txt", 500), File("ACCTOUT", "acctout.txt", 300),
-                     File("XREFOUT", "xrefout.txt", 50), File("TRNXOUT", "trnxout.txt", 350),
-                     File("CARDOUT", "cardout.txt", 150), File("ERROUT", "errout.txt", 132)),
+            outputs=tuple(File(dd, name, n, abnormal_delete=True) for dd, name, n in (
+                ("CUSTOUT", "custout.txt", 500), ("ACCTOUT", "acctout.txt", 300), ("XREFOUT", "xrefout.txt", 50),
+                ("TRNXOUT", "trnxout.txt", 350), ("CARDOUT", "cardout.txt", 150), ("ERROUT", "errout.txt", 132))),
             unload=("CUSTOUT", "ACCTOUT", "XREFOUT", "TRNXOUT", "CARDOUT", "ERROUT"),
             patches=("RP-CBIMPORT-1", "RP-CBIMPORT-2"),
         ),
@@ -119,15 +135,20 @@ PROGRAMS = {
             "CBTRN01C",
             inputs=(DALY, CUST, XREF, CARD, ACCT, File("TRANFILE", "transact.txt", 350, 16)),
             outputs=(),
-            unload=(),
+            # Every file is opened INPUT (BR-CBTRN01C-05); unloading them shows that nothing was written.
+            unload=("CUSTFILE", "XREFFILE", "CARDFILE", "ACCTFILE", "TRANFILE"),
             patches=("RP-CBTRN01C-1", "RP-CBTRN01C-2"),
+            data_patches=("RP-DATA-1",),
         ),
         Program(
             "CBACT04C",
             inputs=(TCAT, File("XREFFILE", "cardxref.txt", 50, 16, alt_key=(25, 11, True)), ACCT,
                     File("DISCGRP", "discgrp.txt", 50, 16)),
-            outputs=(File("TRANSACT", "systran.txt", 350),),  # the SYSTRAN generation
-            unload=("TRANSACT", "ACCTFILE"),
+            # The SYSTRAN generation. Its abnormal disposition is not applied: in the target the interest rows go
+            # straight into the transaction table, and those of accounts committed before an abend stay (B-UOW).
+            outputs=(File("TRANSACT", "systran.txt", 350),),
+            # TCATBALF is opened INPUT (BR-CBACT04C-08): its unload shows the balances are unchanged.
+            unload=("TRANSACT", "ACCTFILE", "TCATBALF"),
             patches=("RP-CBACT04C-1", "RP-CBACT04C-2"),
             data_patches=("RP-DATA-1",),
             parm=INTCALC_PARM,
@@ -137,15 +158,19 @@ PROGRAMS = {
             inputs=(File("TRANFILE", "tranrept-input.txt", 350), File("CARDXREF", "cardxref.txt", 50, 16),
                     File("TRANTYPE", "trantype.txt", 60, 2), File("TRANCATG", "trancatg.txt", 60, 6),
                     File("DATEPARM", "dateparm.txt", 80)),
-            outputs=(File("TRANREPT", "tranrept.txt", 133),),
+            outputs=(File("TRANREPT", "tranrept.txt", 133, abnormal_delete=True),),
             unload=("TRANREPT",),
             patches=("RP-CBTRN03C-1", "RP-CBTRN03C-2", "RP-CBTRN03C-3"),
             prepare="TRANREPT-SORT",
+            # ERR-CBTRN03C-04 displays FD-XREF-CARD-NUM in full; B-MASK applies, RP-CBTRN03C-3 covers only the
+            # raw record display.
+            sysout_mask=("INVALID CARD NUMBER : ",),
         ),
         Program(
             "CBSTM03A",
             inputs=(File("TRNXFILE", "trxfl.txt", 350, 32), XREF, CUST, ACCT),
-            outputs=(File("STMTFILE", "stmtfile.txt", 80), File("HTMLFILE", "htmlfile.txt", 100)),
+            outputs=(File("STMTFILE", "stmtfile.txt", 80, abnormal_delete=True),
+                     File("HTMLFILE", "htmlfile.txt", 100, abnormal_delete=True)),
             unload=("STMTFILE", "HTMLFILE"),
             patches=("RP-CBSTM03A-1", "RP-CBSTM03A-2", "RP-CBSTM03A-3", "RP-CBSTM03A-4"),
             data_patches=("RP-DATA-1",),
@@ -158,6 +183,19 @@ PROGRAMS = {
 
 def clean(text: str) -> str:
     return "".join(line + "\n" for line in text.splitlines() if not any(n in line for n in _NOISE))
+
+
+def bmask(text: str, prefixes: tuple[str, ...]) -> str:
+    """B-MASK on SYSOUT lines that start with one of prefixes: the 16-digit card number after the prefix
+    becomes `************` + last 4."""
+    out = []
+    for line in text.splitlines():
+        for p in prefixes:
+            card = line[len(p):len(p) + 16]
+            if line.startswith(p) and len(card) == 16 and card.isdigit():
+                line = p + "*" * 12 + card[12:] + line[len(p) + 16:]
+        out.append(line + "\n")
+    return "".join(out)
 
 
 def run(cmd: list[str], cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
@@ -452,6 +490,8 @@ class Runner:
     def unload(self, f: File, out: Path) -> None:
         src = self.workdir / f.dd
         if not src.exists():
+            if f.indexed:
+                (out / f.name).write_bytes(b"")
             return
         if f.indexed:
             seq = self.build / f"{f.dd}.unl"
@@ -474,10 +514,13 @@ class Runner:
         env = {**self.stage(prog, dataset), "COB_LIBRARY_PATH": str(self.abend_stub()), **prog.env}
         p = run([str(exe)], self.workdir, env)
         out.mkdir(parents=True, exist_ok=True)
-        (out / "sysout.txt").write_text(clean(p.stdout + p.stderr), encoding="latin-1")
+        (out / "sysout.txt").write_text(bmask(clean(p.stdout + p.stderr), prog.sysout_mask), encoding="latin-1")
         (out / "rc.txt").write_text(f"{p.returncode}\n")
         files = {f.dd: f for f in prog.inputs + prog.outputs}
         for dd in prog.unload:
+            if p.returncode == ABEND_RC and files[dd].abnormal_delete:
+                (self.workdir / dd).unlink(missing_ok=True)
+                continue
             self.unload(files[dd], out)
         return p.returncode
 

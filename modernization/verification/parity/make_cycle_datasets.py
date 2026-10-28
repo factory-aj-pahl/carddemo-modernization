@@ -104,6 +104,15 @@ def cycle_edge() -> dict[str, list[str]]:
     tcat = [r for r in tcat if r[0:11] != f"{3:011d}"]
     for type_cd, cat, cents in (("01", 1, -123456), ("01", 2, 1234567), ("02", 1, -123457), ("03", 1, 0)):
         tcat.append(f"{3:011d}{type_cd}{cat:04d}{zoned(cents, 11)}".ljust(50, "0"))
+    # accounts 7 and 8: 100.40 and -100.40 at 15.00 give 1.255 and -1.255; truncation (no ROUNDED) gives 1.25
+    # and -1.25, rounding would give 1.26 (BR-CBACT04C-04)
+    # account 50, the last account: a non-zero balance and cycle credit, so its update by RP-CBACT04C-1 shows
+    # (BR-CBACT04C-07, Q-CBACT04C-01)
+    for acct_id, cents in ((7, 10040), (8, -10040), (50, 100000)):
+        k = next(j for j, r in enumerate(tcat) if r[0:17] == f"{acct_id:011d}010001")
+        tcat[k] = put(tcat[k], 17, zoned(cents, 11))
+    i = acct_index(accts, 50)
+    accts[i] = put(accts[i], 78, zoned(1000, 12))
     # account 4: a second, lower card -> interest goes to the lowest card (Q-CBACT04C-03)
     cust4 = next(r[16:25] for r in xref if r[25:36] == f"{4:011d}")
     xref.append(f"0000000000000004{cust4}{4:011d}".ljust(50))
@@ -120,6 +129,9 @@ def cycle_edge() -> dict[str, list[str]]:
         # a credit on account 4's new card, posted to a new category balance (BR-CBTRN02C-06, -07)
         put(put(put(put(template, 0, "9000000000000004"), 262, "0000000000000004"), 132, zoned(-2500, 11)), 16,
             "030001"),
+        # over the limit and after expiry: reason 103 overwrites 102 (BR-CBTRN02C-03, Q-CBTRN02C-03)
+        put(put(put(put(template, 0, "9000000000000005"), 262, card_of(xref, 1)), 278, "2026-01-01 00:00:00.000000"),
+            132, zoned(99999900, 11)),
     ]
     m["dailytran.txt"] = daily[:150] + extra[:2] + daily[150:] + extra[2:]
     m["tcatbal.txt"] = sorted(r.ljust(50)[:50] for r in tcat)
@@ -155,9 +167,88 @@ def statement_edge() -> dict[str, list[str]]:
     # a card with no transactions (statement without transaction lines)
     cust1 = next(r[16:25] for r in xref if r[25:36] == f"{1:011d}")
     m["cardxref.txt"] = sorted(xref + [f"0000000000000001{cust1}{1:011d}".ljust(50)])
+    # a negative current balance (BR-CBSTM03A-07: trailing minus sign)
+    accts = m["acctdata.txt"]
+    i = acct_index(accts, 2)
+    accts[i] = put(accts[i], 12, zoned(-19400, 12))
+    # a transaction on a card that is not in the cross-reference appears in no statement (BR-CBSTM03A-08)
+    extra.append(put(put(copies[0], 0, "9200000000000001"), 262, "9999999999997777"))
     m["transact.txt"] = transactions(daily + extra, ["2022-06-10"])
     return m
 
+
+def dup_tranid() -> dict[str, list[str]]:
+    """POSTTRAN duplicate TRAN-ID (ERR-CBTRN02C-06, -09): the third daily record repeats the first one with
+    amount 0. Its category balance and account rewrites, which the reference keeps and the target rolls back
+    (Q-CBTRN02C-07, B-UOW), change no byte, so every output file is comparable."""
+    m = sample()
+    daily = m["dailytran.txt"]
+    m["dailytran.txt"] = daily[:2] + [put(daily[0], 132, zoned(0, 11))] + daily[2:4]
+    return m
+
+
+def intcalc_noacct() -> dict[str, list[str]]:
+    """INTCALC: a category balance for account 99999999999, which does not exist (ERR-CBACT04C-03, -09).
+    It sorts last, so every real account is charged and updated before the abend."""
+    m = cycle_edge()
+    m["tcatbal.txt"] = sorted(m["tcatbal.txt"] + [f"{99999999999:011d}010001{zoned(10000, 11)}".ljust(50, "0")])
+    return m
+
+
+def intcalc_nocard() -> dict[str, list[str]]:
+    """INTCALC: account 9 has no card in the cross-reference (ERR-CBACT04C-04, -09); accounts 1-8 are
+    committed before the abend (B-UOW, one unit of work per account)."""
+    m = cycle_edge()
+    m["cardxref.txt"] = [r for r in m["cardxref.txt"] if r[25:36] != f"{9:011d}"]
+    return m
+
+
+def intcalc_nodefault() -> dict[str, list[str]]:
+    """INTCALC: account 1 has no group and there is no DEFAULT group (ERR-CBACT04C-05, -09)."""
+    m = cycle_edge()
+    m["discgrp.txt"] = [r for r in m["discgrp.txt"] if not r.startswith("DEFAULT ")]
+    return m
+
+
+def tranrept_bad(kind: str) -> dict[str, list[str]]:
+    """TRANREPT: report-sample plus one in-range transaction whose card, type, or category is unknown
+    (ERR-CBTRN03C-04, -07). The first failed lookup ends the run, so each kind is its own dataset."""
+    m = sample()
+    trans = transactions(m.pop("dailytran.txt"), ["2022-06-10"])
+    t = trans[0]
+    bad = {
+        "card": put(put(t, 0, "9100000000000001"), 262, "9999999999999999"),
+        "type": put(put(t, 0, "9100000000000002"), 16, "99"),
+        "category": put(put(t, 0, "9100000000000003"), 18, "9999"),
+    }[kind]
+    m["transact.txt"] = sorted(trans + [bad])
+    return m
+
+
+def stmt_missing(kind: str) -> dict[str, list[str]]:
+    """CREASTMT: report-sample plus an xref card whose customer or account does not exist
+    (ERR-CBSTM03A-05 or -06, and -08). It sorts last, so the run abends after the other statements."""
+    m = sample()
+    m["transact.txt"] = transactions(m.pop("dailytran.txt"), ["2022-06-10"])
+    rec = {"customer": f"9999999999999999{999999999:09d}{1:011d}",
+           "account": f"9999999999999999{1:09d}{99999999999:011d}"}[kind]
+    m["cardxref.txt"] = sorted(m["cardxref.txt"] + [rec.ljust(50)])
+    return m
+
+
+def report_edge() -> dict[str, list[str]]:
+    """Sample masters, transactions on four processing dates, one zero amount, and type and category
+    descriptions longer than the report columns (BR-CBTRN03C-04: blank amount, 15 and 29 characters)."""
+    m = sample()
+    trans = transactions(m.pop("dailytran.txt"), ["2022-06-09", "2022-06-10", "2022-06-11", "2022-06-12"])
+    k = next(j for j, r in enumerate(trans) if r[304:314] == "2022-06-10" and r[16:22] == "010001")
+    trans[k] = put(trans[k], 132, zoned(0, 11))
+    m["transact.txt"] = trans
+    m["trantype.txt"] = [put(r, 2, "Purchase at a merchant point of sale".ljust(50)) if r.startswith("01") else r
+                         for r in m["trantype.txt"]]
+    m["trancatg.txt"] = [put(r, 6, "Regular Sales Draft at a participating merchant".ljust(50))
+                         if r.startswith("010001") else r for r in m["trancatg.txt"]]
+    return m
 
 def build(out: Path) -> dict[str, Path]:
     if out.exists():
@@ -178,13 +269,23 @@ def build(out: Path) -> dict[str, Path]:
     ds("cycle-edge", cycle_edge(), parm_txt=PARM + "\n")
     ds("statement-edge", statement_edge())
     daily = s.pop("dailytran.txt")
-    ds("report-edge", s | {"transact.txt": transactions(daily, ["2022-06-09", "2022-06-10", "2022-06-11", "2022-06-12"])},
-       dateparm_txt=dateparm)
+    ds("report-edge", report_edge(), dateparm_txt=dateparm)
     ds("report-sample", s | {"transact.txt": transactions(daily, ["2022-06-10"])},
        dateparm_txt="2022-06-10 2022-06-10".ljust(80) + "\n")
     ds("empty-input", s | {"dailytran.txt": [], "tcatbal.txt": [], "transact.txt": []}, parm_txt=PARM + "\n",
        dateparm_txt=dateparm)
     ds("report-none", s | {"transact.txt": transactions(daily, ["2022-06-12"])}, dateparm_txt=dateparm)
+    # Abend datasets: the run ends in B-ABEND on a lookup or write failure the data causes.
+    ds("dup-tranid", dup_tranid())
+    ds("intcalc-noacct", intcalc_noacct(), parm_txt=PARM + "\n")
+    ds("intcalc-nocard", intcalc_nocard(), parm_txt=PARM + "\n")
+    ds("intcalc-nodefault", intcalc_nodefault(), parm_txt=PARM + "\n")
+    for kind in ("card", "type", "category"):
+        ds(f"tranrept-bad{kind}", tranrept_bad(kind), dateparm_txt="2022-06-10 2022-06-10".ljust(80) + "\n")
+    ds("stmt-nocust", stmt_missing("customer"))
+    ds("stmt-noacct", stmt_missing("account"))
+    # no dailytran.txt: the DALYTRAN DD names a missing file (open status 35)
+    ds("daily-missing", s)
     return sets
 
 
