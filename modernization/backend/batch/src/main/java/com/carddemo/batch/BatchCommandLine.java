@@ -11,6 +11,7 @@ import com.carddemo.migration.Layout;
 import com.carddemo.migration.Layouts;
 import com.carddemo.migration.SampleDataLoader;
 import com.carddemo.migration.TableExporter;
+import com.carddemo.refdata.api.TranTypeBatchUpdate;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
@@ -45,6 +46,8 @@ import org.springframework.stereotype.Component;
  * <li>{@code CBEXPORT exportFile=PATH}: branch migration export (CBEXPORT)</li>
  * <li>{@code CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH}
  * (CBIMPORT)</li>
+ * <li>{@code COBTUPDT inputFile=PATH}: apply transaction type add, update, and delete records (JOB-MNTTRDB2); exit
+ * code 0, 4 when a record was rejected, 12 when the run stopped and was rolled back</li>
  * <li>{@code load DIR [usrsec=FILE]}: load sample-format files (seed and migration step)</li>
  * <li>{@code loaddb2 [types=FILE] [categories=FILE]}: replace the transaction types and categories with the Db2
  * module seed files (DB2LTTYP.ctl, DB2LTCAT.ctl)</li>
@@ -64,15 +67,17 @@ public class BatchCommandLine {
     private final JdbcTemplate jdbc;
     private final Flyway flyway;
     private final DataExchangeJobs dataExchange;
+    private final TranTypeBatchUpdate tranTypeUpdate;
 
     BatchCommandLine(JobLauncher launcher, @Qualifier(PosttranJobConfig.JOB) Job posttran, JobLog log, JdbcTemplate jdbc,
-            Flyway flyway, DataExchangeJobs dataExchange) {
+            Flyway flyway, DataExchangeJobs dataExchange, TranTypeBatchUpdate tranTypeUpdate) {
         this.launcher = launcher;
         this.posttran = posttran;
         this.log = log;
         this.jdbc = jdbc;
         this.flyway = flyway;
         this.dataExchange = dataExchange;
+        this.tranTypeUpdate = tranTypeUpdate;
     }
 
     public int execute(String... args) {
@@ -94,6 +99,7 @@ public class BatchCommandLine {
                 case "READACCT" -> readacct(params);
                 case "CBEXPORT" -> cbexport(params);
                 case "CBIMPORT" -> cbimport(params);
+                case "COBTUPDT" -> cobtupdt(params);
                 case "load" -> load(params);
                 case "loaddb2" -> loadDb2(params);
                 case "export" -> export(params);
@@ -111,6 +117,7 @@ public class BatchCommandLine {
         System.err.println("usage: POSTTRAN businessDate=YYYY-MM-DD dailyFile=PATH rejectsFile=PATH | READCARD | READXREF"
             + " | READCUST | READACCT outFile=PATH arryFile=PATH vbrcFile=PATH | CBEXPORT exportFile=PATH"
             + " | CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH"
+            + " | COBTUPDT inputFile=PATH"
             + " | load DIR [usrsec=FILE] | loaddb2 [types=FILE] [categories=FILE] | export DIR [files=NAMES] | reset");
         return ExitCodes.USAGE;
     }
@@ -190,6 +197,15 @@ public class BatchCommandLine {
         }
         return result(dataExchange.importAll(p.get("exportFile"), new ImportFiles(p.get("custOut"), p.get("acctOut"),
             p.get("xrefOut"), p.get("trnxOut"), p.get("cardOut"), p.get("errOut"))));
+    }
+
+    private int cobtupdt(Map<String, String> params) {
+        Map<String, Path> p = paths(params, "inputFile");
+        if (p == null) {
+            return usage("COBTUPDT needs inputFile");
+        }
+        int rc = tranTypeUpdate.apply(p.get("inputFile")).returnCode();
+        return rc == 12 ? ExitCodes.STOPPED : rc == 4 ? ExitCodes.WARNING : ExitCodes.OK;
     }
 
     /** The named path parameters, or null when one is missing. */
