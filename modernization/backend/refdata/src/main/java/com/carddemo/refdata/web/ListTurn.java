@@ -87,6 +87,7 @@ final class ListTurn {
     private boolean deleted;
     private boolean updateCompleted;
     private boolean firstPageBefore;
+    private boolean countFailed;
 
     ListTurn(TransactionTypeStore store, ListState ca) {
         this.store = store;
@@ -162,7 +163,9 @@ final class ListTurn {
         editDescFilter(descBlank);
         editTypeFilter(typeBlank);
         crossEdits();
-        if (typeChanged || descChanged) {
+        // Q-COTRTLIC-22: after a failed count the new filters are not taken over, so the rows and page of the
+        // previous filters stay and the next ENTER counts again as a filter change.
+        if ((typeChanged || descChanged) && !countFailed) {
             ca.typeFilter = inType;
             ca.descFilter = inDesc;
             // Q-COTRTLIC-21: the paging variables stay as they were while a filter is in error.
@@ -268,15 +271,17 @@ final class ListTurn {
         if (typeFlag != Flag.VALID && descFlag != Flag.VALID) {
             return;
         }
-        int count = 0;
+        int count;
         try {
             count = store.count(filter());
         } catch (Db2Failure e) {
-            // WS-RECORDS-COUNT stays 0 (WS-MISC-STORAGE is initialized every turn), so VR-COTRTLIC-02 follows.
+            // Q-COTRTLIC-22: the database error is shown; VR-COTRTLIC-02 does not apply to a failed count.
             inputError = true;
+            countFailed = true;
             if (msg == null) {
                 msg = db2Message("Error reading TRANSACTION_TYPE table ", e.error());
             }
+            return;
         }
         if (count == 0) {
             inputError = true;
@@ -312,7 +317,7 @@ final class ListTurn {
         boolean firstPage = ca.page == 1;
         firstPageBefore = firstPage;
         if (inputError) {
-            if (typeFlag != Flag.NOT_OK && descFlag != Flag.NOT_OK) {
+            if (typeFlag != Flag.NOT_OK && descFlag != Flag.NOT_OK && !countFailed) {
                 readForward(ca.firstKey, false);
             }
         } else if (key == Key.PF7 && firstPage) {

@@ -162,17 +162,30 @@ class TranTypeListFaultsTest {
     }
 
     @Test
-    @Covers({"ERR-COTRTLIC-09"})
-    void count_failure_ends_as_no_records_found_for_the_filter() {
-        JsonNode first = client.show(P);
+    @Covers({"Q-COTRTLIC-22", "TS-COTRTLIC-23", "ERR-COTRTLIC-09"})
+    void count_failure_shows_the_database_error_and_keeps_the_rows_and_page() {
+        jdbc.update("INSERT INTO transaction_type (type_cd, description) VALUES ('08', 'TEST A')");
+        JsonNode page2 = client.post(P, "PF8", listInput(client.show(P)));
+        assertThat(types(page2)).containsExactly("08");
         doThrow(new Db2Failure(BROKEN, null)).when(store).count(any());
-        Map<String, Object> in = listInput(first);
+        Map<String, Object> in = listInput(page2);
         in.put("typeFilter", "03");
         JsonNode r = client.post(P, "ENTER", in);
-        // The count error sets the message, then the count of 0 (working storage) replaces it (VR-COTRTLIC-02).
-        assertThat(r.at("/message").asText()).isEqualTo("No Records found for these filter conditions");
-        assertThat(r.at("/fields/typeFilterInvalid").asBoolean()).isTrue();
-        assertThat(types(r)).hasSize(7);
+        assertThat(r.at("/message").asText())
+            .isEqualTo("Error reading TRANSACTION_TYPE table SQLCODE: -901 UNSUCCESSFUL EXECUTION CAUSED BY A SYSTEM "
+                .substring(0, 75))
+            .doesNotContain("No Records found");
+        assertThat(r.at("/fields/typeFilterInvalid").asBoolean()).isFalse();
+        assertThat(r.at("/fields/descFilterInvalid").asBoolean()).isFalse();
+        assertThat(r.at("/fields/typeFilter").asText()).isEqualTo("03");
+        assertThat(r.at("/fields/page").asText()).isEqualTo("2");
+        assertThat(types(r)).containsExactly("08");
+        assertThat(row(r, 1).get("selectable").asBoolean()).isTrue();
+        reset(store);
+        JsonNode retry = client.post(P, "ENTER", listInput(r));
+        assertThat(retry.at("/message").asText()).isEmpty();
+        assertThat(retry.at("/fields/page").asText()).isEqualTo("1");
+        assertThat(types(retry)).containsExactly("03");
     }
 
     @Test
