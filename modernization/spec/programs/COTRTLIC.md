@@ -191,7 +191,7 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:561-566 (0000-MAIN)`.
 - **BR-COTRTLIC-04**: The list is the result of cursor C-TR-TYPE-FORWARD (ascending) or C-TR-TYPE-BACKWARD
   (descending), seven rows per page (WS-MAX-SCREEN-LINES = 7). Both filters are optional and combine with AND.
-  SQL (verbatim, `COTRTLIC.cbl:338-368`):
+  SQL (verbatim, `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:338-368`):
   ```sql
   DECLARE C-TR-TYPE-FORWARD CURSOR FOR
       SELECT TR_TYPE
@@ -280,7 +280,8 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
           TRIM(:WS-TYPE-DESC-FILTER))
       OR  :WS-EDIT-DESC-FLAG <> '1')
   ```
-  A count of 0 is VR-COTRTLIC-02; a SQL error is ERR-COTRTLIC-09. Source:
+  A count of 0 is VR-COTRTLIC-02; a SQL error is ERR-COTRTLIC-09, which then also produces the VR-COTRTLIC-02
+  result because the count stays 0 (Q-COTRTLIC-22). Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1239-1271 (1290-CROSS-EDITS)`, `:1801-1834 (9100-CHECK-FILTERS)`.
 - **BR-COTRTLIC-12**: Row action tally: counts of blank/LOW-VALUES, `D`, and `U` codes are taken over the seven
   select fields; actions requested = 7 - blanks (any non-blank character counts, including invalid ones); valid
@@ -452,8 +453,15 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
 - **ERR-COTRTLIC-08**: Any non-zero FETCH result on the backward cursor, including +100, ends the loop, sets
   WS-DB2-ERROR and action `'Error on fetch Cursor C-TR-TYPE-BACKWARD'` (Q-COTRTLIC-07). Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1777-1790 (8100-READ-BACKWARDS)`.
-- **ERR-COTRTLIC-09**: COUNT query SQLCODE not 0 -> INPUT-ERROR, action `'Error reading TRANSACTION_TYPE table '`
-  (if the line is empty). Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1819-1832 (9100-CHECK-FILTERS)`.
+- **ERR-COTRTLIC-09**: COUNT query SQLCODE not 0 -> INPUT-ERROR and, if the line is empty, the message is formatted
+  per ERR-COTRTLIC-02 with action `'Error reading TRANSACTION_TYPE table '`. WS-RECORDS-COUNT is reset to 0 on every
+  turn (INITIALIZE WS-MISC-STORAGE, lines 500-502) and a failed query (negative SQLCODE) does not assign it, so
+  1290-CROSS-EDITS then applies VR-COTRTLIC-02: the Db2 text is overwritten by "No Records found for these filter
+  conditions", every valid filter is flagged in error (red, cursor), the select fields are protected, and the list
+  is not re-read. The Db2 error text is never shown (Q-COTRTLIC-22). Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1819-1832 (9100-CHECK-FILTERS)`,
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1251-1267 (1290-CROSS-EDITS)`,
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:154-156`, `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:500-502 (0000-MAIN)`.
 - **ERR-COTRTLIC-10**: UPDATE SQLCODE +100 -> update stays pending (`Y`), action `'Record not found. Deleted by
   others ? '`; not an input error, so the page is re-read and shown. Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1861-1869 (9200-UPDATE-RECORD)`.
@@ -558,6 +566,13 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
 - **Q-COTRTLIC-21**: When a filter is in error, the list is not re-read but the paging variables were already
   reset by the change check, so the old rows are shown with page number 0. Recommendation: fix. Source:
   `COTRTLIC.cbl:1134`, `:713-717`.
+- **Q-COTRTLIC-22**: A failure of the filter COUNT query is reported to the user as "no matching records".
+  WS-RECORDS-COUNT is reset to 0 on every turn and a failed SELECT does not assign it, so 1290-CROSS-EDITS
+  overwrites the Db2 error text (ERR-COTRTLIC-09) with "No Records found for these filter conditions", flags
+  the valid filters in error, and protects the select fields. Recommendation: fix. Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:500-502 (0000-MAIN)`,
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1251-1267 (1290-CROSS-EDITS)`,
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1819-1832 (9100-CHECK-FILTERS)`.
 
 ## Test scenarios
 Unless stated otherwise: Db2 loaded by JOB-CREADB21 with the 7 seed types (`01 PURCHASE`, `02 PAYMENT`,
@@ -623,6 +638,11 @@ Unless stated otherwise: Db2 loaded by JOB-CREADB21 with the 7 seed types (`01 P
   AUTHORIZATION`) is highlighted for deletion with no info text.
 - **TS-COTRTLIC-22** (covers BR-COTRTLIC-01, Q-COTRTLIC-05): Given a terminal with no CardDemo sign-on, when
   `CTLI` is typed, then the list is shown (page 1) and the COMMAREA user type is `A`.
+- **TS-COTRTLIC-23** (covers ERR-COTRTLIC-09, Q-COTRTLIC-22): Given TS-01, and the COUNT query on
+  CARDDEMO.TRANSACTION_TYPE fails with a negative SQLCODE (for example the table is unavailable), when `03` is
+  typed in the type filter and ENTER is pressed, then (as coded) the message is "No Records found for these
+  filter conditions", the type filter is red, the select fields are protected, and the Db2 error text is not
+  shown.
 
 ## Open questions
 - What isolation level and bind options does plan CARDDEMO use (cursor stability vs. uncommitted read)? The

@@ -86,9 +86,16 @@ export const SCREENS: Record<string, ScreenInfo> = {
       { key: 'F3', label: 'Exit' },
     ],
   },
-  COPAUS0C: {
-    tran: 'CPVS',
-    title: 'View Authorizations',
+  COACTVWC: { tran: 'CAVW', title: 'View Account', keys: [{ key: 'ENTER', label: 'View' }, { key: 'F3', label: 'Exit' }] },
+  COACTUPC: {
+    tran: 'CAUP',
+    title: 'Update Account',
+    // F5=Save and F12=Cancel are added by the screen when the server shows them (BR-COACTUPC-21).
+    keys: [{ key: 'ENTER', label: 'Process' }, { key: 'F3', label: 'Exit' }],
+  },
+  COTRN00C: {
+    tran: 'CT00',
+    title: 'List Transactions',
     keys: [
       { key: 'ENTER', label: 'Continue' },
       { key: 'F3', label: 'Back' },
@@ -96,6 +103,27 @@ export const SCREENS: Record<string, ScreenInfo> = {
       { key: 'F8', label: 'Forward' },
     ],
   },
+  COTRN01C: {
+    tran: 'CT01',
+    title: 'View Transaction',
+    keys: [
+      { key: 'ENTER', label: 'Fetch' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F4', label: 'Clear' },
+      { key: 'F5', label: 'Browse Tran.' },
+    ],
+  },
+  COTRN02C: {
+    tran: 'CT02',
+    title: 'Add Transaction',
+    keys: [
+      { key: 'ENTER', label: 'Continue' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F4', label: 'Clear' },
+      { key: 'F5', label: 'Copy Last Tran.' },
+    ],
+  },
+  CORPT00C: { tran: 'CR00', title: 'Transaction Reports', keys: [{ key: 'ENTER', label: 'Continue' }, { key: 'F3', label: 'Back' }] },
   COPAUS1C: {
     tran: 'CPVD',
     title: 'View Authorization Details',

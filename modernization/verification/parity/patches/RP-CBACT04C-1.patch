@@ -1,0 +1,12 @@
+--- a/app/cbl/CBACT04C.cbl
++++ b/app/cbl/CBACT04C.cbl
+@@ -220,6 +220,9 @@
+                     PERFORM 1050-UPDATE-ACCOUNT                                 
+                END-IF                                                           
+            END-PERFORM.                                                         
++           IF WS-FIRST-TIME = 'N'                                               
++              PERFORM 1050-UPDATE-ACCOUNT                                       
++           END-IF.                                                              
+                                                                                 
+            PERFORM 9000-TCATBALF-CLOSE.                                         
+            PERFORM 9100-XREFFILE-CLOSE.                                         

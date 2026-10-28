@@ -71,8 +71,8 @@ column after each BMS POS. Alignment is approximate; the field table gives exact
          Opened : 2015 - 08 - 08        Credit Limit        : +      5,174.00
          Expiry : 2025 - 02 - 11        Cash credit Limit   : +      4,129.00
          Reissue: 2025 - 02 - 11        Current Balance     : +        400.00
-                                        Current Cycle Credit: +          0.00
-         Account Group:                 Current Cycle Debit : +          0.00
+                                        Current Cycle Credit: +           .00
+         Account Group:                 Current Cycle Debit : +           .00
                                  Customer Details
          Customer id  : 000000024                SSN:   *** - ** - ****
          Date of birth: 1996 - 01 - 24           FICO Score:   711
@@ -380,7 +380,8 @@ never true, Q-COACTUPC-20); `9400-GETCUSTDATA-BYCUST` with CDEMO-CUST-ID; (same 
 
 ### Validation rules
 Messages are built as TRIM(field name) + suffix. Only the first failing message is kept
-(VR-COACTUPC-34), but every check sets its field flag. "Blank" means LOW-VALUES (from `*` or an
+(VR-COACTUPC-34), but every check that runs sets its field flag (SSN parts 2 and 3 are skipped
+when part 1 fails, VR-COACTUPC-17). "Blank" means LOW-VALUES (from `*` or an
 empty field), spaces, or a zero-length trimmed value. Field names come from
 `app/cbl/COACTUPC.cbl:1472-1657`.
 
@@ -452,11 +453,16 @@ a failing step skips the rest of its own paragraph only.
 - **VR-COACTUPC-17**: SSN part 2 (2 chars, name `SSN 4th & 5th chars`):
   `SSN 4th & 5th chars must be supplied.`, `SSN 4th & 5th chars must be all numeric.`,
   `SSN 4th & 5th chars must not be zero.`. No range rule is applied although the comments describe
-  one (Q-ENT-24). Source: `app/cbl/COACTUPC.cbl:2469-2475`.
+  one (Q-ENT-24). This edit runs only when SSN part 1 passed its required/numeric/non-zero edit
+  (the `IF FLG-EDIT-US-SSN-PART1-ISVALID` at line 2448 is closed only by the period at line 2488);
+  when part 1 is blank, non-numeric, or zero, parts 2 and 3 are not edited, not flagged, and not
+  highlighted, and the cursor never goes to them (Q-COACTUPC-31). A part 1 of 666 or 900-999 still
+  lets parts 2 and 3 be edited. Source: `app/cbl/COACTUPC.cbl:2448-2488 (1265-EDIT-US-SSN)`.
 - **VR-COACTUPC-18**: SSN part 3 (4 chars, name `SSN Last 4 chars`):
   `SSN Last 4 chars must be supplied.`, `SSN Last 4 chars must be all numeric.`,
-  `SSN Last 4 chars must not be zero.`. No range rule is applied (Q-ENT-24). Source:
-  `app/cbl/COACTUPC.cbl:2481-2487`.
+  `SSN Last 4 chars must not be zero.`. No range rule is applied (Q-ENT-24). Same condition as
+  VR-COACTUPC-17: runs only when part 1 passed `1245-EDIT-NUM-REQD`. Source:
+  `app/cbl/COACTUPC.cbl:2448-2488 (1265-EDIT-US-SSN)`.
 - **VR-COACTUPC-19**: Date of Birth: shared date edit with `<D>` = `Date of Birth`; then, IF the
   date flags are valid, the date must be strictly before today (FUNCTION CURRENT-DATE, compared by
   INTEGER-OF-DATE), otherwise `Date of Birth:cannot be in the future ` (trailing space; today is
@@ -517,7 +523,8 @@ a failing step skips the rest of its own paragraph only.
   `:2536-2557`, `app/cpy/CSLKPCDY.cpy:1071-1314`.
 - **VR-COACTUPC-34**: Message precedence: every edit writes its message only if none is set yet
   (WS-RETURN-MSG-OFF), so the message shown is from the first failing check in the order
-  VR-COACTUPC-07 to VR-COACTUPC-33. All failing fields are still flagged red. Source: guards at
+  VR-COACTUPC-07 to VR-COACTUPC-33. Every failing check that runs still flags its field red (SSN
+  parts 2 and 3 are skipped when part 1 fails, VR-COACTUPC-17). Source: guards at
   every STRING in `app/cbl/COACTUPC.cbl:1824-2557` and `app/cpy/CSUTLDPY.cpy`.
 - **VR-COACTUPC-35**: Fields with no edit: Address Line 2, Account Group, Government Issued Id,
   Customer id (protected), and the account number after a fetch (protected). Source:
@@ -752,6 +759,12 @@ touched; the card record (CARDDAT) is not changed even if the account status cha
   hold 10, so a value of 1,000,000,000.00 or more loses its top digit on display; re-entering the
   displayed text would then save a different value. Recommendation: fix. Source:
   `app/cbl/COACTUPC.cbl:371`.
+- **Q-COACTUPC-31**: In `1265-EDIT-US-SSN` the `IF FLG-EDIT-US-SSN-PART1-ISVALID` has no END-IF of
+  its own, so the edits of SSN parts 2 and 3 run only when part 1 passed its required/numeric/non-zero
+  edit. With part 1 blank, non-numeric, or zero, an invalid part 2 or 3 is not flagged, highlighted,
+  or given the cursor (the message is part 1's either way, VR-COACTUPC-34, and no save is possible).
+  The comments and the paragraph layout show that all three parts were meant to be edited.
+  Recommendation: fix (edit all three parts). Source: `app/cbl/COACTUPC.cbl:2447-2488 (1265-EDIT-US-SSN)`.
 
 ## Test scenarios
 SSNs and government ids are masked. Sample keys are from `app/data/ASCII/acctdata.txt` and
@@ -773,7 +786,7 @@ SSNs and government ids are masked. Sample keys are from `app/data/ASCII/acctdat
 - **TS-COACTUPC-05** (BR-COACTUPC-02, -04, -17, -18): When `00000000024` is entered, then the screen
   shows state S as in the mock-up:
   - Active `Y`; Credit Limit `+      5,174.00`; Cash `+      4,129.00`; Balance `+        400.00`;
-    cycle values `+          0.00`.
+    cycle values `+           .00`.
   - Opened `2015`-`08`-`08`; Expiry and Reissue `2025`-`02`-`11`; group blank.
   - Customer `000000024`; SSN `***`-`**`-`****`; DOB `1996`-`01`-`24`; FICO `711`.
   - `Stefanie` / `Verla` / `Dickinson`; `6367 Stracke River` / `Apt. 444` / `East Otho`; `KS`;
@@ -872,6 +885,11 @@ and the named field red with the cursor on it.
   Active Y/N.
 - **TS-COACTUPC-31** (NAV-COACTUPC-02): Given any state, when PF3 is pressed, then SYNCPOINT, XCTL to
   COMEN01C, CDEMO-FROM-PROGRAM = `COACTUPC`, user type `U`; unsaved changes are lost.
+- **TS-COACTUPC-32** (VR-COACTUPC-17, VR-COACTUPC-18, Q-COACTUPC-31): Given account `00000000024` in
+  state S, when SSN part 1 is changed to `ABC` and part 3 to `12X4` and ENTER is pressed, then (as
+  coded) the error is `SSN: First 3 chars must be all numeric.`, SSN part 1 is red with the cursor,
+  and parts 2 and 3 are not red. With part 1 `123` instead, the error is
+  `SSN Last 4 chars must be all numeric.` and part 3 is red.
 
 ## Open questions
 - Should online users be able to change the current balance and cycle totals at all

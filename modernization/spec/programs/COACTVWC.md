@@ -63,8 +63,8 @@ table gives exact positions.
          Opened: 2014-11-20             Credit Limit        : +      2,020.00
          Expiry: 2025-05-20             Cash credit Limit   : +      1,020.00
          Reissue: 2025-05-20            Current Balance     : +        194.00
-                                        Current Cycle Credit: +          0.00
-         Account Group:                 Current Cycle Debit : +          0.00
+                                        Current Cycle Credit: +           .00
+         Account Group:                 Current Cycle Debit : +           .00
                                  Customer Details
          Customer id  : 000000001                SSN:  ***-**-****
          Date of birth: 1961-06-08               FICO Score:  274
@@ -206,7 +206,8 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
   - Active Y/N = ACCT-ACTIVE-STATUS.
   - Current Balance, Credit Limit, Cash credit Limit, Current Cycle Credit, Current Cycle Debit =
     the S9(10)V99 amounts edited by the map PICOUT `+ZZZ,ZZZ,ZZZ.99` (sign always shown, leading
-    zeros suppressed, 9 integer positions; Q-COACTVWC-08).
+    zeros suppressed up to the decimal point, so zero shows as `+           .00`, 9 integer
+    positions; Q-COACTVWC-08).
   - Opened, Expiry, Reissue = ACCT-OPEN-DATE, ACCT-EXPIRAION-DATE, ACCT-REISSUE-DATE as stored.
   - Account Group = ACCT-GROUP-ID.
 
@@ -399,7 +400,7 @@ SSNs and government ids are masked. The full values are in `app/data/ASCII/custd
   entered, then the screen shows:
   - Active `Y`; Opened `2014-11-20`; Expiry `2025-05-20`; Reissue `2025-05-20`.
   - Credit Limit `+      2,020.00`; Cash credit Limit `+      1,020.00`; Current Balance
-    `+        194.00`; cycle credit and debit `+          0.00`; Account Group blank.
+    `+        194.00`; cycle credit and debit `+           .00`; Account Group blank.
   - Customer id `000000001`; SSN `***-**-****` (formatted 3-2-4 with dashes); DOB `1961-06-08`;
     FICO `274`; name `Immanuel` / `Madeline` / `Kessler`.
   - Address `618 Deshaun Route` / `Apt. 802`; City `Altenwerthshire`; State `NC`; Zip `12546`;
@@ -436,8 +437,9 @@ SSNs and government ids are masked. The full values are in `app/data/ASCII/custd
 - **TS-COACTVWC-11** (NAV-COACTVWC-02, Q-COACTVWC-03): Given any screen state, when PF3 is pressed,
   then XCTL goes to COMEN01C with CDEMO-FROM-PROGRAM = `COACTVWC`, CDEMO-FROM-TRANID = `CAVW`,
   CDEMO-PGM-CONTEXT = 0, CDEMO-USER-TYPE = `U`, CDEMO-LAST-MAPSET = `COACTVW`.
-- **TS-COACTVWC-12** (NAV-COACTVWC-01): Given account `00000000001` is displayed, when PF5 (or PF15,
-  CLEAR, PA1) is pressed, then the account is re-read and displayed again exactly as for ENTER.
+- **TS-COACTVWC-12** (NAV-COACTVWC-01): Given account `00000000001` is displayed, when PF5 (or CLEAR,
+  PA1) is pressed, then the account is re-read and displayed again exactly as for ENTER. PF15 is
+  folded to PF3 by CSSTRPFY and exits like PF3.
 - **TS-COACTVWC-13** (BR-COACTVWC-05): Given account `00000000001` is displayed, when the field is
   changed to `00000000002` and ENTER is pressed, then account 2 is shown (balance `+        158.00`,
   credit limit `+      6,130.00`, cash limit `+      5,448.00`, opened `2013-06-19`).

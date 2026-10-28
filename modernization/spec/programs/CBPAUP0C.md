@@ -50,9 +50,10 @@ prints run totals.
       9000-TAKE-CHECKPOINT and reset the counter to 0.
    5. 2000-FIND-NEXT-AUTH-SUMMARY.
 3. 9000-TAKE-CHECKPOINT (final); DISPLAY the totals; GOBACK.
-4. 1000-INITIALIZE (183-210): accept dates and SYSIN; DISPLAY 'STARTING PROGRAM CBPAUP0C::',
-   'CBPAUP0C PARM RECEIVED :' + card, 'TODAYS DATE            :' + YYDDD; apply the defaults in the
-   parameter table.
+4. 1000-INITIALIZE (183-210): accept dates and SYSIN; DISPLAY, in order, 'STARTING PROGRAM CBPAUP0C::',
+   '*-------------------------------------*', 'CBPAUP0C PARM RECEIVED :' + PRM-INFO (the raw 17-byte
+   card, before defaults), 'TODAYS DATE            :' + YYDDD, and ' ' (one space); apply the
+   defaults in the parameter table.
 5. 2000-FIND-NEXT-AUTH-SUMMARY (216-242): IF debug, DISPLAY 'DEBUG: AUTH SMRY READ : ' + count.
    DL/I "get next summary (root) segment in database order". Status blank: summaries read + 1,
    processed + 1, remember the account id. GB: end of database. OTHER: DISPLAY 'AUTH SUMMARY READ
@@ -80,12 +81,14 @@ prints run totals.
 
 Final totals printed (171-178):
 ```
+ 
 *-------------------------------------*
 # TOTAL SUMMARY READ  :<count>
 # SUMMARY REC DELETED :<count>
 # TOTAL DETAILS READ  :<count>
 # DETAILS REC DELETED :<count>
 *-------------------------------------*
+ 
 ```
 
 ## Rules
@@ -116,6 +119,15 @@ Final totals printed (171-178):
   `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:160-164,169 (MAIN-PARA)`.
 - **BR-CBPAUP0C-08**: Run totals are DISPLAYed at the end: summaries read, summaries deleted,
   details read, details deleted. Source: `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:171-178 (MAIN-PARA)`.
+- **BR-CBPAUP0C-09**: When P-DEBUG-FLAG = 'Y', DISPLAY before each summary GN 'DEBUG: AUTH SMRY READ : '
+  + summaries read so far, before each detail GNP 'DEBUG: AUTH DTL READ : ' + details read so far,
+  before each detail DLET 'DEBUG: AUTH DTL DLET : ' + PA-ACCT-ID, and before each summary DLET
+  'DEBUG: AUTH SMRY DLET : ' + PA-ACCT-ID. Source:
+  `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:219-221, 251-253, 306-308, 331-333`.
+- **BR-CBPAUP0C-10**: After each successful CHKP the checkpoint counter is incremented; IF it is >=
+  P-CHKP-DIS-FREQ (text comparison, Q-CBPAUP0C-04) it is reset to 0 and 'CHKP SUCCESS: AUTH COUNT - '
+  + summaries read + ', APP ID - ' + WS-CURR-APP-ID is displayed. Source:
+  `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:358-364 (9000-TAKE-CHECKPOINT)`.
 
 ### Validation rules
 - **VR-CBPAUP0C-01**: P-EXPIRY-DAYS must be numeric; otherwise 5 is used silently. Source:
@@ -129,13 +141,17 @@ Final totals printed (171-178):
 
 ### Error handling
 - **ERR-CBPAUP0C-01**: Root GN status other than blank and GB -> 'AUTH SUMMARY READ FAILED  :' +
-  status, RC 16. Source: `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:228-241`.
+  status, 'SUMMARY READ BEFORE ABEND :' + summaries read, then ERR-CBPAUP0C-06 (RC 16). Source:
+  `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:228-241`.
 - **ERR-CBPAUP0C-02**: Detail GNP status other than blank, GE, GB -> 'AUTH DETAIL READ FAILED  :' +
-  status, RC 16. Source: `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:259-271`.
-- **ERR-CBPAUP0C-03**: Detail DLET non-blank status -> 'AUTH DETAIL DELETE FAILED :' + status, RC 16.
-  Source: `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:315-321`.
-- **ERR-CBPAUP0C-04**: Summary DLET non-blank status -> 'AUTH SUMMARY DELETE FAILED :' + status, RC
-  16. Source: `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:340-346`.
+  status, 'SUMMARY AUTH APP ID      :' + PA-ACCT-ID, 'DETAIL READ BEFORE ABEND :' + details read,
+  then ERR-CBPAUP0C-06 (RC 16). Source: `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:259-271`.
+- **ERR-CBPAUP0C-03**: Detail DLET non-blank status -> 'AUTH DETAIL DELETE FAILED :' + status,
+  'AUTH APP ID               :' + PA-ACCT-ID, then ERR-CBPAUP0C-06 (RC 16). Source:
+  `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:315-321`.
+- **ERR-CBPAUP0C-04**: Summary DLET non-blank status -> 'AUTH SUMMARY DELETE FAILED :' + status,
+  'AUTH APP ID                :' + PA-ACCT-ID, then ERR-CBPAUP0C-06 (RC 16). Source:
+  `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:340-346`.
 - **ERR-CBPAUP0C-05**: CHKP non-blank status -> 'CHKP FAILED: DIBSTAT - ' + status + ', REC COUNT - '
   + count + ', APP ID - ' + account, RC 16. Source:
   `app/app-authorization-ims-db2-mq/cbl/CBPAUP0C.cbl:358-370`.

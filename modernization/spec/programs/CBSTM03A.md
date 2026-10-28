@@ -131,29 +131,52 @@ a called I/O subroutine), so several parts of its control flow have no business 
 - **BR-CBSTM03A-11**: HTML output, one complete HTML document per statement, each line written as a
   100-byte record padded with spaces:
   1. Header (22 lines): `<!DOCTYPE html>`, `<html lang="en">`, `<head>`, `<meta charset="utf-8">`,
-     `<title>HTML Table Layout</title>`, `</head>`, `<body style="margin:0px;">`, the `<table ...>`
-     line, `<tr>`, the dark-blue `<td colspan="3" ...#1d1d96b3;">` cell,
+     `<title>HTML Table Layout</title>`, `</head>`, `<body style="margin:0px;">`, the `<table>` line
+     L08, `<tr>`, the dark-blue cell L10,
      `<h3>Statement for Account Number: ` + account ID (20 bytes, with its trailing spaces) + `</h3>`,
-     `</td>`, `</tr>`, `<tr>`, the orange `#FFAF33` cell, `<p style="font-size:16px">Bank of XYZ</p>`,
-     `<p>410 Terry Ave N</p>`, `<p>Seattle WA 99999</p>`, `</td>`, `</tr>`, `<tr>`, the grey `#f2f2f2` cell.
-  2. Name and address (4 lines): `<p style="font-size:16px">` + name up to the first double space + two
-     spaces + `</p>`; then `<p>` + address line 1, 2, and the composed line 3, each up to the first
-     double space, + two spaces + `</p>` (`<p>1588 Nienow Cape  </p>`).
-  3. `</td>`, `</tr>`, `<tr>`, the `#33FFD1` centred cell, `<p style="font-size:16px">Basic Details</p>`,
-     `</td>`, `</tr>`, `<tr>`, grey cell; then `<p>Account ID         : ` + 20-byte account ID + `</p>`,
-     `<p>Current Balance    : ` + 13-byte balance + `</p>`, `<p>FICO Score         : ` + 20-byte score +
-     `</p>` (trailing spaces kept); `</td>`, `</tr>`, `<tr>`, centred cell,
+     `</td>`, `</tr>`, `<tr>`, the orange cell L15, `<p style="font-size:16px">Bank of XYZ</p>`,
+     `<p>410 Terry Ave N</p>`, `<p>Seattle WA 99999</p>`, `</td>`, `</tr>`, `<tr>`, the grey cell L22-35.
+  2. Name and address (4 lines): `<p style="font-size:16px">` + the first 50 characters of the composed
+     name (ST-NAME moved to the 50-byte L23-NAME), up to the first double space, + two spaces + `</p>`;
+     then `<p>` + address line 1, 2, and the composed line 3, each up to the first double space, + two
+     spaces + `</p>` (`<p>1588 Nienow Cape  </p>`).
+  3. `</td>`, `</tr>`, `<tr>`, the centred cell L30-42, `<p style="font-size:16px">Basic Details</p>`,
+     `</td>`, `</tr>`, `<tr>`, grey cell L22-35; then `<p>Account ID         : ` + 20-byte account ID +
+     `</p>`, `<p>Current Balance    : ` + 13-byte balance + `</p>`, `<p>FICO Score         : ` + 20-byte
+     score + `</p>` (trailing spaces kept); `</td>`, `</tr>`, `<tr>`, centred cell L30-42,
      `<p style="font-size:16px">Transaction Summary</p>`, `</td>`, `</tr>`, then the column header row
-     (`<tr>`, 25% cell `Tran ID`, `</td>`, 55% cell `Tran Details`, `</td>`, 20% right-aligned cell
-     `Amount`, `</td>`, `</tr>`): 34 lines in all for this part.
-  4. Per transaction (11 lines): `<tr>`, 25% grey cell, `<p>` + transaction ID + `</p>`, `</td>`, 55%
-     grey cell, `<p>` + 49-byte description (trailing spaces kept) + `</p>`, `</td>`, 20% grey
-     right-aligned cell, `<p>` + 13-byte amount + `</p>`, `</td>`, `</tr>`.
-  5. Closing (8 lines): `<tr>`, the dark-blue cell, `<h3>End of Statement</h3>`, `</td>`, `</tr>`,
+     (`<tr>`, green cell L47, L48, `</td>`, green cell L50, L51, `</td>`, green cell L53, L54, `</td>`,
+     `</tr>`; the header cells are green `#33FF5E`, not grey): 30 lines in all for this part (34
+     together with the 4 name and address lines of item 2).
+  4. Per transaction (11 lines): `<tr>`, cell L58, `<p>` + transaction ID + `</p>`, `</td>`, cell L61,
+     `<p>` + 49-byte description (trailing spaces kept) + `</p>`, `</td>`, cell L64, `<p>` + 13-byte
+     amount + `</p>`, `</td>`, `</tr>`.
+  5. Closing (8 lines): `<tr>`, the dark-blue cell L10, `<h3>End of Statement</h3>`, `</td>`, `</tr>`,
      `</table>`, `</body>`, `</html>`. The statement total is not shown in HTML.
   HTML line count per statement = 64 + 11 x transactions. Source: `app/cbl/CBSTM03A.CBL:148-223`,
   `app/cbl/CBSTM03A.CBL:439-454 (4000-TRNXFILE-GET)`, `app/cbl/CBSTM03A.CBL:506-555 (5100-WRITE-HTML-HEADER)`,
   `app/cbl/CBSTM03A.CBL:558-672 (5200-WRITE-HTML-NMADBS)`, `app/cbl/CBSTM03A.CBL:681-721 (6000-WRITE-TRANS)`.
+
+  HTML fixed lines (verbatim after joining continuation lines, each padded with spaces to 100 bytes;
+  the continued literals end in column 72, so there is no space before `background-color` in L10,
+  L15, L22-35, and L30-42). Source: `app/cbl/CBSTM03A.CBL:157-206`.
+
+  | Name | Literal |
+  |:--|:--|
+  | L08 | `<table  align="center" frame="box" style="width:70%; font:12px Segoe UI,sans-serif;">` (two spaces after `<table`) |
+  | L10 | `<td colspan="3" style="padding:0px 5px;background-color:#1d1d96b3;">` |
+  | L15 | `<td colspan="3" style="padding:0px 5px;background-color:#FFAF33;">` |
+  | L22-35 | `<td colspan="3" style="padding:0px 5px;background-color:#f2f2f2;">` |
+  | L30-42 | `<td colspan="3" style="padding:0px 5px;background-color:#33FFD1; text-align:center;">` |
+  | L47 | `<td style="width:25%; padding:0px 5px; background-color:#33FF5E; text-align:left;">` |
+  | L48 | `<p style="font-size:16px">Tran ID</p>` |
+  | L50 | `<td style="width:55%; padding:0px 5px; background-color:#33FF5E; text-align:left;">` |
+  | L51 | `<p style="font-size:16px">Tran Details</p>` |
+  | L53 | `<td style="width:20%; padding:0px 5px; background-color:#33FF5E; text-align:right;">` |
+  | L54 | `<p style="font-size:16px">Amount</p>` |
+  | L58 | `<td style="width:25%; padding:0px 5px; background-color:#f2f2f2; text-align:left;">` |
+  | L61 | `<td style="width:55%; padding:0px 5px; background-color:#f2f2f2; text-align:left;">` |
+  | L64 | `<td style="width:20%; padding:0px 5px; background-color:#f2f2f2; text-align:right;">` |
 - **BR-CBSTM03A-12**: Text line count per statement = 19 + transactions (16 header, 1 per
   transaction, 3 trailer). Source: `app/cbl/CBSTM03A.CBL:460-502`, `app/cbl/CBSTM03A.CBL:435-437`.
 
@@ -186,7 +209,8 @@ returned by CBSTM03B. Each error then performs 9999-ABEND-PROGRAM (ERR-CBSTM03A-
   Source: `app/cbl/CBSTM03A.CBL:856-919 (9100-TRNXFILE-CLOSE through 9400-ACCTFILE-CLOSE)`.
 - **ERR-CBSTM03A-08**: Abend: DISPLAY `ABENDING PROGRAM`, then `CALL 'CEE3ABD'` with no arguments (no
   abend code or timing is passed, unlike the CBACT* programs that pass 999 and 0). If CEE3ABD returned,
-  control would fall off the end of the program. Source: `app/cbl/CBSTM03A.CBL:921-923 (9999-ABEND-PROGRAM)`.
+  control would return to the statement after the PERFORM and processing would continue with the failed
+  record. Source: `app/cbl/CBSTM03A.CBL:921-923 (9999-ABEND-PROGRAM)`.
 - **ERR-CBSTM03A-09**: STMT-FILE and HTML-FILE have no FILE STATUS clause and no declaratives; an open or
   write failure on them is handled by the runtime (abend on z/OS), not by the program.
   Source: `app/cbl/CBSTM03A.CBL:39-40`, `app/cbl/CBSTM03A.CBL:293`.
@@ -234,7 +258,8 @@ No master file is updated.
   `New`), and a multi-word first or last name would be cut the same way. A blank middle name gives two
   spaces between first and last name; the HTML name, which stops at the first double space, would then
   show only the first name. Recommendation: decide (fix is expected; preserve only if output is
-  compared byte for byte). Source: `app/cbl/CBSTM03A.CBL:462-481`, `app/cbl/CBSTM03A.CBL:562-567`.
+  compared byte for byte). The HTML name is additionally truncated to 50 characters. Source:
+  `app/cbl/CBSTM03A.CBL:462-481`, `app/cbl/CBSTM03A.CBL:562-567`.
 - **Q-CBSTM03A-08**: Descriptions are cut to 49 of 100 characters in both formats (sample maximum is 48,
   so no visible effect). Recommendation: decide. Source: `app/cbl/CBSTM03A.CBL:135`, `app/cbl/CBSTM03A.CBL:677`.
 - **Q-CBSTM03A-09**: Number formats lose digits silently: ACCT-CURR-BAL (10 integer digits) goes into

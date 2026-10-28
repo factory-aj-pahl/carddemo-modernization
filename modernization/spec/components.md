@@ -24,14 +24,14 @@ following rewrite (lock only), o opened but never accessed.
 | Base jobs by class | setup/definition 18, batch cycle 6, utility/report 9, operations 5 | `jobs.md` section 1 |
 | Module jobs by class | setup/definition 5, batch 2, data synchronization 1 | `jobs.md` section 1 |
 | Programs with no JCL | CBTRN01C (Q-CBTRN01C-06); CSUTLDTC and CBSTM03B are called, not run | `jobs.md` section 1 |
-| Unique specification IDs | 2,177 | all spec files |
-| Business rules (`BR-`) | 442 | programs |
+| Unique specification IDs | 2,191 | all spec files |
+| Business rules (`BR-`) | 444 | programs |
 | Validation rules (`VR-`) | 171 | programs |
 | Navigation rules (`NAV-`) | 150 | programs |
 | Error-handling rules (`ERR-`) | 287 | programs |
-| Quirks (`Q-`) | 604 (programs 500, `entities.md` 42, `jobs.md` 62) | all spec files |
-| Test scenarios (`TS-`) | 523 (programs 521, `jobs.md` 2) | all spec files |
-| Quirk recommendations | fix 247, decide 170, preserve 70; the rest are other wordings (replace, drop, do not port, treat as incomplete) or none | quirk bullets |
+| Quirks (`Q-`) | 611 (programs 506, `entities.md` 42, `jobs.md` 63) | all spec files |
+| Test scenarios (`TS-`) | 528 (programs 526, `jobs.md` 2) | all spec files |
+| Quirk recommendations | fix 252, decide 170, preserve 70; the rest are other wordings (replace, drop, do not port, treat as incomplete) or none | quirk bullets |
 
 ### Metrics by bounded context
 
@@ -40,20 +40,20 @@ scenarios defined in `entities.md` and `jobs.md` are not included in these rows.
 
 | Context | Programs | Lines | BR | VR | NAV | ERR | Q | TS |
 |:--|--:|--:|--:|--:|--:|--:|--:|--:|
-| BC-1 IAM and Navigation | 7 | 2,623 | 59 | 22 | 41 | 33 | 66 | 92 |
-| BC-2 Account and Customer | 2 | 5,177 | 33 | 38 | 14 | 23 | 40 | 44 |
-| BC-3 Card | 3 | 3,906 | 41 | 24 | 19 | 16 | 48 | 61 |
-| BC-4 Transaction (incl. CSUTLDTC) | 4 | 1,969 | 35 | 30 | 27 | 20 | 40 | 44 |
+| BC-1 IAM and Navigation | 7 | 2,623 | 59 | 22 | 41 | 33 | 67 | 93 |
+| BC-2 Account and Customer | 2 | 5,177 | 33 | 38 | 14 | 23 | 41 | 45 |
+| BC-3 Card | 3 | 3,906 | 41 | 24 | 19 | 16 | 49 | 62 |
+| BC-4 Transaction (incl. CSUTLDTC) | 4 | 1,969 | 35 | 30 | 27 | 20 | 41 | 45 |
 | BC-5 Bill Payment | 1 | 572 | 10 | 3 | 7 | 8 | 13 | 11 |
 | BC-6 Reporting | 2 | 1,298 | 22 | 18 | 7 | 11 | 24 | 23 |
-| BC-7 Batch Posting and Cycle | 5 | 3,031 | 41 | 6 | 0 | 33 | 47 | 42 |
-| BC-8 Reference Data (Db2 module) | 3 | 4,037 | 57 | 17 | 14 | 34 | 53 | 60 |
+| BC-7 Batch Posting and Cycle | 5 | 3,031 | 41 | 6 | 0 | 33 | 48 | 42 |
+| BC-8 Reference Data (Db2 module) | 3 | 4,037 | 57 | 17 | 14 | 34 | 54 | 61 |
 | BC-9 Data Exchange and Utilities | 7 | 2,080 | 38 | 1 | 0 | 28 | 46 | 42 |
-| BC-10 Authorizations (IMS/Db2/MQ module) | 8 | 4,344 | 80 | 7 | 19 | 59 | 90 | 73 |
+| BC-10 Authorizations (IMS/Db2/MQ module) | 8 | 4,344 | 82 | 7 | 19 | 59 | 90 | 73 |
 | BC-11 MQ Inquiry (VSAM-MQ module) | 2 | 1,144 | 26 | 5 | 2 | 22 | 33 | 29 |
-| Total | 44 | 30,181 | 442 | 171 | 150 | 287 | 500 | 521 |
+| Total | 44 | 30,181 | 444 | 171 | 150 | 287 | 506 | 526 |
 
-The largest single programs are COACTUPC (4,236 lines, 30 quirks, 31 test scenarios), COTRTLIC
+The largest single programs are COACTUPC (4,236 lines, 31 quirks, 32 test scenarios), COTRTLIC
 (2,098), COTRTUPC (1,702), COCRDUPC (1,560), and COCRDLIC (1,459). Together they hold about 37
 percent of all source lines.
 
@@ -580,11 +580,11 @@ the transaction store must move together with every writer of it (BC-4, BC-5, BC
 | Context | Prerequisites | Seams for an incremental cut-over | Decide before coding | Verify with |
 |:--|:--|:--|:--|:--|
 | Shared kernel | none | Library replacing CSUTLDTC, `CSUTLDPY`, `CSSTRPFY`, `CSMSG01Y`, ENT-LOOKUP-CODES | Q-CSUTLDTC-05 (pre-1582 dates), DF-06 timestamp format | TS-CSUTLDTC-01 to -06 |
-| BC-8 Reference Data | Shared kernel; admin role design | Db2 tables already relational; keep JOB-TRANEXTR and the VSAM reload until BC-6 moves | Q-COTRTLIC-05, Q-COTRTUPC-10 (authorization), Q-COTRTUPC-17 (locking), Q-COTRTUPC-02 (false success), Q-COBTUPDT-03 (one unit of work) | TS-COTRTLIC-01 to -22, TS-COTRTUPC-01 to -24, TS-COBTUPDT-01 to -14 |
-| BC-1 IAM and Navigation | Identity provider | Replace sign-on and menus with a front end; route unconverted options to CICS through a gateway that builds ENT-COMMAREA | Q-COSGN00C-01, Q-ENT-17, Q-COADM01C-01, Q-COMEN01C-01, Q-COUSR02C-02, Q-COUSR03C-01 | TS-COSGN00C-01 to -13, TS-COMEN01C-01 to -12, TS-COADM01C-01 to -09, TS-COUSR00C-01 to -16, TS-COUSR01C-01 to -14, TS-COUSR02C-01 to -16, TS-COUSR03C-01 to -12 |
-| BC-3 Card | BC-1 session; decision on PAN and CVV storage | Card API in front of CARDDAT and CARDXREF; batch keeps reading CARDXREF until BC-7 moves | Q-ENT-33, Q-COCRDUPC-01, Q-COCRDUPC-02, Q-COCRDUPC-06, Q-COCRDUPC-17, Q-COCRDLIC-06 | TS-COCRDLIC-01 to -21, TS-COCRDSLC-01 to -14, TS-COCRDUPC-01 to -26 |
-| BC-2 Account and Customer | BC-3 (xref by account); data repair for Q-ENT-01 | Account API; replicate account and customer to VSAM while batch, bill pay, and authorizations still read them | Q-ENT-01, Q-ENT-02, Q-COACTUPC-03, Q-COACTUPC-15, Q-COACTUPC-28, Q-ENT-24, Q-ENT-25, Q-ENT-32 | TS-COACTVWC-01 to -13, TS-COACTUPC-01 to -31 |
-| BC-4 Transaction and BC-5 Bill Payment | BC-2, BC-3; one transaction store and id service | Move together: both write ENT-TRANSACTION with the same id scheme, and BC-5 updates ENT-ACCOUNT | Q-ENT-07, Q-COBIL00C-01, Q-COBIL00C-02, Q-COBIL00C-05, Q-COBIL00C-06, Q-COTRN02C-01, Q-COTRN00C-01, Q-COTRN01C-01 | TS-COTRN00C-01 to -12, TS-COTRN01C-01 to -11, TS-COTRN02C-01 to -15, TS-COBIL00C-01 to -11 |
+| BC-8 Reference Data | Shared kernel; admin role design | Db2 tables already relational; keep JOB-TRANEXTR and the VSAM reload until BC-6 moves | Q-COTRTLIC-05, Q-COTRTUPC-10 (authorization), Q-COTRTUPC-17 (locking), Q-COTRTUPC-02 (false success), Q-COBTUPDT-03 (one unit of work) | TS-COTRTLIC-01 to -23, TS-COTRTUPC-01 to -24, TS-COBTUPDT-01 to -14 |
+| BC-1 IAM and Navigation | Identity provider | Replace sign-on and menus with a front end; route unconverted options to CICS through a gateway that builds ENT-COMMAREA | Q-COSGN00C-01, Q-ENT-17, Q-COADM01C-01, Q-COMEN01C-01, Q-COUSR02C-02, Q-COUSR03C-01 | TS-COSGN00C-01 to -13, TS-COMEN01C-01 to -12, TS-COADM01C-01 to -09, TS-COUSR00C-01 to -17, TS-COUSR01C-01 to -14, TS-COUSR02C-01 to -16, TS-COUSR03C-01 to -12 |
+| BC-3 Card | BC-1 session; decision on PAN and CVV storage | Card API in front of CARDDAT and CARDXREF; batch keeps reading CARDXREF until BC-7 moves | Q-ENT-33, Q-COCRDUPC-01, Q-COCRDUPC-02, Q-COCRDUPC-06, Q-COCRDUPC-17, Q-COCRDLIC-06 | TS-COCRDLIC-01 to -21, TS-COCRDSLC-01 to -14, TS-COCRDUPC-01 to -27 |
+| BC-2 Account and Customer | BC-3 (xref by account); data repair for Q-ENT-01 | Account API; replicate account and customer to VSAM while batch, bill pay, and authorizations still read them | Q-ENT-01, Q-ENT-02, Q-COACTUPC-03, Q-COACTUPC-15, Q-COACTUPC-28, Q-ENT-24, Q-ENT-25, Q-ENT-32 | TS-COACTVWC-01 to -13, TS-COACTUPC-01 to -32 |
+| BC-4 Transaction and BC-5 Bill Payment | BC-2, BC-3; one transaction store and id service | Move together: both write ENT-TRANSACTION with the same id scheme, and BC-5 updates ENT-ACCOUNT | Q-ENT-07, Q-COBIL00C-01, Q-COBIL00C-02, Q-COBIL00C-05, Q-COBIL00C-06, Q-COTRN02C-01, Q-COTRN00C-01, Q-COTRN01C-01 | TS-COTRN00C-01 to -13, TS-COTRN01C-01 to -11, TS-COTRN02C-01 to -15, TS-COBIL00C-01 to -11 |
 | BC-7 Batch Posting and Cycle | BC-2, BC-3, BC-4 data in the target store; cycle model decided | Replace the runbook DAG (`jobs.md` section 14 edge list); retire TRANBKP/COMBTRAN if the target keeps full history | Q-TRANBKP-02, Q-CBTRN02C-01, Q-CBTRN02C-02, Q-RUNBOOK-01, Q-CBACT04C-01, Q-CBACT04C-02, Q-CBTRN02C-08, Q-CBSTM03A-04 | TS-CBTRN02C-01 to -10 (38 rejects with EBCDIC sign rules), TS-POSTTRAN-01, TS-CBACT04C-01 to -09, TS-CBSTM03A-01 to -12, TS-CBSTM03B-01 to -06 |
 | BC-6 Reporting | BC-4/BC-7 transaction store; BC-8 reference data | Report service called directly instead of TD queue `JOBS`; remove the BKUP copy step | Q-TRANREPT-02, Q-CBTRN03C-02 (parity mode), Q-CBTRN03C-03, Q-CORPT00C-02, Q-CORPT00C-06, Q-ENT-16 | TS-CORPT00C-01 to -15, TS-CBTRN03C-01 to -08 |
 | BC-10 Authorizations | BC-2 and BC-3 read APIs; message transport | Self-contained; remove JOB-CBPAUP0J from the base schedule first (Q-CA7-04) | Q-COPAUA0C-05, Q-CBPAUP0C-01, Q-CBPAUP0C-02, Q-CBPAUP0C-03, Q-COPAUA0C-03, Q-COPAUA0C-06, Q-COPAUS0C-02 | TS-COPAUA0C-01 to -12, TS-COPAUS0C-01 to -13, TS-COPAUS1C-01 to -10, TS-COPAUS2C-01 to -05, TS-CBPAUP0C-01 to -08 |

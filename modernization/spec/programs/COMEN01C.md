@@ -199,9 +199,11 @@ Unnamed literals: `Tran:`, `Prog:`, `Date:`, `Time:` (blue), `Main Menu` at row 
   shows a clean sign-on screen; no thank-you message is shown.
   Source: `app/cbl/COMEN01C.cbl:96-98 (MAIN-PARA)`, `app/cbl/COMEN01C.cbl:196-203 (RETURN-TO-SIGNON-SCREEN)`.
 - **NAV-COMEN01C-03**: Any other AID -> message "Invalid key pressed. Please see below...         " and
-  the menu is redisplayed (option field is cleared by the redisplay because BUILD writes only option
-  lines; the received option value remains in the shared map buffer and is re-sent).
-  Source: `app/cbl/COMEN01C.cbl:99-102 (MAIN-PARA)`.
+  the menu is redisplayed (the option field keeps the value as received, not normalized: COMEN1AO
+  redefines COMEN1AI, the field is FSET, and BUILD-MENU-OPTIONS writes only the option lines, so the
+  received OPTIONI is re-sent).
+  Source: `app/cbl/COMEN01C.cbl:92-102 (MAIN-PARA)`, `app/cbl/COMEN01C.cbl:208-220 (SEND-MENU-SCREEN)`,
+  `app/cpy-bms/COMEN01.CPY:139`, `app/bms/COMEN01.bms:145`.
 - **NAV-COMEN01C-04**: Valid option -> XCTL to the program listed in the option table (see table above),
   with context 0 so the target treats it as a first entry.
   Source: `app/cbl/COMEN01C.cbl:156-159`, `app/cbl/COMEN01C.cbl:184-187 (PROCESS-ENTER-KEY)`.
@@ -278,7 +280,8 @@ None. No file is read or written. Only the COMMAREA fields listed above change.
 - **TS-COMEN01C-08** (covers NAV-COMEN01C-02): Given the menu, when PF3 is pressed, then control passes to
   COSGN00C with no COMMAREA and the clean sign-on screen is displayed.
 - **TS-COMEN01C-09** (covers NAV-COMEN01C-03): Given the menu, when PF7 is pressed, then the menu is
-  redisplayed with "Invalid key pressed. Please see below...".
+  redisplayed with "Invalid key pressed. Please see below..."; a value typed in the option field
+  before PF7 is still shown (it is not cleared).
 - **TS-COMEN01C-10** (covers BR-COMEN01C-01): Given no COMMAREA, when transaction CM00 is started, then
   control passes to COSGN00C without a COMMAREA.
 - **TS-COMEN01C-11** (covers BR-COMEN01C-05, Q-COMEN01C-01): Given a test copy of the option table in which

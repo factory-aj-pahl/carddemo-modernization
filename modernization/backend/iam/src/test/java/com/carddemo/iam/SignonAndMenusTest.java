@@ -211,6 +211,8 @@ class SignonAndMenusTest {
         JsonNode r = client.post("COMEN01C", "PF7", Map.of("option", "1"));
         assertThat(r.at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
         assertThat(r.has("navigate")).isFalse();
+        assertThat(r.at("/fields/option").asText()).as("kept as typed, not cleared or zero-padded").isEqualTo("1");
+        assertThat(client.post("COMEN01C", "PA1", Map.of("option", "4 ")).at("/fields/option").asText()).isEqualTo("4 ");
     }
 
     // ---- COADM01C --------------------------------------------------------------------------------
@@ -253,6 +255,9 @@ class SignonAndMenusTest {
     void admin_menu_keys() {
         client.signOn("ADMIN001");
         assertThat(client.post("COADM01C", "PF2", Map.of()).at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
+        JsonNode kept = client.post("COADM01C", "PF7", Map.of("option", "3"));
+        assertThat(kept.at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
+        assertThat(kept.at("/fields/option").asText()).as("same map structure as COMEN01C: kept as typed").isEqualTo("3");
         assertThat(client.post("COADM01C", "PF3", Map.of()).at("/navigate").asText()).isEqualTo("COSGN00C");
         assertThat(client.showRaw("COADM01C").getStatus()).isEqualTo(401);
     }

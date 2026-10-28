@@ -53,6 +53,9 @@ test.describe('COCRDLIC credit card list', () => {
     await expectNoSeriousA11yViolations(page);
     await page.getByLabel('Account Number').fill('');
     await page.keyboard.press('Enter');
+    // The rebuilt list re-renders the Sel fields; typing before the turn ends would be wiped.
+    await expect(page.getByLabel('Account Number')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#sel2')).toBeEnabled();
     await page.locator('#sel2').fill('x');
     await page.keyboard.press('Enter');
     await expectMessage(page, 'INVALID ACTION CODE');
@@ -165,6 +168,20 @@ test.describe('COCRDUPC credit card update', () => {
     await page.keyboard.press('Enter');
     await expectMessage(page, 'CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER');
     await expect(page.getByLabel('Card Number')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByLabel('Card Number')).toHaveValue('1234');
+    await expectNoSeriousA11yViolations(page);
+  });
+
+  test('VR-COCRDUPC-02 a non-numeric account is shown red as typed', async ({ page }) => {
+    await openOption(page, /Credit Card Update/, 'CCUP · COCRDUPC');
+    await page.getByLabel('Account Number').fill('0000000001A');
+    await page.getByLabel('Card Number').fill(UPDATE_CARD);
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER');
+    await expect(page.getByLabel('Account Number')).toHaveValue('0000000001A');
+    await expect(page.getByLabel('Account Number')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByLabel('Account Number')).toBeFocused();
+    await expectInfo(page, 'Please enter Account and Card Number');
     await expectNoSeriousA11yViolations(page);
   });
 

@@ -357,7 +357,8 @@ class CardUpdateTest extends CardScreenTestSupport {
     }
 
     @Test
-    @Covers({"TS-COCRDUPC-17", "VR-COCRDUPC-01", "VR-COCRDUPC-02", "VR-COCRDUPC-03", "VR-COCRDUPC-04", "Q-COCRDUPC-18"})
+    @Covers({"TS-COCRDUPC-17", "VR-COCRDUPC-01", "VR-COCRDUPC-02", "VR-COCRDUPC-03", "VR-COCRDUPC-04", "Q-COCRDUPC-18",
+        "BR-COCRDUPC-16"})
     void the_search_keys_are_edited() {
         admin.show("COCRDUPC");
         JsonNode a = keys(admin, "ENTER", "", CARD2);
@@ -368,10 +369,19 @@ class CardUpdateTest extends CardScreenTestSupport {
         assertThat(c.at("/focus").asText()).isEqualTo("cardNum");
         JsonNode shortAcct = keys(admin, "ENTER", "27", CARD2);
         assertThat(shortAcct.at("/message").asText()).isEqualTo("ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER");
-        assertThat(shortAcct.at("/fields/accountId").asText()).isEmpty();
+        assertThat(shortAcct.at("/fields/accountId").asText()).as("raw input echoed").isEqualTo("27");
+        assertThat(shortAcct.at("/fields/errors").toString()).isEqualTo("[\"accountId\"]");
+        assertThat(shortAcct.at("/focus").asText()).isEqualTo("accountId");
+        JsonNode alpha = keys(admin, "ENTER", "0000000002A", CARD2);
+        assertThat(alpha.at("/message").asText()).isEqualTo("ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER");
+        assertThat(alpha.at("/fields/accountId").asText()).isEqualTo("0000000002A");
+        assertThat(alpha.at("/fields/state").asText()).isEmpty();
+        assertThat(alpha.at("/fields/keysEditable").asBoolean()).isTrue();
         JsonNode badCard = keys(admin, "ENTER", ACCT2, "0683X");
         assertThat(badCard.at("/message").asText()).isEqualTo("CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER");
         assertThat(badCard.at("/fields/errors").toString()).isEqualTo("[\"cardNum\"]");
+        assertThat(badCard.at("/fields/cardNum").asText()).as("raw input echoed").isEqualTo("0683X");
+        assertThat(badCard.at("/fields/accountId").asText()).isEqualTo(ACCT2);
         assertThat(badCard.at("/fields/state").asText()).isEmpty();
     }
 
@@ -499,6 +509,37 @@ class CardUpdateTest extends CardScreenTestSupport {
         assertThat(r.at("/fields/name").asText()).isEqualTo("WARD JONES");
         assertThat(r.has("message")).isFalse();
         assertThat(r.at("/fields/errors").size()).isZero();
+    }
+
+    @Test
+    @Covers({"TS-COCRDUPC-27", "Q-COCRDUPC-20", "VR-COCRDUPC-06", "BR-COCRDUPC-10"})
+    void a_failed_pf12_reread_on_the_menu_path_returns_to_the_search_screen() {
+        JsonNode s = fetched(ACCT2, CARD2);
+        JsonNode n = turn("ENTER", s, null, "N", null, null);
+        assertThat(n.at("/fields/state").asText()).isEqualTo("N");
+        jdbc.update("DELETE FROM card WHERE card_num = ?", CARD2);
+        JsonNode r = turn("PF12", n, null, null, null, null);
+        assertThat(r.at("/message").asText()).isEqualTo(NOT_FOUND);
+        assertThat(r.at("/fields/errors").toString()).isEqualTo("[\"accountId\",\"cardNum\"]");
+        assertThat(r.at("/focus").asText()).isEqualTo("accountId");
+        assertThat(r.at("/fields/state").asText()).as("not fetched, not S").isEmpty();
+        assertThat(r.at("/fields/info").asText()).isEqualTo(PROMPT);
+        assertThat(r.at("/fields/accountId").asText()).isEqualTo(ACCT2);
+        assertThat(r.at("/fields/cardNum").asText()).isEqualTo("************1516");
+        assertThat(r.at("/fields/keysEditable").asBoolean()).isTrue();
+        assertThat(r.at("/fields/detailsEditable").asBoolean()).isFalse();
+        assertThat(r.at("/fields/confirmKeys").asBoolean()).isFalse();
+        for (String f : List.of("name", "status", "expMonth", "expYear")) {
+            assertThat(r.at("/fields/" + f).asText()).as(f).isEmpty();
+        }
+        assertThat(r.toString()).doesNotContain(CARD2);
+
+        JsonNode pf5 = turn("PF5", r, "WARD JONES", "N", "07", "2025");
+        assertThat(pf5.at("/fields/state").asText()).as("no save is possible").isEmpty();
+        assertThat(pf5.at("/message").asText()).isEqualTo(NOT_FOUND);
+        assertThat(audits("************1516")).isZero();
+        JsonNode other = keys(admin, "ENTER", ACCT1, CARD1);
+        assertThat(other.at("/fields/state").asText()).as("the keys stay usable").isEqualTo("S");
     }
 
     @Test

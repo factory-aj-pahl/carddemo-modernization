@@ -1,0 +1,38 @@
+--- a/app/cbl/CBTRN01C.cbl
++++ b/app/cbl/CBTRN01C.cbl
+@@ -166,21 +166,21 @@
+                    PERFORM 1000-DALYTRAN-GET-NEXT
+                    IF  END-OF-DAILY-TRANS-FILE = 'N'
+                        DISPLAY DALYTRAN-RECORD
+-                   END-IF
+-                   MOVE 0                 TO WS-XREF-READ-STATUS
+-                   MOVE DALYTRAN-CARD-NUM TO XREF-CARD-NUM
+-                   PERFORM 2000-LOOKUP-XREF
+-                   IF WS-XREF-READ-STATUS = 0
+-                     MOVE 0            TO WS-ACCT-READ-STATUS
+-                     MOVE XREF-ACCT-ID TO ACCT-ID
+-                     PERFORM 3000-READ-ACCOUNT
+-                     IF WS-ACCT-READ-STATUS NOT = 0
+-                         DISPLAY 'ACCOUNT ' ACCT-ID ' NOT FOUND'
+-                     END-IF
+-                   ELSE
+-                     DISPLAY 'CARD NUMBER ' DALYTRAN-CARD-NUM
++                       MOVE 0                 TO WS-XREF-READ-STATUS
++                       MOVE DALYTRAN-CARD-NUM TO XREF-CARD-NUM
++                       PERFORM 2000-LOOKUP-XREF
++                       IF WS-XREF-READ-STATUS = 0
++                         MOVE 0            TO WS-ACCT-READ-STATUS
++                         MOVE XREF-ACCT-ID TO ACCT-ID
++                         PERFORM 3000-READ-ACCOUNT
++                         IF WS-ACCT-READ-STATUS NOT = 0
++                             DISPLAY 'ACCOUNT ' ACCT-ID ' NOT FOUND'
++                         END-IF
++                       ELSE
++                         DISPLAY 'CARD NUMBER ' DALYTRAN-CARD-NUM
+                      ' COULD NOT BE VERIFIED. SKIPPING TRANSACTION ID-'
+-                     DALYTRAN-ID
++                         DALYTRAN-ID
++                       END-IF
+                    END-IF
+                END-IF
+            END-PERFORM.

@@ -2,7 +2,7 @@
 
 | Attribute | Value |
 |:--|:--|
-| Source | `app/cbl/CBEXPORT.cbl` (586 lines) |
+| Source | `app/cbl/CBEXPORT.cbl` (585 lines) |
 | Module | base |
 | Kind | Batch |
 | Transaction ID / Job | CBEXPORT, step STEP02 (`app/jcl/CBEXPORT.jcl:43-68`); STEP01 deletes and redefines the export KSDS (`app/jcl/CBEXPORT.jcl:24-38`) |
@@ -43,8 +43,9 @@ validates nothing and changes no source data.
 ### Business rules
 - **BR-CBEXPORT-01**: The run timestamp is taken once: ACCEPT DATE YYYYMMDD and ACCEPT TIME (HHMMSShh).
   Export date = `YYYY-MM-DD`, export time = `HH:MM:SS` (hundredths dropped), record timestamp =
-  date + space + time + `.00`, left-justified in 26 bytes (`2026-10-28 13:48:03.00` + 4 spaces). Every
-  record of the run carries the same timestamp. Source: `app/cbl/CBEXPORT.cbl:175-198 (1050-GENERATE-TIMESTAMP)`.
+  STRING of date + space + time + `.00` (22 bytes) into the 26-byte WS-FORMATTED-TIMESTAMP. STRING does not
+  pad and the field has no VALUE clause, so bytes 23-26 keep their initial storage contents: spaces under
+  GnuCOBOL, not guaranteed on z/OS (Q-CBEXPORT-03). Every record of the run carries the same timestamp. Source: `app/cbl/CBEXPORT.cbl:175-198 (1050-GENERATE-TIMESTAMP)`.
 - **BR-CBEXPORT-02**: Sections are exported in the order customers (`C`, CUSTFILE in customer-ID
   order), accounts (`A`, account-ID order), cross-references (`X`, card-number order), transactions
   (`T`, transaction-ID order), cards (`D`, card-number order). Each section reads its whole file
@@ -125,7 +126,7 @@ Not applicable (batch).
   `app/cbl/CBEXPORT.cbl:538-540`.
 - **Q-CBEXPORT-02**: Branch `0001` and region `NORTH` are hard-coded, so the fields carry no information.
   Recommendation: decide (parameterise or drop). Source: `app/cbl/CBEXPORT.cbl:281-282`.
-- **Q-CBEXPORT-03**: The timestamp always ends in `.00` and is padded with 4 spaces; hundredths from
+- **Q-CBEXPORT-03**: The timestamp always ends in `.00` and has 4 trailing bytes that are never set (spaces under GnuCOBOL; target should write spaces explicitly); hundredths from
   ACCEPT TIME are discarded and the time is local. Recommendation: preserve for file compatibility, or
   decide on a full ISO timestamp. Source: `app/cbl/CBEXPORT.cbl:188-197`.
 - **Q-CBEXPORT-04**: Numeric fields deliberately mix encodings (binary COMP, packed COMP-3, zoned with
@@ -162,7 +163,7 @@ Local run (GnuCOBOL, `-fsign=EBCDIC`): the 50 sample customers, accounts, xref r
   `CBEXPORT: Total Records Exported: 000000462`.
 - **TS-CBEXPORT-02** (covers BR-CBEXPORT-03): Given the same run, then EXPFILE has 462 records with
   sequence numbers 1 to 462: `C` 1-50, `A` 51-100, `X` 101-150, `T` 151-412, `D` 413-462; every record has
-  the same timestamp `YYYY-MM-DD HH:MM:SS.00` + 4 spaces, `0001` at offset 31, and `NORTH` at offset 35.
+  the same timestamp `YYYY-MM-DD HH:MM:SS.00` + 4 trailing bytes (spaces under GnuCOBOL), `0001` at offset 31, and `NORTH` at offset 35.
 - **TS-CBEXPORT-03** (covers BR-CBEXPORT-05): Given account `00000000001` (status `Y`, balance 194.00, credit
   limit 2020.00, cash limit 1020.00, opened 2014-11-20), then its `A` record has offsets 40-50
   `00000000001`, 51 `Y`, 52-58 x`0000000019400C`, 59-70 `00000020200{` (EBCDIC overpunch for +0 in the last

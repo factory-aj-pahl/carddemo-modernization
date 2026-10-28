@@ -255,10 +255,15 @@ ERR-MESSAGE X(50), ERR-EVENT-KEY X(20).
   subsystem I, code-1 = DL/I status, message "IMS SCHD FAILED"; task ends. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl:292-318 (1200-SCHEDULE-PSB)`.
 - **ERR-COPAUA0C-04**: CCXREF NOTFND -> 'A001', warning, subsystem A, message "CARD NOT FOUND IN
-  XREF", event key = card number; processing continues and the request is declined '05'/'3100'.
+  XREF", event key = card number; processing continues. On the first message of a task, or when
+  the previous message found no authorization summary, the request is declined '05'/'3100'. If the
+  previous message in the same task found a summary, the decision uses that stale summary and can
+  approve; see Q-COPAUA0C-02.
   Other RESP -> 'C001', critical, subsystem C, codes = RESP/RESP2, message "FAILED TO READ XREF
   FILE"; task ends without a reply. Source:
-  `app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl:487-513 (5100-READ-XREF-RECORD)`.
+  `app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl:487-513 (5100-READ-XREF-RECORD)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl:441-457 (5000-PROCESS-AUTH)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl:665-671 (6000-MAKE-DECISION)`.
 - **ERR-COPAUA0C-05**: ACCTDAT NOTFND -> 'A002', warning, message "ACCT NOT FOUND IN XREF",
   event key = account id. Other RESP -> 'C002', critical, message "FAILED TO READ ACCT FILE".
   Source: `app/app-authorization-ims-db2-mq/cbl/COPAUA0C.cbl:535-561 (5200-READ-ACCT-RECORD)`.

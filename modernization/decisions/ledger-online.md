@@ -84,6 +84,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COUSR00C-12 | Search is a start position, not a filter | business-choice | PRESERVE | The list starts at the first user ID greater than or equal to the search key and continues in key order. | n/a |
 | Q-COUSR00C-13 | Unused working storage; DISPLAYs of RESP codes | dead-code | NOT-PORTED | No counterpart. | n/a |
 | Q-COUSR00C-14 | Selected user ID is taken from terminal-returned fields | security | FIX | A selection is resolved on the server from the row number of the page the server last sent (rows 1-10 to user IDs). A submitted user ID that was not on that page is ignored: no navigation, the list is redisplayed. | n/a |
+| Q-COUSR00C-15 | PF7 on page 1 sets the next-page flag, so a following PF8 can page past the end | functional-defect | FIX | F7 on page 1 shows `You are already at the top of the page...` with the rows unchanged and does not change the next-page state. A following F8 behaves as if F7 had not been pressed: with the 10 sample users (TS-COUSR00C-17) it gives `You are already at the bottom of the page...` with the same 10 rows and page `00000001`; when more users exist it shows the next page as usual. | n/a |
 
 ## COUSR01C
 
@@ -175,6 +176,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COACTUPC-28 | Full SSN and government id displayed and editable by any user, no audit | security | FIX | Access follows C-SCOPE (out of scope gives the cross-reference not-found message). The SSN parts are shown as `***`, `**`, and the last 4 digits; the government id is masked (C-MASK). If all three SSN parts are submitted as shown, the SSN is unchanged. To change it the user types all three parts, which go through the existing SSN edits; a part left masked fails with `SSN: First 3 chars must be all numeric.` or `SSN 4th & 5th chars must be all numeric.`. A government id submitted as shown is kept; any other value replaces it. Every saved change of SSN or government id writes an audit record (C-AUDIT). | n/a |
 | Q-COACTUPC-29 | "Details of selected account shown above" is always overwritten | dead-code | NOT-PORTED | The text is not ported. After a fetch the info line shows `Update account details presented above.`, as today; the state-based info message of BR-COACTUPC-17 is the intended design. | n/a |
 | Q-COACTUPC-30 | Amounts shown with 9 integer positions; re-entry saves a different value | data-corruption | FIX | Amounts show all 10 integer digits as in Q-COACTVWC-08, so submitting a displayed value unchanged saves the same value. | n/a |
+| Q-COACTUPC-31 | SSN parts 2 and 3 are edited only when part 1 passes | functional-defect | FIX | When the SSN is edited (any part changed, Q-COACTUPC-07), all three parts are edited independently with the existing edits of VR-COACTUPC-16 to VR-COACTUPC-18, whether or not part 1 passed. Every failing part is highlighted; the message is the first failing check in order (part 1, then part 2, then part 3); focus goes to the first failing part. Example: part 1 `ABC` and part 3 `12X4` give `SSN: First 3 chars must be all numeric.` with parts 1 and 3 highlighted and focus on part 1 (the COBOL highlights only part 1). TS-COACTUPC-32 changes accordingly. | n/a |
 
 ## COCRDLIC
 
@@ -238,6 +240,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COCRDUPC-17 | Any signed-on user can change any card; no audit record | user-decision | CHANGE (D-USER-ACCT, D-SEC-EXTRAS) | D-USER-ACCT (C-SCOPE): a USER can fetch and update only cards of linked accounts; any other card gives `Did not find cards for this search condition`. Every saved card change writes an audit record (C-AUDIT) with the card's last 4 digits. | n/a |
 | Q-COCRDUPC-18 | Messages contain source typos | cosmetic | PRESERVE | Verbatim: `Changes validated.Press F5 to save`, `Record changed by some one else. Please review`, `ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER`, `CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER`. | n/a |
 | Q-COCRDUPC-19 | JUSTIFY=RIGHT expiry fields: a one-digit month may fail | platform | PLATFORM | The expiry month accepts `5` or `05` (an integer 1-12, stored as 2 digits); out-of-range values give `Card expiry month must be between 1 and 12`. The year is 4 digits. | n/a |
+| Q-COCRDUPC-20 | PF12 on the menu path sets state S even when the re-read fails | functional-defect | FIX | If the F12 re-read finds no card (deleted since the fetch, or out of scope) or fails, the state returns to "not fetched": the search screen shows the entered account and card (C-MASK) as editable keys, no details, no save possible, and the message of the failed read: `Did not find cards for this search condition` with both keys highlighted and focus on the account (VR-COCRDUPC-06), or the ERR-COCRDUPC-01 file-error text with the account highlighted. TS-COCRDUPC-27 changes accordingly. | n/a |
 
 ## COTRN00C
 
@@ -255,6 +258,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COTRN00C-10 | Paging assumes the boundary record still exists | concurrency | FIX | Keyset paging on exclusive bounds (`id > last shown` forward, `id < first shown` backward). Deleted boundary records cause no skipped or repeated rows; records added between turns appear in key order. | n/a |
 | Q-COTRN00C-11 | Backward page reaching the file start leaves rows blank and keys stale | functional-defect | FIX | A backward page that reaches the first in-scope transaction shows the first 10 in-scope transactions as page 1 with `You have reached the top of the page...`. | n/a |
 | Q-COTRN00C-12 | Date column has a 2-digit year; description cut to 26 characters | cosmetic | PRESERVE | The list shows the origination date as `MM/DD/YY` and the first 26 characters of the description. | n/a |
+| Q-COTRN00C-13 | PF7 on page 1 sets the next-page flag, so a following PF8 can page past the end | functional-defect | FIX | F7 on page 1 shows `You are already at the top of the page...` with the rows unchanged and does not change the next-page state. A following F8 behaves as if F7 had not been pressed: when page 1 is also the last page (for example a search at `0000000957864065`, TS-COTRN00C-13), it gives `You are already at the bottom of the page...` with the same rows and page `00000001`; when more transactions exist it shows the next page as usual. TS-COTRN00C-13 changes accordingly. | n/a |
 
 ## COTRN01C
 
@@ -397,6 +401,7 @@ Sign-on and user administration:
 - Q-COUSR00C-03: a search beyond the last user shows an empty list with `User ID NOT found...` (reused) instead of an abend.
 - Q-COUSR00C-06: Sel fields are cleared whenever the list is rebuilt.
 - Q-COUSR00C-09: deleting a boundary user between pages no longer gives `Unable to lookup User...` or hides a user.
+- Q-COUSR00C-15: F8 after F7 on page 1 no longer pages past the last user; with no next page it gives `You are already at the bottom of the page...` and keeps the rows.
 - Q-COUSR01C-02: a new user ID is stored upper case (`test0003` is added as `TEST0003`).
 - Q-COUSR01C-03: user type is upper-cased and must be `A` or `U`: `User Type must be A or U...` (**NEW**).
 - Q-COUSR01C-05: F12 on Add User returns to the Admin Menu (previously "Invalid key pressed").
@@ -430,6 +435,7 @@ Account view and update:
 - Q-COACTUPC-20: a missing account or customer stops the fetch; no details from an unread record are shown.
 - Q-COACTUPC-28: SSN and government id are masked on the update screen; SSN changes need all three parts retyped; changes are audited; USER limited to linked accounts.
 - Q-COACTUPC-30: large amounts show all 10 integer digits and survive an unchanged re-save.
+- Q-COACTUPC-31: every invalid SSN part is highlighted, also when part 1 is invalid.
 
 Cards:
 - Q-COCRDLIC-01: a USER lists only cards of linked accounts.
@@ -447,6 +453,7 @@ Cards:
 - Q-COCRDUPC-08: F12 on the menu path no longer shows an edit message from the discarded input.
 - Q-COCRDUPC-09: a card deleted since the list was shown gives a non-editable "not found" screen instead of empty editable details.
 - Q-COCRDUPC-17: a USER can update only cards of linked accounts; card updates are audited.
+- Q-COCRDUPC-20: an F12 re-read that finds no card returns to the search screen with the not-found message instead of showing editable details.
 
 Transactions, bill payment, reports:
 - Q-COTRN00C-01: returning from the detail screen with F5 no longer skips the first transaction.
@@ -455,6 +462,7 @@ Transactions, bill payment, reports:
 - Q-COTRN00C-07: a non-numeric search ID keeps the current page displayed.
 - Q-COTRN00C-08: a USER lists only transactions of linked accounts.
 - Q-COTRN00C-11: a backward page reaching the start shows a full first page.
+- Q-COTRN00C-13: F8 after F7 on page 1 no longer pages past the last transaction; with no next page it gives `You are already at the bottom of the page...` and keeps the rows.
 - Q-COTRN01C-05: card number masked.
 - Q-COTRN01C-07: out-of-scope transaction gives `Transaction ID NOT found...`.
 - Q-COTRN02C-01 and Q-COBIL00C-01: concurrent adds and payments no longer fail with `Tran ID already exist...`.
@@ -473,17 +481,17 @@ Transactions, bill payment, reports:
 
 ## Counts
 
-Rows by category and decision (220 rows).
+Rows by category and decision (224 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 24 | 0 | 0 | 0 | 0 | 24 |
 | data-corruption | 13 | 0 | 0 | 0 | 0 | 13 |
 | concurrency | 9 | 0 | 0 | 0 | 0 | 9 |
-| functional-defect | 51 | 0 | 0 | 0 | 0 | 51 |
+| functional-defect | 55 | 0 | 0 | 0 | 0 | 55 |
 | cosmetic | 0 | 18 | 0 | 0 | 0 | 18 |
 | business-choice | 0 | 42 | 0 | 0 | 0 | 42 |
 | platform | 0 | 0 | 0 | 37 | 0 | 37 |
 | dead-code | 0 | 0 | 0 | 0 | 20 | 20 |
 | user-decision | 0 | 0 | 6 | 0 | 0 | 6 |
-| Total | 97 | 60 | 6 | 37 | 20 | 220 |
+| Total | 101 | 60 | 6 | 37 | 20 | 224 |
