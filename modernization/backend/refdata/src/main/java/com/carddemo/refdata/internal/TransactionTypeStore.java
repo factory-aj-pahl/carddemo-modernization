@@ -1,10 +1,14 @@
 package com.carddemo.refdata.internal;
 
+import java.sql.SQLWarning;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCallback;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
@@ -100,14 +104,51 @@ public class TransactionTypeStore {
         return exists(code) ? Change.CONFLICT : Change.NOT_FOUND;
     }
 
-    /** Unconditional update by key (COBTUPDT). */
-    public Change update(String code, String description) {
+    /** COBTUPDT: insert; each SQL warning of the statement is passed to {@code warnings}. */
+    public void batchInsert(String code, String description, Consumer<String> warnings) {
         try {
-            int n = jdbc.update("UPDATE transaction_type SET description = ? WHERE type_cd = ?", TypeEdits.trim(description), code);
+            withWarnings("INSERT INTO transaction_type (type_cd, description) VALUES (?, ?)", warnings, code,
+                TypeEdits.trim(description));
+        } catch (DataAccessException e) {
+            throw new Db2Failure(Db2Codes.of(e, Db2Codes.Op.INSERT), e);
+        }
+    }
+
+    /** COBTUPDT: unconditional update by key; each SQL warning of the statement is passed to {@code warnings}. */
+    public Change batchUpdate(String code, String description, Consumer<String> warnings) {
+        try {
+            int n = withWarnings("UPDATE transaction_type SET description = ? WHERE type_cd = ?", warnings,
+                TypeEdits.trim(description), code);
             return n > 0 ? Change.DONE : Change.NOT_FOUND;
         } catch (DataAccessException e) {
             throw new Db2Failure(Db2Codes.of(e, Db2Codes.Op.UPDATE), e);
         }
+    }
+
+    /** COBTUPDT: delete by key; each SQL warning of the statement is passed to {@code warnings}. */
+    public Change batchDelete(String code, Consumer<String> warnings) {
+        try {
+            int n = withWarnings("DELETE FROM transaction_type WHERE type_cd = ?", warnings, code);
+            return n > 0 ? Change.DONE : Change.NOT_FOUND;
+        } catch (DataAccessException e) {
+            throw new Db2Failure(Db2Codes.of(e, Db2Codes.Op.DELETE), e);
+        }
+    }
+
+    /**
+     * SQL Server has no positive SQLCODEs; its informational messages reach JDBC as {@link SQLWarning}s on the
+     * statement, which {@code JdbcTemplate.update} discards (or turns into an exception).
+     */
+    private int withWarnings(String sql, Consumer<String> warnings, Object... args) {
+        Integer n = jdbc.execute(sql, (PreparedStatementCallback<Integer>) ps -> {
+            new ArgumentPreparedStatementSetter(args).setValues(ps);
+            int rows = ps.executeUpdate();
+            for (SQLWarning w = ps.getWarnings(); w != null; w = w.getNextWarning()) {
+                warnings.accept(w.getMessage());
+            }
+            return rows;
+        });
+        return n == null ? 0 : n;
     }
 
     public void insert(String code, String description) {

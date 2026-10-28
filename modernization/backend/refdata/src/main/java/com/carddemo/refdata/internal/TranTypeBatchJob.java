@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.Consumer;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -28,6 +29,8 @@ class TranTypeBatchJob implements TranTypeBatchUpdate {
     static final String SQL_ERROR = "Error accessing: TRANSACTION_TYPE table. SQLCODE:";
     /** NEW: COBTUPDT has no read error message (its loop never ends, Q-COBTUPDT-01). */
     static final String READ_NOT_OK = "READ FILE NOT OK";
+    /** NEW: a SQL warning, followed by the type code and the warning text (Q-COBTUPDT-07). */
+    static final String SQL_WARNING = "SQL WARNING FOR TYPE ";
     /** NEW: end-of-run summary (Q-COBTUPDT-07). */
     static final String STOPPED = "RUN STOPPED: ALL CHANGES ROLLED BACK, NOTHING APPLIED";
 
@@ -124,15 +127,16 @@ class TranTypeBatchJob implements TranTypeBatchUpdate {
             reject(c, TYPE_NOT_VALID);
             return true;
         }
+        Consumer<String> warnings = text -> log.display(SQL_WARNING + type + ": " + text);
         try {
             switch (action) {
                 case 'A' -> {
-                    store.insert(type, desc);
+                    store.batchInsert(type, desc, warnings);
                     c.added++;
                     log.display("RECORD INSERTED SUCCESSFULLY");
                 }
                 case 'U' -> {
-                    if (store.update(type, desc) == TransactionTypeStore.Change.DONE) {
+                    if (store.batchUpdate(type, desc, warnings) == TransactionTypeStore.Change.DONE) {
                         c.updated++;
                         log.display("RECORD UPDATED SUCCESSFULLY");
                     } else {
@@ -140,7 +144,7 @@ class TranTypeBatchJob implements TranTypeBatchUpdate {
                     }
                 }
                 default -> {
-                    if (store.delete(type, null) == TransactionTypeStore.Change.DONE) {
+                    if (store.batchDelete(type, warnings) == TransactionTypeStore.Change.DONE) {
                         c.deleted++;
                         log.display("RECORD DELETED SUCCESSFULLY");
                     } else {

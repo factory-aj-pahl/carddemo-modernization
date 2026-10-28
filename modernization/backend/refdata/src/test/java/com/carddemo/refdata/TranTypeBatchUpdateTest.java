@@ -2,6 +2,7 @@ package com.carddemo.refdata;
 
 import static com.carddemo.refdata.TranTypeScreens.description;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -239,7 +240,7 @@ class TranTypeBatchUpdateTest {
     @Test
     @Covers({"ERR-COBTUPDT-07", "Q-COBTUPDT-04"})
     void a_deadlock_stops_the_run_instead_of_committing_the_rest() throws IOException {
-        doThrow(new Db2Failure(new Db2Error(-911, "Transaction was deadlocked"), null)).when(store).update(eq("02"), anyString());
+        doThrow(new Db2Failure(new Db2Error(-911, "Transaction was deadlocked"), null)).when(store).batchUpdate(eq("02"), anyString(), any());
         BatchUpdateResult r = run("A08INTEREST", "U02PAYMENTS", "A09LATER");
         assertThat(log.captured()).contains("Error accessing: TRANSACTION_TYPE table. SQLCODE: -911");
         assertThat(description(jdbc, "08")).isNull();
@@ -261,7 +262,7 @@ class TranTypeBatchUpdateTest {
                 otherRow.set(online.submit(() -> updateWithTimeout("01", "PURCHASES")).get(30, TimeUnit.SECONDS));
                 touchedRow.set(online.submit(() -> updateWithTimeout("08", "OTHER USER")).get(30, TimeUnit.SECONDS));
                 return result;
-            }).when(store).update(eq("02"), anyString());
+            }).when(store).batchUpdate(eq("02"), anyString(), any());
             BatchUpdateResult r = run("A08INTEREST", "U02PAYMENTS");
             assertThat(r.returnCode()).isZero();
         } finally {
@@ -272,6 +273,27 @@ class TranTypeBatchUpdateTest {
         assertThat(description(jdbc, "01")).isEqualTo("PURCHASES");
         assertThat(description(jdbc, "02")).isEqualTo("PAYMENTS");
         assertThat(description(jdbc, "08")).isEqualTo("INTEREST");
+    }
+
+    @Test
+    @Covers({"Q-COBTUPDT-07"})
+    void sql_warnings_are_logged_with_the_type_code() throws IOException {
+        // SQL Server reports an informational message (PRINT) to JDBC as a SQLWarning on the statement.
+        jdbc.execute("CREATE TRIGGER tr_cobtupdt_warning_test ON transaction_type AFTER INSERT, UPDATE, DELETE AS "
+            + "BEGIN SET NOCOUNT ON; IF EXISTS (SELECT 1 FROM inserted WHERE type_cd = '97') "
+            + "OR EXISTS (SELECT 1 FROM deleted WHERE type_cd = '97') PRINT 'TYPE 97 IS WATCHED' END");
+        try {
+            BatchUpdateResult r = run("A97WATCHED", "U97WATCHED TYPE", "A08INTEREST", "D97");
+            assertThat(log.captured()).containsSubsequence("ADDING RECORD", "SQL WARNING FOR TYPE 97: TYPE 97 IS WATCHED",
+                "RECORD INSERTED SUCCESSFULLY", "UPDATING RECORD", "SQL WARNING FOR TYPE 97: TYPE 97 IS WATCHED",
+                "RECORD UPDATED SUCCESSFULLY", "ADDING RECORD", "RECORD INSERTED SUCCESSFULLY", "DELETING RECORD",
+                "SQL WARNING FOR TYPE 97: TYPE 97 IS WATCHED", "RECORD DELETED SUCCESSFULLY");
+            assertThat(log.captured().stream().filter(l -> l.startsWith("SQL WARNING"))).hasSize(3);
+            assertThat(r.returnCode()).isZero();
+            assertThat(summary()).isEqualTo(counts(4, 2, 1, 1, 0));
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS tr_cobtupdt_warning_test");
+        }
     }
 
     /** Rows updated, or the SQL Server error number (1222: lock request time out). */
