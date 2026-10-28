@@ -24,9 +24,9 @@ final class AuthFormat {
         return (v.signum() < 0 ? "-" : " ") + " ".repeat(Math.max(0, pad)) + body;
     }
 
-    /** {@code 9(03)} count with all digits kept (Q-COPAUS0C-06). */
+    /** A {@code 9(03)} count: every digit, no leading zeros, zero as {@code 0} (Q-COPAUS0C-06). */
     static String count(int n) {
-        return String.format("%03d", n);
+        return Integer.toString(n);
     }
 
     /** YYMMDD as MM/DD/YY. */

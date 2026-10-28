@@ -37,8 +37,8 @@ test.describe('COPAUS0C pending authorization list', () => {
     expect((await txns(page))[0]).toBe(NEWEST_TXN);
     expect((await txns(page))[1]).toBe(SECOND_TXN);
     await expect(page.getByTestId('name')).toHaveText('Cooper D Mayert');
-    await expect(page.getByTestId('approved-count')).toHaveText('050');
-    await expect(page.getByTestId('declined-count')).toHaveText('000');
+    await expect(page.getByTestId('approved-count')).toHaveText('50');
+    await expect(page.getByTestId('declined-count')).toHaveText('0');
     await expect(page.getByTestId('approved-amount')).toHaveText('74.79');
     await expect(page.getByTestId('page')).toHaveText('Page 1');
     const first = page.getByTestId('auth-row').first();

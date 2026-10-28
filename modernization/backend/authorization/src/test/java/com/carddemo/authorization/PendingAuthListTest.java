@@ -31,7 +31,7 @@ class PendingAuthListTest extends AuthScreenTestSupport {
 
     @Test
     @Covers({"TS-COPAUS0C-01", "BR-COPAUS0C-01", "BR-COPAUS0C-04", "BR-COPAUS0C-05", "BR-COPAUS0C-06", "BR-COPAUS0C-07",
-        "BR-COPAUS0C-08", "BR-COPAUS0C-09", "NAV-COPAUS0C-03", "Q-COPAUS0C-05", "Q-COPAUS0C-10", "Q-COPAUS0C-08"})
+        "BR-COPAUS0C-08", "BR-COPAUS0C-09", "NAV-COPAUS0C-03", "Q-COPAUS0C-05", "Q-COPAUS0C-10", "Q-COPAUS0C-08", "Q-COPAUS0C-06"})
     void account_seven_shows_the_header_summary_and_the_five_newest_authorizations() {
         JsonNode r = list("ENTER", ACCT7);
         JsonNode f = r.at("/fields");
@@ -47,8 +47,9 @@ class PendingAuthListTest extends AuthScreenTestSupport {
             .isEqualTo(jdbc.queryForObject("SELECT active_status FROM account WHERE account_id = 7", String.class)).isNotBlank();
         assertThat(f.at("/creditLimit").asText()).isEqualTo("     2065.00");
         assertThat(f.at("/cashLimit").asText()).isEqualTo("   264.00");
-        assertThat(f.at("/approvedCount").asText()).isEqualTo("050");
-        assertThat(f.at("/declinedCount").asText()).isEqualTo("000");
+        // Q-COPAUS0C-06: counts without leading zeros, also when a summary exists.
+        assertThat(f.at("/approvedCount").asText()).isEqualTo("50");
+        assertThat(f.at("/declinedCount").asText()).isEqualTo("0");
         assertThat(f.at("/creditBalance").asText()).isEqualTo("       74.79");
         assertThat(f.at("/cashBalance").asText()).isEqualTo("     0.00");
         assertThat(f.at("/approvedAmount").asText()).isEqualTo("    74.79");
