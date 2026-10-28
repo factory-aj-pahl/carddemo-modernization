@@ -4,13 +4,16 @@
 PYTHON ?= python3
 MVN ?= mvn -B -q
 
-.PHONY: backend verify-batch verify-ledger
+.PHONY: backend verify-batch verify-cycle verify-ledger
 
 backend:
 	$(MVN) -f backend package -DskipTests
 
 verify-batch: backend
 	$(PYTHON) verification/parity/verify_batch.py $(if $(OUT),--out $(OUT)) $(if $(ONLY),--only $(ONLY))
+
+verify-cycle: backend
+	$(PYTHON) verification/cycle/verify_cycle.py $(if $(OUT),--out $(OUT))
 
 verify-ledger:
 	$(PYTHON) verification/ledger_check.py
