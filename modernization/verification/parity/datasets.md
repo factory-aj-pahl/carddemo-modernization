@@ -29,7 +29,7 @@ The owed set for the batch-parity check. Rows are fixed before a run; a row that
 
 | Program | Dataset | Directory | Rules exercised |
 |:--|:--|:--|:--|
-| CBTRN02C | sample | `app/data/ASCII` | TS-CBTRN02C-01, TS-CBTRN02C-02, BR-CBTRN02C-01..10, Q-CBTRN02C-08, Q-CBTRN02C-12 |
+| CBTRN02C | sample | `app/data/ASCII` | TS-CBTRN02C-01, TS-CBTRN02C-02, BR-CBTRN02C-01..10, Q-CBTRN02C-08, Q-CBTRN02C-09, Q-CBTRN02C-12 |
 | CBTRN02C | cycle-edge | `modernization/verification/parity/generated-cycle/cycle-edge` | TS-CBTRN02C-04, TS-CBTRN02C-05, VR-CBTRN02C-01, VR-CBTRN02C-02, BR-CBTRN02C-03, BR-CBTRN02C-06, BR-CBTRN02C-07, BR-CBTRN02C-09, ERR-CBTRN02C-07 (INVALID KEY branches) |
 | CBTRN02C | empty-input | `modernization/verification/parity/generated-cycle/empty-input` | BR-CBTRN02C-10 (zero counts, RC 0) |
 | CBTRN01C | sample | `app/data/ASCII` | TS-CBTRN01C-01, BR-CBTRN01C-01, BR-CBTRN01C-02, BR-CBTRN01C-04, BR-CBTRN01C-05, Q-CBTRN01C-01, Q-CBTRN01C-05 |
@@ -50,15 +50,17 @@ The owed set for the batch-parity check. Rows are fixed before a run; a row that
 
 These rules are file I/O failures of files the target keeps in the database, or paths that end in an
 abend (CEE3ABD, B-ABEND), where the reference has no Language Environment and the target's exit
-code (99) and partial-output rules (B-UOW) differ by design. Each is covered by a spec-derived Java
-test in `modernization/backend/batch/src/test/java/com/carddemo/batch/`.
+code (99) and partial-output rules (B-UOW) differ by design. Each is covered by a spec-derived test
+(failures are injected by renaming a table or refusing its writes in `CycleFailuresTest`) or, where the
+target has no counterpart (no open or close of a table, no DD names), resolved in
+`modernization/verification/trace-exclusions.md`.
 
 | Rule | Why no dataset | Covering test |
 |:--|:--|:--|
-| ERR-CBTRN01C-01, ERR-CBTRN01C-02, ERR-CBTRN01C-03, ERR-CBTRN01C-05, TS-CBTRN01C-05, Q-CBTRN01C-02, Q-CBTRN01C-03 | Open, read, close failures and non-23 lookup failures of tables; abend | `TranverifyJobTest` |
-| ERR-CBTRN02C-01..09 except ERR-CBTRN02C-07, TS-CBTRN02C-09, TS-CBTRN02C-10 | File failures and the duplicate TRAN-ID abend | `PosttranJobTest`, `PostingServiceTest` |
-| ERR-CBACT04C-01..09, TS-CBACT04C-07, TS-CBACT04C-08, Q-CBACT04C-08 | Missing account or card, missing DEFAULT rate, write and file failures: abend; month refusal and restart are target behaviour | `IntcalcJobTest` |
-| ERR-CBTRN03C-01..07, TS-CBTRN03C-06, TS-CBTRN03C-07, Q-CBTRN03C-07, Q-CBTRN03C-10 | Lookup failures and file failures abend; a missing date range is refused before the job (exit 12) | `TranreptJobTest` |
-| ERR-CBSTM03A-01..09, TS-CBSTM03A-07, TS-CBSTM03A-08, TS-CBSTM03A-09, Q-CBSTM03A-09, Q-CBSTM03A-10 | Missing customer or account, file failures, picture overflow abend; HTML escaping is a FIX with no reference patch | `StatementJobTest` |
-| BR-CBSTM03A-01, TS-CBSTM03A-12 | z/OS control-block walk, removed by RP-CBSTM03A-1 (Q-CBSTM03A-01: run location goes to the job log) | `StatementJobTest` |
-| BR-CBSTM03B-01, ERR-CBSTM03B-01, TS-CBSTM03B-04, TS-CBSTM03B-05, TS-CBSTM03B-06 | DD-name dispatch and unsupported operations do not exist in the target (Q-CBSTM03B-01..04, PLATFORM) | `StatementJobTest` |
+| ERR-CBTRN01C-01, ERR-CBTRN01C-02, ERR-CBTRN01C-03, ERR-CBTRN01C-05, TS-CBTRN01C-05, Q-CBTRN01C-02, Q-CBTRN01C-03 | Open, read, close failures and non-23 lookup failures of tables; abend | `TranverifyJobTest`, `CycleFailuresTest`, `TransactionVerifierCloseTest`; TS-CBTRN01C-05 in trace-exclusions.md |
+| ERR-CBTRN02C-01..09 except ERR-CBTRN02C-07, TS-CBTRN02C-09, TS-CBTRN02C-10 | File failures and the duplicate TRAN-ID abend | `PosttranJobTest`, `PostingServiceTest`, `CycleFailuresTest`, `RejectsFileTest`; TS-CBTRN02C-10 in trace-exclusions.md |
+| ERR-CBACT04C-01..09, TS-CBACT04C-07, TS-CBACT04C-08, Q-CBACT04C-08 | Missing account or card, missing DEFAULT rate, write and file failures: abend; month refusal and restart are target behaviour | `IntcalcJobTest`, `CycleFailuresTest`; ERR-CBACT04C-01 and -08 in trace-exclusions.md |
+| ERR-CBTRN03C-01..07, TS-CBTRN03C-06, TS-CBTRN03C-07, Q-CBTRN03C-07, Q-CBTRN03C-10 | Lookup failures and file failures abend; a missing date range is refused before the job (exit 12) | `TranreptJobTest`, `CycleFailuresTest` |
+| ERR-CBSTM03A-01..09, TS-CBSTM03A-07, TS-CBSTM03A-08, TS-CBSTM03A-09, Q-CBSTM03A-09, Q-CBSTM03A-10 | Missing customer or account, file failures, picture overflow abend; HTML escaping is a FIX with no reference patch | `StatementJobTest`, `CycleFailuresTest`; ERR-CBSTM03A-01, -07 and TS-CBSTM03A-09 in trace-exclusions.md |
+| BR-CBSTM03A-01, TS-CBSTM03A-12 | z/OS control-block walk, removed by RP-CBSTM03A-1 (Q-CBSTM03A-01: run location goes to the job log) | `CycleFailuresTest`; trace-exclusions.md |
+| BR-CBSTM03B-01, ERR-CBSTM03B-01, TS-CBSTM03B-04, TS-CBSTM03B-05, TS-CBSTM03B-06 | DD-name dispatch and unsupported operations do not exist in the target (Q-CBSTM03B-01..04, PLATFORM) | `CycleFailuresTest` (ERR-CBSTM03B-01); trace-exclusions.md |

@@ -4,7 +4,9 @@
 PYTHON ?= python3
 MVN ?= mvn -B -q
 
-.PHONY: backend verify-batch verify-cycle verify-ledger
+AIRFLOW_PYTHON ?= $(HOME)/.carddemo/airflow-venv/bin/python
+
+.PHONY: backend verify-batch verify-cycle verify-ledger test-airflow
 
 backend:
 	$(MVN) -f backend package -DskipTests
@@ -17,3 +19,7 @@ verify-cycle: backend
 
 verify-ledger:
 	$(PYTHON) verification/ledger_check.py
+
+# DAG and helper unit tests; JUnit XML (rule IDs in the names) in airflow/tests/junit.xml for trace.py --junit.
+test-airflow:
+	$(AIRFLOW_PYTHON) airflow/tests/run_tests.py

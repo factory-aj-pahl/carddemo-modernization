@@ -211,7 +211,19 @@ class PostingServiceTest {
     }
 
     @Test
-    @Covers({"Q-CBTRN02C-04"})
+    @Covers({"VR-CBTRN02C-05"})
+    void type_category_amount_and_card_or_account_status_are_not_validated() {
+        jdbc.update("UPDATE account SET active_status = 'N' WHERE account_id = 7");
+        jdbc.update("UPDATE card SET active_status = 'N', expiration_date = '2000-01-01' WHERE account_id = 7");
+        String rec = withType(withAmount(DailyRecords.sample("0000000000683580"), "0.00"), "99", 9999);
+        assertThat(post(rec).posted()).isTrue();
+        assertThat(categoryBalance(7, "99", 9999)).isEqualByComparingTo("0.00");
+        assertThat(jdbc.queryForObject("SELECT type_cd FROM card_transaction WHERE tran_id = '0000000000683580'", String.class))
+            .isEqualTo("99");
+    }
+
+    @Test
+    @Covers({"Q-CBTRN02C-04", "ERR-CBTRN02C-05"})
     void failed_account_update_rolls_back_the_record_and_rejects_it_with_109() {
         Fixtures.failAccountUpdate = true;
         String rec = withType(DailyRecords.sample("0000000000683580"), "03", 1);
@@ -223,7 +235,7 @@ class PostingServiceTest {
     }
 
     @Test
-    @Covers({"ERR-CBTRN02C-06", "Q-ENT-07"})
+    @Covers({"ERR-CBTRN02C-06", "ERR-CBTRN02C-09", "Q-ENT-07"})
     void duplicate_transaction_id_abends_with_status_22() {
         String rec = DailyRecords.sample("0000000000683580");
         post(rec);

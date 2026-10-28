@@ -63,7 +63,8 @@ class PosttranJobTest {
     }
 
     @Test
-    @Covers({"TS-CBTRN02C-01", "TS-CBTRN02C-02", "BR-CBTRN02C-01", "BR-CBTRN02C-10", "Q-CBTRN02C-08", "Q-CBTRN02C-10", "Q-CBTRN02C-01"})
+    @Covers({"TS-CBTRN02C-01", "TS-CBTRN02C-02", "BR-CBTRN02C-01", "BR-CBTRN02C-10", "Q-CBTRN02C-08", "Q-CBTRN02C-10", "Q-CBTRN02C-01",
+        "TS-POSTTRAN-01"})
     void sample_file_posts_262_and_rejects_38_with_return_code_4() throws IOException {
         int rc = posttran(daily(DailyRecords.sample()), "2022-06-10");
         assertThat(rc).isEqualTo(4);
@@ -89,6 +90,18 @@ class PosttranJobTest {
         assertThat(jdbc.queryForObject("SELECT balance FROM tran_cat_balance WHERE account_id = 7 AND type_cd = '03' AND cat_cd = 1",
             BigDecimal.class)).isEqualByComparingTo("-579.88");
         assertThat(out).contains("TCATBAL record not found for key : 00000000007030001.. Creating.");
+    }
+
+    @Test
+    @Covers({"TS-POSTTRAN-02", "Q-CBTRN02C-01"})
+    void posting_into_a_non_empty_transaction_table_appends_and_keeps_the_earlier_rows() throws IOException {
+        assertThat(posttran(daily(DailyRecords.sample()), "2022-06-10")).isEqualTo(4);
+        String next = DailyRecords.withAmount(DailyRecords.withTranId(DailyRecords.sample("0000000000683580"), "9000000000000001"),
+            "1.00");
+        assertThat(posttran(daily(List.of(next)), "2022-06-11")).isZero();
+        assertThat(count("card_transaction")).isEqualTo(263);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM card_transaction WHERE tran_id IN ('0000000000683580', '9000000000000001')",
+            Integer.class)).isEqualTo(2);
     }
 
     @Test

@@ -77,4 +77,4 @@ def carddemo_daily_cycle():
     i >> s
 
 
-carddemo_daily_cycle()
+daily_cycle = carddemo_daily_cycle()

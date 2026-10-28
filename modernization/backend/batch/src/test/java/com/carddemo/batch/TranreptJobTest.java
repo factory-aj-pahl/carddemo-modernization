@@ -95,7 +95,7 @@ class TranreptJobTest extends CycleJobTestSupport {
     }
 
     @Test
-    @Covers({"Q-CBTRN03C-07", "Q-CBTRN03C-06", "Q-TRANREPT-03"})
+    @Covers({"Q-CBTRN03C-07", "Q-CBTRN03C-06", "Q-TRANREPT-03", "TS-CBTRN03C-06", "ERR-CBTRN03C-02"})
     void a_missing_invalid_or_reversed_range_fails_with_exit_12() {
         assertThat(tranrept("startDate=2022-01-01")).isEqualTo(12);
         assertThat(tranrept("startDate=2022-01-01", "endDate=2022-02-30")).isEqualTo(12);
@@ -136,7 +136,7 @@ class TranreptJobTest extends CycleJobTestSupport {
     }
 
     @Test
-    @Covers({"TS-CBTRN03C-07", "ERR-CBTRN03C-04", "VR-CBTRN03C-01", "B-ABEND"})
+    @Covers({"TS-CBTRN03C-07", "ERR-CBTRN03C-04", "ERR-CBTRN03C-07", "VR-CBTRN03C-01", "B-ABEND"})
     void an_unknown_transaction_type_abends_and_leaves_no_report() throws IOException {
         String card = jdbc.queryForObject("SELECT MIN(card_num) FROM card_xref", String.class);
         addTransaction("8000000000000001", card, "99", 1, "1.00");

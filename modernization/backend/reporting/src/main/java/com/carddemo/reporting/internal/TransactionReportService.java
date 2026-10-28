@@ -52,10 +52,17 @@ class TransactionReportService implements TransactionReport {
     @Override
     public ReportSummary write(LocalDate startDate, LocalDate endDate, Optional<Set<Long>> accounts, Path reportFile) {
         log.display("START OF EXECUTION OF PROGRAM CBTRN03C");
-        log.display("Reporting from " + startDate + " to " + endDate);
         Path temp = reportFile.resolveSibling(reportFile.getFileName() + ".part");
+        // 0100-REPTFILE-OPEN comes before the DATEPARM read and its "Reporting from" line.
+        BufferedWriter out;
+        try {
+            out = Files.newBufferedWriter(temp, StandardCharsets.ISO_8859_1);
+        } catch (IOException e) {
+            throw new BatchAbend("ERROR OPENING REPTFILE", null, e);
+        }
+        log.display("Reporting from " + startDate + " to " + endDate);
         Run run;
-        try (BufferedWriter w = Files.newBufferedWriter(temp, StandardCharsets.ISO_8859_1)) {
+        try (BufferedWriter w = out) {
             run = new Run(w, startDate, endDate);
             for (TransactionRecord t : selected(startDate, endDate)) {
                 Optional<CardXref> xref = run.xrefFor(t.cardNum());
@@ -65,6 +72,7 @@ class TransactionReportService implements TransactionReport {
                 run.detail(t, xref);
             }
             run.finish();
+            w.flush();
         } catch (IOException e) {
             deleteQuietly(temp);
             throw new BatchAbend("ERROR WRITING REPTFILE", null, e);

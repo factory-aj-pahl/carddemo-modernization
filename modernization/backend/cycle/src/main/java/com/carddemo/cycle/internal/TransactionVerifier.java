@@ -39,8 +39,13 @@ class TransactionVerifier implements TransactionVerification {
     @Override
     public long verify(Path dailyFile) {
         log.display("START OF EXECUTION OF PROGRAM CBTRN01C");
+        return verify(open(dailyFile));
+    }
+
+    /** The main loop over the opened DALYTRAN, then 9000-DALYTRAN-CLOSE. */
+    long verify(BufferedReader daily) {
         long records = 0;
-        try (BufferedReader reader = open(dailyFile)) {
+        try (BufferedReader reader = daily) {
             String line;
             while ((line = read(reader)) != null) {
                 if (line.isEmpty() || line.equals("\r")) {
@@ -50,6 +55,7 @@ class TransactionVerifier implements TransactionVerification {
                 check(FixedWidth.normalize(line, 350));
             }
         } catch (IOException e) {
+            // Q-CBTRN01C-02: the COBOL text stays, but no other file's status is shown with it.
             throw new BatchAbend("ERROR CLOSING CUSTOMER FILE", null, e);
         }
         log.display("END OF EXECUTION OF PROGRAM CBTRN01C");

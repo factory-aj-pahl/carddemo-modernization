@@ -27,7 +27,7 @@ class IntcalcJobTest extends CycleJobTestSupport {
 
     @Test
     @Covers({"TS-CBACT04C-02", "TS-CBACT04C-03", "Q-CBACT04C-01", "Q-CBACT04C-05", "Q-INTCALC-01", "B-DATE", "BR-CBACT04C-01",
-        "BR-CBACT04C-06", "BR-CBACT04C-07", "Q-CBACT04C-06"})
+        "BR-CBACT04C-06", "BR-CBACT04C-07", "Q-CBACT04C-06", "Q-COMBTRAN-01"})
     void posted_sample_charges_every_account_including_the_last() throws IOException {
         postSample("2022-07-18");
         assertThat(intcalc("2022-07-18")).isZero();
@@ -69,7 +69,7 @@ class IntcalcJobTest extends CycleJobTestSupport {
     }
 
     @Test
-    @Covers({"Q-CBACT04C-08", "B-UOW", "B-ABEND", "ERR-CBACT04C-03", "TS-CBACT04C-07"})
+    @Covers({"Q-CBACT04C-08", "B-UOW", "B-ABEND", "ERR-CBACT04C-03", "ERR-CBACT04C-09", "TS-CBACT04C-07"})
     void a_rerun_after_an_abend_charges_only_the_accounts_not_yet_charged() throws IOException {
         postSample("2022-07-18");
         Map<String, Object> saved = jdbc.queryForMap("SELECT * FROM account WHERE account_id = 10");
@@ -130,6 +130,13 @@ class IntcalcJobTest extends CycleJobTestSupport {
         List<String> out = log.captured();
         assertThat(out.get(1)).startsWith("00000000001");
         assertThat(out.subList(2, 4)).containsExactly("DISCLOSURE GROUP RECORD MISSING", "TRY WITH DEFAULT GROUP CODE");
+    }
+
+    @Test
+    @Covers({"Q-COMBTRAN-02"})
+    void there_is_no_combtran_job_because_interest_is_already_in_the_transactions() {
+        assertThat(cli.execute("COMBTRAN")).isEqualTo(ExitCodes.USAGE);
+        assertThat(log.captured()).isEmpty();
     }
 
     @Test
