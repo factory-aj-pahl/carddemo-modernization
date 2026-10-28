@@ -56,6 +56,8 @@ test.describe('COACTVWC account view', () => {
     await page.keyboard.press('F7');
     await expect(page.getByTestId('info')).toHaveText('Displaying details of given Account');
     await page.keyboard.press('Enter');
+    // F7 already showed the account, so wait for the ENTER turn to finish before pressing F3.
+    await expect(page.locator('main[data-ready]')).toBeVisible();
     await expect(page.getByTestId('ssn')).toHaveText(/^\*\*\*-\*\*-\d{4}$/);
     await page.keyboard.press('F3');
     await expectProgram(page, 'CM00 · COMEN01C');
