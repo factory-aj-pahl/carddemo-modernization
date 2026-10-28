@@ -1,7 +1,7 @@
 # Traceability exclusions
 
 Owed IDs that `trace.py` resolves through a ledger row instead of a test of their own. Each row names a
-PLATFORM row (whose modern equivalent is itself covered by a passing test), a NOT-PORTED row, or a
+PLATFORM row (whose modern equivalent is itself covered by a passing test, or which has no modern counterpart), a NOT-PORTED row, or a
 C-/B- convention (covered by passing tests). Columns: owed ID, resolving ledger row, reason.
 
 | Owed ID | Resolved by | Reason |
@@ -19,3 +19,18 @@ C-/B- convention (covered by passing tests). Columns: owed ID, resolving ledger 
 | TS-CBSTM03B-04 | Q-CBSTM03B-04 | PLATFORM (Q-CBSTM03B-02): an unknown DD name cannot be expressed. |
 | TS-CBSTM03B-05 | Q-CBSTM03B-04 | PLATFORM (Q-CBSTM03B-01): the lookups are read-only; a write operation does not exist. |
 | TS-CBSTM03B-06 | Q-CBSTM03B-04 | PLATFORM: a lookup failure is reported by the statement job, not by the lookup (`CycleFailuresTest.a_customer_lookup_failure_is_reported_by_the_statement_job_not_by_the_lookup`). |
+| BR-COACCT01-12 | Q-COACCT01-12 | NOT-PORTED: the unused message counter has no counterpart. |
+| ERR-COACCT01-02 | Q-COACCT01-10 | PLATFORM: the listener is not started by a trigger message, so there is no RETRIEVE and no RETRIEVE error. |
+| TS-COACCT01-10 | Q-COACCT01-10 | PLATFORM: as ERR-COACCT01-02; the inquiry cannot be started from a terminal. |
+| ERR-COACCT01-03 | Q-COACCT01-17 | PLATFORM: no per-task queue open. The application declares the queues (`InquiryMessagingConfig`) and the long-lived listener container consumes them; a broker or queue failure is retried by the container, not reported per request. |
+| ERR-COACCT01-05 | Q-COACCT01-17 | PLATFORM: no polling GET; the broker pushes deliveries to the long-lived consumer. The only request-level GET failure with a counterpart, the oversized request, is Q-COACCT01-08 (invalid-request reply, `mq-roundtrip`). |
+| ERR-COACCT01-09 | Q-COACCT01-09 | PLATFORM: queues are not opened or closed per task; channel close errors are handled by the AMQP client, which reconnects instead of re-entering a close (`AccountInquiryMessagingTest.a_closed_broker_connection_is_recovered_and_the_next_request_is_answered`). |
+| ERR-COACCT01-11 | Q-COACCT01-17 | PLATFORM: AMQP operations have no warning completion code; a publish or consume either succeeds or raises an error handled under Q-COACCT01-07. |
+| BR-CODATE01-10 | Q-CODATE01-10 | NOT-PORTED: the unused message counter has no counterpart. |
+| BR-CODATE01-12 | Q-CODATE01-16 | PLATFORM: no syncpoint-scoped MQPUT with an inherited MQMD; the error record is published to `CARD.DEMO.ERROR` by the long-lived consumer with its own message properties (error record content is covered under Q-CODATE01-06 and Q-CODATE01-12). |
+| ERR-CODATE01-02 | Q-CODATE01-09 | PLATFORM: as ERR-COACCT01-02. |
+| TS-CODATE01-10 | Q-CODATE01-09 | PLATFORM: as TS-COACCT01-10. |
+| ERR-CODATE01-03 | Q-CODATE01-16 | PLATFORM: as ERR-COACCT01-03. |
+| ERR-CODATE01-05 | Q-CODATE01-16 | PLATFORM: as ERR-COACCT01-05, except that an oversized date request gets a normal date reply (Q-CODATE01-07, `mq-roundtrip`). |
+| ERR-CODATE01-08 | Q-CODATE01-08 | PLATFORM: as ERR-COACCT01-09 (`DateInquiryMessagingTest.a_closed_broker_connection_is_recovered_and_the_next_request_is_answered`). |
+| ERR-CODATE01-11 | Q-CODATE01-16 | PLATFORM: as ERR-COACCT01-11. |

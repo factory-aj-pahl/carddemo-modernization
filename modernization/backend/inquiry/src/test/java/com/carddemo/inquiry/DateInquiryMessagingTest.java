@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -107,6 +108,9 @@ class DateInquiryMessagingTest {
 
     @Autowired
     RabbitTemplate rabbit;
+    /** Closing it drops the listener's channels, as a broker restart or network failure would. */
+    @Autowired
+    CachingConnectionFactory connections;
     @Autowired
     RabbitAdmin admin;
     @Autowired
@@ -369,7 +373,20 @@ class DateInquiryMessagingTest {
     }
 
     @Test
-    @Covers({"BR-CODATE01-01", "BR-CODATE01-03", "Q-CODATE01-16"})
+    @Covers({"Q-CODATE01-08"})
+    void a_closed_broker_connection_is_recovered_and_the_next_request_is_answered() {
+        connections.resetConnection();
+        String replyTo = tempQueue();
+        String id = request(replyTo);
+        Message m = rabbit.receive(replyTo, 30_000);
+        assertThat(m).as("reply after the connection was closed").isNotNull();
+        assertThat(m.getMessageProperties().getCorrelationId()).isEqualTo(id);
+        assertDateReply(m);
+        assertThat(admin.getQueueInfo(queues.dateRequest()).getConsumerCount()).as("consumer back").isPositive();
+    }
+
+    @Test
+    @Covers({"BR-CODATE01-01", "BR-CODATE01-03", "Q-CODATE01-16", "Q-CODATE01-09"})
     void date_queues_are_declared_at_startup_with_a_long_lived_consumer() {
         for (String q : List.of(queues.dateRequest(), queues.dateReply(), queues.error(), queues.deadLetter())) {
             assertThat(admin.getQueueInfo(q)).as(q).isNotNull();
