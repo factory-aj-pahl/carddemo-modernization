@@ -18,12 +18,14 @@ DB2_TS = re.compile(r"\d{4}-\d\d-\d\d-\d\d\.\d\d\.\d\d\.\d\d0000")
 # file name -> list of (start, end, pattern): zero-based byte ranges holding run-time timestamps.
 NORMALIZE = {
     "transact.txt": [(304, 330, DB2_TS)],  # TRAN-PROC-TS, BR-CBTRN02C-05
+    "systran.txt": [(278, 304, DB2_TS), (304, 330, DB2_TS)],  # interest TRAN-ORIG-TS, TRAN-PROC-TS, BR-CBACT04C-06
 }
 
 
 # Card-number fields, masked in printed findings (B-MASK applies to evidence output too).
 CARD_FIELDS = {
     "transact.txt": [(262, 278)],
+    "systran.txt": [(262, 278)],
     "dalyrejs.txt": [(262, 278)],
     "dailytran.txt": [(262, 278)],
     "cardxref.txt": [(0, 16)],

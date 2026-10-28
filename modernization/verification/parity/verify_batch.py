@@ -2,12 +2,16 @@
 
 For each pair: run the patched GnuCOBOL reference (refrun.py), run the Java job on a fresh
 database (javarun.py), and compare the output directories (compare.py). The owed set is the
-table in datasets.md, read before anything runs; a pair that cannot run counts as failed.
+table in datasets.md, read before anything runs; a pair that cannot run counts as failed. The
+generated cycle datasets (make_cycle_datasets.py) are rebuilt first. Results are written to
+<out>/results.json as {"PROGRAM/dataset": [findings]} (an empty list is a MATCH), the format
+trace.py --batch-results reads.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import tempfile
@@ -19,6 +23,7 @@ sys.path.insert(0, str(HERE))
 
 import compare  # noqa: E402
 import javarun  # noqa: E402
+import make_cycle_datasets  # noqa: E402
 import refrun  # noqa: E402
 
 REPO = HERE.parents[2]
@@ -45,6 +50,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--only", help="run only this program")
     a = ap.parse_args(argv)
     root = (a.out or Path(tempfile.mkdtemp(prefix="verify-batch-"))).resolve()
+    make_cycle_datasets.build(make_cycle_datasets.OUT)
     pairs = owed_pairs()
     if a.only:
         pairs = [p for p in pairs if p[0] == a.only]
@@ -69,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
         for f in findings:
             print(f"    {f}")
     matched = sum(1 for f in results.values() if not f)
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "results.json").write_text(json.dumps(results, indent=2) + "\n")
     print(f"batch parity: {matched}/{len(pairs)} owed pairs matched; outputs in {root}")
     return 0 if matched == len(pairs) else 1
 

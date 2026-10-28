@@ -102,7 +102,7 @@ PROGRAMS = {
             "CBACT04C",
             inputs=(TCAT, File("XREFFILE", "cardxref.txt", 50, 16, (25, 11, True)), ACCT,
                     File("DISCGRP", "discgrp.txt", 50, 16)),
-            outputs=(File("TRANSACT", "transact.txt", 350),),
+            outputs=(File("TRANSACT", "systran.txt", 350),),  # the SYSTRAN generation
             unload=("TRANSACT", "ACCTFILE"),
             patches=("RP-CBACT04C-1", "RP-CBACT04C-2"),
             data_patches=("RP-DATA-1",),
