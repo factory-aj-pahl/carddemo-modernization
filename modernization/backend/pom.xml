@@ -68,6 +68,15 @@
                         <redirectTestOutputToFile>true</redirectTestOutputToFile>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <!-- Without this an unchanged module jar is not rebuilt, and Spring Boot then keeps
+                         stale dependency jars inside the executable jar. -->
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-jar-plugin</artifactId>
+                    <configuration>
+                        <forceCreation>true</forceCreation>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>

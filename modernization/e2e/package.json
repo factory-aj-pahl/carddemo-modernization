@@ -1,0 +1,17 @@
+{
+  "name": "carddemo-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "pretest": "node scripts/seed.mjs",
+    "test": "playwright test",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  }
+}
