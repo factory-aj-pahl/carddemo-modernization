@@ -222,10 +222,15 @@ bright), and the key legend `ENTER=Continue  F3=Back  F7=Backward  F8=Forward` a
   Source: `app/cbl/COUSR00C.cbl:125-127 (MAIN-PARA)`, `app/cbl/COUSR00C.cbl:506-517`.
 - **NAV-COUSR00C-03**: PF7 -> previous page; on page 1 (or less), message
   "You are already at the top of the page..." and the current rows stay on the screen (sent without ERASE).
-  Source: `app/cbl/COUSR00C.cbl:128-129`, `app/cbl/COUSR00C.cbl:237-255 (PROCESS-PF7-KEY)`.
+  In both cases the next-page flag is set to `Y` first (line 245), so after PF7 on page 1 a following PF8
+  pages forward from CDEMO-CU00-USRID-LAST even when no next page exists; with no further users this clears
+  all rows and shows "You have reached the bottom of the page..." with the page number unchanged
+  (Q-COUSR00C-15).
+  Source: `app/cbl/COUSR00C.cbl:128-129`, `app/cbl/COUSR00C.cbl:237-255 (PROCESS-PF7-KEY)`, `app/cbl/COUSR00C.cbl:245`.
 - **NAV-COUSR00C-04**: PF8 -> next page; when the next-page flag is not `Y`, message
   "You are already at the bottom of the page..." and the current rows stay (sent without ERASE).
-  Source: `app/cbl/COUSR00C.cbl:130-131`, `app/cbl/COUSR00C.cbl:260-277 (PROCESS-PF8-KEY)`.
+  The flag can be `Y` without a next page after PF7 on page 1 (NAV-COUSR00C-03).
+  Source: `app/cbl/COUSR00C.cbl:130-131`, `app/cbl/COUSR00C.cbl:260-277 (PROCESS-PF8-KEY)`, `app/cbl/COUSR00C.cbl:245`.
 - **NAV-COUSR00C-05**: Any other AID -> message "Invalid key pressed. Please see below...         ", cursor on
   the search field, screen re-sent with ERASE (the received rows and page number are sent back, so the
   list stays visible). Source: `app/cbl/COUSR00C.cbl:132-136 (MAIN-PARA)`.
@@ -320,6 +325,12 @@ in the COMMAREA extension (first/last key, page number, next-page flag, selectio
   fields), not from server-side state, so the selected ID is whatever the terminal returns for that row.
   Recommendation: fix (the target selects by row key held on the server or by an ID validated against the
   current page). Source: `app/cbl/COUSR00C.cbl:152-181`, `app/bms/COUSR00.bms:162-166`.
+- **Q-COUSR00C-15**: PF7 sets the next-page flag to `Y` before testing the page number, so PF7 on page 1
+  marks a next page that may not exist. With the 10 sample users, PF7 then PF8 starts at `USER0005`, skips
+  it, clears all ten rows, hits end of file, and shows an empty list with "You have reached the bottom of the
+  page..." and page `00000001`, instead of "You are already at the bottom of the page..." with the rows kept.
+  Recommendation: fix. Source: `app/cbl/COUSR00C.cbl:245-255 (PROCESS-PF7-KEY)`,
+  `app/cbl/COUSR00C.cbl:270-271 (PROCESS-PF8-KEY)`, `app/cbl/COUSR00C.cbl:282-323 (PROCESS-PAGE-FORWARD)`.
 
 ## Test scenarios
 Sample data: the ten users of `app/jcl/DUSRSECJ.jcl:35-44` sort as `ADMIN001`-`ADMIN005`, then
@@ -371,6 +382,9 @@ Sample data: the ten users of `app/jcl/DUSRSECJ.jcl:35-44` sort as `ADMIN001`-`A
 - **TS-COUSR00C-16** (covers BR-COUSR00C-02, Q-COUSR00C-07): Given COUSR02C was opened from this list, when PF3 is pressed in
   COUSR02C, then this program is re-entered with context 0 and EIBAID PF3, and the list starts again at the
   first user, page 1 (the first user is not skipped).
+- **TS-COUSR00C-17** (covers NAV-COUSR00C-03, NAV-COUSR00C-04, Q-COUSR00C-15): Given TS-COUSR00C-03, when PF8 is
+  pressed, then (as coded) all ten rows are blank, Page shows `00000001`, and the message is
+  "You have reached the bottom of the page...".
 
 ## Open questions
 - What abend code does the ENDBR-without-browse path (Q-COUSR00C-03) produce on the production CICS
