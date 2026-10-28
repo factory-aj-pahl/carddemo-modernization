@@ -279,17 +279,56 @@ test.describe('COTRN02C add transaction', () => {
     await expect(page.getByTestId('message')).toHaveClass(/success/);
     await expect(page.getByLabel('Enter Acct #')).toHaveValue('');
     await expect(page.getByLabel('Description')).toHaveValue('');
+
+    // The stored record carries the entered fields (seen through the view screen).
+    const tranId = /(\d{16})/.exec((await page.getByTestId('message').locator('.msg-text').textContent()) ?? '')![1];
+    await open(page, '/screens/COTRN01C', 'CT01 · COTRN01C');
+    await page.getByLabel('Enter Tran ID').fill(tranId);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('tranId')).toHaveText(tranId);
+    await expect(page.getByTestId('cardNum')).toHaveText(/^\*{12}\d{4}$/);
+    await expect(page.getByTestId('description')).toHaveText('Playwright purchase');
+    await expect(page.getByTestId('amount')).toContainText('12.34');
+    const details = page.getByTestId('details');
+    for (const v of ['POS TERM', '2024-01-15', '2024-01-16', '000000001', 'Playwright Store', 'Seattle', '98101']) {
+      await expect(details).toContainText(v);
+    }
   });
 
-  test('TS-COTRN02C-12 NAV-COTRN02C-06 F5 copies the last transaction into the form and asks to confirm', async ({ page }) => {
+  test('TS-COTRN02C-13 Q-COTRN02C-04 NAV-COTRN02C-06 F5 copies the latest transaction of the user into the form for review and writes nothing', async ({ page }) => {
+    // Own source transaction: the highest in-scope ID, whatever ran before.
     await open(page, '/screens/COTRN02C', 'CT02 · COTRN02C');
     await page.getByLabel('Enter Acct #').fill(fixtures.linkedAccount);
+    await fillSample(page);
+    await page.getByLabel('Description', { exact: true }).fill('Playwright F5 source');
+    await page.getByLabel('Amount', { exact: true }).fill('+00000043.21');
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Confirm to add this transaction...');
+    await page.getByLabel(/Please confirm/).fill('Y');
+    await page.keyboard.press('Enter');
+    const added = page.getByTestId('message').locator('.msg-text');
+    await expect(added).toHaveText(/^Transaction added successfully\. {2}Your Tran ID is \d{16}\.$/);
+    const sourceId = /(\d{16})/.exec((await added.textContent()) ?? '')![1];
+
+    await page.getByLabel('Enter Acct #').fill(fixtures.linkedAccount);
+    await page.getByLabel(/Please confirm/).fill('Y');
     await page.keyboard.press('F5');
     await expectMessage(page, 'Confirm to add this transaction...');
-    await expect(page.getByLabel('Type CD')).toHaveValue(/^\d\d$/);
-    await expect(page.getByLabel('Amount')).toHaveValue(/^[+-]\d{8}\.\d\d$/);
-    await expect(page.getByLabel('Orig Date')).toHaveValue(/^\d{4}-\d\d-\d\d$/);
+    await expect(page.getByLabel('Description', { exact: true })).toHaveValue('Playwright F5 source');
+    await expect(page.getByLabel('Amount', { exact: true })).toHaveValue('+00000043.21');
+    await expect(page.getByLabel('Type CD', { exact: true })).toHaveValue('01');
+    await expect(page.getByLabel('Orig Date', { exact: true })).toHaveValue('2024-01-15');
+    await expect(page.getByLabel('Proc Date', { exact: true })).toHaveValue('2024-01-16');
+    await expect(page.getByLabel('Merchant Name', { exact: true })).toHaveValue('Playwright Store');
+    await expect(page.getByLabel(/Please confirm/)).toHaveValue('');
     await expect(page.getByLabel(/Please confirm/)).toBeFocused();
+
+    // Nothing was written on the F5 keystroke, even with Y typed: the next ID does not exist.
+    const nextId = String(BigInt(sourceId) + 1n).padStart(16, '0');
+    await open(page, '/screens/COTRN01C', 'CT01 · COTRN01C');
+    await page.getByLabel('Enter Tran ID').fill(nextId);
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Transaction ID NOT found...');
   });
 
   test('TS-COTRN02C-14 NAV-COTRN02C-04 NAV-COTRN02C-05 NAV-COTRN02C-07 keyboard only: F4 clears, other keys are invalid, F3 returns to the menu', async ({ page }) => {

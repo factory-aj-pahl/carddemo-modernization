@@ -49,6 +49,10 @@ const unlinked = sql(
 );
 if (![linked, spare, unlinked].every((v) => /^\d{11}$/.test(v ?? ''))) throw new Error('fixture query found too few accounts');
 const userCards = `SELECT x.card_num FROM card_xref x JOIN user_account ua ON ua.account_id = x.account_id WHERE ua.user_id = 'USER0001'`;
+const userAccounts = sql(
+  `SELECT DISTINCT ${id11} FROM account a JOIN user_account ua ON ua.account_id = a.account_id WHERE ua.user_id = 'USER0001'`,
+).split(/\s+/);
+const userCardCount = Number(sql(`SELECT COUNT(*) FROM card c WHERE c.account_id IN (SELECT account_id FROM user_account WHERE user_id = 'USER0001')`));
 const firstTranId = sql('SELECT MIN(tran_id) FROM card_transaction');
 const userTranId = sql(`SELECT MIN(tran_id) FROM card_transaction WHERE card_num IN (${userCards})`);
 const otherTranId = sql(`SELECT MIN(tran_id) FROM card_transaction WHERE card_num NOT IN (${userCards})`);
@@ -57,7 +61,17 @@ if (![firstTranId, userTranId, otherTranId].every((v) => /^\d{16}$/.test(v ?? ''
 writeFileSync(
   resolve(here, '../.fixtures.json'),
   JSON.stringify(
-    { database: db, linkedAccount: linked, spareLinkedAccount: spare, unlinkedAccount: unlinked, firstTranId, userTranId, otherTranId },
+    {
+      database: db,
+      linkedAccount: linked,
+      spareLinkedAccount: spare,
+      unlinkedAccount: unlinked,
+      userAccounts,
+      userCardCount,
+      firstTranId,
+      userTranId,
+      otherTranId,
+    },
     null,
     2,
   ),

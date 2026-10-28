@@ -20,6 +20,10 @@ async function openOption(page: Page, name: RegExp, tranAndProgram: string) {
   await expectProgram(page, tranAndProgram);
 }
 
+function accountNumbers(page: Page) {
+  return page.getByTestId('card-row').locator('td:nth-child(2)').allTextContents();
+}
+
 function cardNumbers(page: Page) {
   return page.getByTestId('card-row').locator('td:nth-child(3)').allTextContents();
 }
@@ -31,7 +35,7 @@ async function expectInfo(page: Page, text: string) {
 test.describe.configure({ mode: 'serial' });
 
 test.describe('COCRDLIC credit card list', () => {
-  test('TS-COCRDLIC-21 BR-COCRDLIC-01 NAV-COCRDLIC-09 C-MASK a regular user sees page 1 of the linked cards, masked', async ({ page }) => {
+  test('Q-COCRDLIC-01 C-SCOPE TS-COCRDLIC-21 BR-COCRDLIC-01 NAV-COCRDLIC-09 C-MASK a regular user sees only the cards of linked accounts, masked', async ({ page }) => {
     await openOption(page, /Credit Card List/, 'CCLI · COCRDLIC');
     const cards = await cardNumbers(page);
     expect(cards).toHaveLength(7);
@@ -41,6 +45,15 @@ test.describe('COCRDLIC credit card list', () => {
     await expect(page.getByLabel('Account Number')).toBeFocused();
     await expect(page.locator('main')).not.toContainText(VIEW_CARD);
     await expectNoSeriousA11yViolations(page);
+
+    // Every listed card, on every page, belongs to an account linked to USER0001.
+    const shown = [...(await accountNumbers(page))];
+    await page.keyboard.press('F8');
+    await expect(page.getByTestId('page')).toHaveText('Page 2');
+    shown.push(...(await accountNumbers(page)));
+    expect(shown).toHaveLength(fixtures.userCardCount);
+    for (const a of shown) expect(fixtures.userAccounts).toContain(a);
+    expect(shown).not.toContain(fixtures.unlinkedAccount);
   });
 
   test('VR-COCRDLIC-01 VR-COCRDLIC-04 TS-COCRDLIC-15 a malformed account filter and an invalid action code are rejected', async ({ page }) => {

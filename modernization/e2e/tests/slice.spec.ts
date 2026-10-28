@@ -113,7 +113,7 @@ test.describe('COBIL00C bill payment', () => {
     await expectProgram(page, 'CB00 · COBIL00C');
   });
 
-  test('VR-COBIL00C empty, out-of-scope, and bad confirm values are rejected', async ({ page }) => {
+  test('VR-COBIL00C-01 VR-COBIL00C-03 VR-COBIL00C-02 C-SCOPE empty, out-of-scope, and bad confirm values are rejected', async ({ page }) => {
     await expect(page.getByLabel('Enter Acct ID')).toBeFocused();
     await page.keyboard.press('Enter');
     await expectMessage(page, MSG.BIL_EMPTY);
@@ -128,7 +128,7 @@ test.describe('COBIL00C bill payment', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
-  test('TS-COBIL00C pay the full balance: confirm prompt, success message, receipt, zero balance after', async ({ page }) => {
+  test('TS-COBIL00C-01 TS-COBIL00C-03 NAV-COBIL00C-03 D-RECEIPT pay the full balance: confirm prompt, success message, receipt, zero balance after', async ({ page }) => {
     await page.getByLabel('Enter Acct ID').fill(fixtures.linkedAccount);
     await page.keyboard.press('Enter');
     await expectMessage(page, MSG.BIL_CONFIRM);
@@ -152,10 +152,14 @@ test.describe('COBIL00C bill payment', () => {
     await expectMessage(page, 'You have nothing to pay...');
   });
 
-  test('NAV-COBIL00C F4 clears the form and F3 returns to the main menu', async ({ page }) => {
+  test('TS-COBIL00C-09 NAV-COBIL00C-04 NAV-COBIL00C-05 NAV-COBIL00C-06 F4 clears the form, other keys are invalid, and F3 returns to the main menu', async ({ page }) => {
     await page.getByLabel('Enter Acct ID').fill(fixtures.unlinkedAccount);
     await page.keyboard.press('F4');
     await expect(page.getByLabel('Enter Acct ID')).toHaveValue('');
+    await page.getByLabel('Enter Acct ID').fill(fixtures.linkedAccount);
+    await page.keyboard.press('F5');
+    await expectMessage(page, MSG.INVALID_KEY);
+    await expect(page.getByLabel('Enter Acct ID')).toHaveValue(fixtures.linkedAccount);
     await page.keyboard.press('F3');
     await expectProgram(page, 'CM00 · COMEN01C');
   });

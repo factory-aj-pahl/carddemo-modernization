@@ -10,6 +10,9 @@ export const fixtures: {
   linkedAccount: string;
   spareLinkedAccount: string;
   unlinkedAccount: string;
+  /** Every account linked to USER0001, and the number of cards on them. */
+  userAccounts: string[];
+  userCardCount: number;
   /** Lowest transaction ID overall, of a USER0001 card, and of a card USER0001 cannot see. */
   firstTranId: string;
   userTranId: string;
