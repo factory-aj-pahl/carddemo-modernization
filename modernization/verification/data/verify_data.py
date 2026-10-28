@@ -202,6 +202,77 @@ def check_spots(stage: Path, db: Db) -> list[str]:
     return findings
 
 
+IMS_ROOT, IMS_CHILD = 140, 240  # DFSURGU0 record lengths of PAUTSUM0 and PAUTDTL1 (4-byte prefix + 35 + 2 + segment + 1)
+
+
+def ims_records(data: bytes) -> list[bytes]:
+    recs, off = [], 0
+    while off < len(data):
+        n = int.from_bytes(data[off:off + 2], "big")
+        if n < 4 or off + n > len(data):
+            raise ValueError(f"bad IMS unload record length {n} at byte {off}")
+        recs.append(data[off:off + n])
+        off += n
+    return recs
+
+
+def ims_valid_root(rec: bytes) -> bool:
+    key = rec[39:45]
+    nibbles = [n for b in key for n in (b >> 4, b & 15)]
+    return all(n <= 9 for n in nibbles[:-1]) and nibbles[-1] in (0xC, 0xF)
+
+
+def ims_expected(src: bytes) -> tuple[list[bytes], int, int, int]:
+    """The documented normalization (owed-files.md): roots with an invalid key are dropped with their children,
+    and the statistics trailer carries the remaining root count (bytes 21-24 and 41-44)."""
+    exp, dropped, keep = [], 0, True
+    for rec in ims_records(src):
+        if len(rec) == IMS_ROOT:
+            keep = ims_valid_root(rec)
+            dropped += not keep
+        if len(rec) in (IMS_ROOT, IMS_CHILD) and not keep:
+            continue
+        exp.append(rec)
+    roots = sum(1 for r in exp if len(r) == IMS_ROOT)
+    children = sum(1 for r in exp if len(r) == IMS_CHILD)
+    trailer = bytearray(exp[-1])
+    for off in (20, 40):
+        trailer[off:off + 4] = roots.to_bytes(4, "big")
+    exp[-1] = bytes(trailer)
+    return exp, roots, children, dropped
+
+
+def check_ims(row: Row, db: Db, exported: Path, load_out: str) -> tuple[list[str], int, int]:
+    findings = []
+    exp, roots, children, dropped = ims_expected((REPO / row.path).read_bytes())
+    if row.records is not None and len(ims_records((REPO / row.path).read_bytes())) != row.records:
+        findings.append(f"{row.name}: record count differs from owed-files.md ({row.records})")
+    m = re.search(r"^LOADED IMS ROOTS (\d+) CHILDREN (\d+) INVALID ROOTS SKIPPED (\d+)", load_out, re.M)
+    if not m or (int(m.group(1)), int(m.group(2)), int(m.group(3))) != (roots, children, dropped):
+        findings.append(f"{row.name}: loader reported {m.group(0) if m else 'nothing'}, expected {roots} roots, "
+                        f"{children} children, {dropped} invalid roots")
+    for table, n in (("pending_auth_summary", roots), ("pending_auth_detail", children)):
+        got = int(db.scalar(f"SELECT COUNT(*) FROM {table}"))
+        if got != n:
+            findings.append(f"{row.name}: {table} has {got} rows, expected {n}")
+    if not exported.exists():
+        return findings + [f"{row.name}: not exported"], roots, children
+    act = ims_records(exported.read_bytes())
+    if len(act) != len(exp):
+        findings.append(f"{row.name}: export has {len(act)} records, expected {len(exp)}")
+    shown = 0
+    for i, (e, a) in enumerate(zip(exp, act)):
+        if e != a:
+            shown += 1
+            if shown <= 3:
+                col = next((j for j in range(min(len(e), len(a))) if e[j] != a[j]), min(len(e), len(a)))
+                findings.append(f"{row.name}: record {i + 1} differs at byte {col + 1}: expected {e[col:col + 12].hex()}, "
+                                f"exported {a[col:col + 12].hex()}")
+    print(f"  IMS unload: {roots} roots, {children} children loaded, {dropped} invalid-key root skipped; "
+          f"export {'identical' if b''.join(exp) == exported.read_bytes() else 'DIFFERS'} after normalization")
+    return findings, roots, children
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--out", type=Path, help="keep staged and exported files here (default: a temporary directory)")
@@ -223,7 +294,8 @@ def main(argv: list[str] | None = None) -> int:
         failures["listing"].append("owed-files.md has no owed rows")
     fixed = [r for r in owed if r.path.startswith("app/data/ASCII/")]
     usrsec = [r for r in owed if r.name.endswith("USRSEC.PS")]
-    unknown = [r for r in owed if r not in fixed and r not in usrsec]
+    ims = [r for r in owed if r.name.endswith("IMSDATA.DBPAUTP0.dat")]
+    unknown = [r for r in owed if r not in fixed and r not in usrsec and r not in ims]
     failures["listing"] += [f"{r.path}: owed but verify_data.py has no check for it" for r in unknown]
     for r in fixed:
         if (REPO / r.path).exists():
@@ -233,9 +305,10 @@ def main(argv: list[str] | None = None) -> int:
     jar = Jar(database, logs)
     print(f"verify-data: database {database}, files in {root}")
     jar.run("reset")
-    load_args = ["load", str(stage)] + [f"usrsec={REPO / r.path}" for r in usrsec[:1]]
-    loaded = dict(re.findall(r"^LOADED (\S+) (\d+)$", jar.run(*load_args), re.M))
-    jar.run("export", str(out), "files=" + ",".join(staged_name(r) for r in fixed))
+    load_args = ["load", str(stage)] + [f"usrsec={REPO / r.path}" for r in usrsec[:1]] + [f"ims={REPO / r.path}" for r in ims[:1]]
+    load_out = jar.run(*load_args)
+    loaded = dict(re.findall(r"^LOADED (\S+) (\d+)$", load_out, re.M))
+    jar.run("export", str(out), "files=" + ",".join(staged_name(r) for r in fixed), *[f"ims={r.name}" for r in ims[:1]])
 
     report = []
     for r in fixed:
@@ -273,6 +346,11 @@ def main(argv: list[str] | None = None) -> int:
         failures[r.path] = f
         report.append((r, r.records, n, None))
         print(f"  USRSEC account links: {links}")
+
+    for r in ims:
+        f, roots, children = check_ims(r, db, out / r.name, load_out)
+        failures[r.path] = f
+        report.append((r, r.records, roots + children, None))
 
     print("  overpunch spot values:")
     failures["spots"] = check_spots(stage, db)
