@@ -2,6 +2,10 @@ package com.carddemo.batch;
 
 import com.carddemo.batch.posting.PosttranJobConfig;
 import com.carddemo.common.batch.JobLog;
+import com.carddemo.dataexchange.api.AccountExtractFiles;
+import com.carddemo.dataexchange.api.DataExchangeJobs;
+import com.carddemo.dataexchange.api.ImportFiles;
+import com.carddemo.dataexchange.api.JobResult;
 import com.carddemo.migration.Layout;
 import com.carddemo.migration.Layouts;
 import com.carddemo.migration.SampleDataLoader;
@@ -35,6 +39,11 @@ import org.springframework.stereotype.Component;
  * are ignored here. Commands:
  * <ul>
  * <li>{@code POSTTRAN businessDate=YYYY-MM-DD dailyFile=PATH rejectsFile=PATH}</li>
+ * <li>{@code READCARD}, {@code READXREF}, {@code READCUST}: masked listings (CBACT02C, CBACT03C, CBCUS01C)</li>
+ * <li>{@code READACCT outFile=PATH arryFile=PATH vbrcFile=PATH}: account listing and extracts (CBACT01C)</li>
+ * <li>{@code CBEXPORT exportFile=PATH}: branch migration export (CBEXPORT)</li>
+ * <li>{@code CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH}
+ * (CBIMPORT)</li>
  * <li>{@code load DIR [usrsec=FILE]}: load sample-format files (seed and migration step)</li>
  * <li>{@code export DIR [files=a.txt,b.txt]}: write tables back in their legacy layouts</li>
  * <li>{@code reset}: drop and re-create the schema (only with {@code --spring.flyway.clean-disabled=false})</li>
@@ -50,14 +59,16 @@ public class BatchCommandLine {
     private final JobLog log;
     private final JdbcTemplate jdbc;
     private final Flyway flyway;
+    private final DataExchangeJobs dataExchange;
 
     BatchCommandLine(JobLauncher launcher, @Qualifier(PosttranJobConfig.JOB) Job posttran, JobLog log, JdbcTemplate jdbc,
-            Flyway flyway) {
+            Flyway flyway, DataExchangeJobs dataExchange) {
         this.launcher = launcher;
         this.posttran = posttran;
         this.log = log;
         this.jdbc = jdbc;
         this.flyway = flyway;
+        this.dataExchange = dataExchange;
     }
 
     public int execute(String... args) {
@@ -73,6 +84,12 @@ public class BatchCommandLine {
         try {
             return switch (words.get(0)) {
                 case "POSTTRAN" -> posttran(params);
+                case "READCARD" -> result(dataExchange.listCards());
+                case "READXREF" -> result(dataExchange.listXrefs());
+                case "READCUST" -> result(dataExchange.listCustomers());
+                case "READACCT" -> readacct(params);
+                case "CBEXPORT" -> cbexport(params);
+                case "CBIMPORT" -> cbimport(params);
                 case "load" -> load(params);
                 case "export" -> export(params);
                 case "reset" -> reset();
@@ -86,8 +103,10 @@ public class BatchCommandLine {
 
     private int usage(String problem) {
         System.err.println("carddemo-batch: " + problem);
-        System.err.println("usage: POSTTRAN businessDate=YYYY-MM-DD dailyFile=PATH rejectsFile=PATH | load DIR [usrsec=FILE]"
-            + " | export DIR [files=NAMES] | reset");
+        System.err.println("usage: POSTTRAN businessDate=YYYY-MM-DD dailyFile=PATH rejectsFile=PATH | READCARD | READXREF"
+            + " | READCUST | READACCT outFile=PATH arryFile=PATH vbrcFile=PATH | CBEXPORT exportFile=PATH"
+            + " | CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH"
+            + " | load DIR [usrsec=FILE] | export DIR [files=NAMES] | reset");
         return ExitCodes.USAGE;
     }
 
@@ -141,6 +160,48 @@ public class BatchCommandLine {
         boolean warning = execution.getStepExecutions().stream().map(StepExecution::getExitStatus)
             .anyMatch(s -> PosttranJobConfig.COMPLETED_WITH_REJECTS.equals(s.getExitCode()));
         return warning ? ExitCodes.WARNING : ExitCodes.OK;
+    }
+
+    private int readacct(Map<String, String> params) {
+        Map<String, Path> p = paths(params, "outFile", "arryFile", "vbrcFile");
+        if (p == null) {
+            return usage("READACCT needs outFile, arryFile and vbrcFile");
+        }
+        return result(dataExchange.extractAccounts(new AccountExtractFiles(p.get("outFile"), p.get("arryFile"), p.get("vbrcFile"))));
+    }
+
+    private int cbexport(Map<String, String> params) {
+        Map<String, Path> p = paths(params, "exportFile");
+        if (p == null) {
+            return usage("CBEXPORT needs exportFile");
+        }
+        return result(dataExchange.exportAll(p.get("exportFile")));
+    }
+
+    private int cbimport(Map<String, String> params) {
+        Map<String, Path> p = paths(params, "exportFile", "custOut", "acctOut", "xrefOut", "trnxOut", "cardOut", "errOut");
+        if (p == null) {
+            return usage("CBIMPORT needs exportFile, custOut, acctOut, xrefOut, trnxOut, cardOut and errOut");
+        }
+        return result(dataExchange.importAll(p.get("exportFile"), new ImportFiles(p.get("custOut"), p.get("acctOut"),
+            p.get("xrefOut"), p.get("trnxOut"), p.get("cardOut"), p.get("errOut"))));
+    }
+
+    /** The named path parameters, or null when one is missing. */
+    private static Map<String, Path> paths(Map<String, String> params, String... names) {
+        Map<String, Path> out = new LinkedHashMap<>();
+        for (String n : names) {
+            String v = params.get(n);
+            if (v == null || v.isBlank()) {
+                return null;
+            }
+            out.put(n, Path.of(v).toAbsolutePath().normalize());
+        }
+        return out;
+    }
+
+    private int result(JobResult r) {
+        return r.abended() ? abend() : ExitCodes.OK;
     }
 
     private int abend() {
