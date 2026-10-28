@@ -5,8 +5,8 @@ import com.carddemo.common.batch.JobLog;
 import com.carddemo.common.codec.FixedWidth;
 import com.carddemo.cycle.api.DailyPosting;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.LocalDate;
+import java.util.List;
 import org.springframework.batch.core.BatchStatus;
 import org.springframework.batch.core.ExitStatus;
 import org.springframework.batch.core.StepExecution;
@@ -148,14 +149,17 @@ class PosttranStep implements ItemStreamReader<String>, ItemWriter<String>, Step
             deleteRejectsFile();
             return ExitStatus.FAILED;
         }
-        try (BufferedWriter w = Files.newBufferedWriter(rejectsFile, StandardCharsets.ISO_8859_1,
-                StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
-            for (String rec : posting.rejectRecords(runId)) {
-                w.write(rec);
-                w.write('\n');
-            }
+        List<String> records = posting.rejectRecords(runId);
+        String failure;
+        try {
+            failure = writeRejects(Files.newBufferedWriter(rejectsFile, StandardCharsets.ISO_8859_1,
+                StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE), records);
         } catch (IOException e) {
-            log.display("ERROR WRITING TO REJECTS FILE");
+            System.err.println(rejectsFile + ": " + e);
+            failure = "ERROR WRITING TO REJECTS FILE";
+        }
+        if (failure != null) {
+            log.display(failure);
             log.display("ABENDING PROGRAM");
             deleteRejectsFile();
             return ExitStatus.FAILED;
@@ -164,6 +168,35 @@ class PosttranStep implements ItemStreamReader<String>, ItemWriter<String>, Step
         log.display("TRANSACTIONS REJECTED  :" + FixedWidth.n(rejected, 9));
         log.display("END OF EXECUTION OF PROGRAM CBTRN02C");
         return rejected > 0 ? new ExitStatus(PosttranJobConfig.COMPLETED_WITH_REJECTS) : ExitStatus.COMPLETED;
+    }
+
+    /**
+     * 2500-WRITE-REJECT-REC and 9300-DALYREJS-CLOSE for the committed rejects: null when the file is complete,
+     * otherwise the COBOL message of the failure (shown without another file's status, Q-CBTRN02C-05).
+     */
+    static String writeRejects(Writer w, List<String> records) {
+        try {
+            for (String rec : records) {
+                w.write(rec);
+                w.write('\n');
+            }
+            w.flush();
+        } catch (IOException e) {
+            System.err.println("rejects write failed: " + e);
+            try {
+                w.close();
+            } catch (IOException ignored) {
+                // the write failure is the one reported
+            }
+            return "ERROR WRITING TO REJECTS FILE";
+        }
+        try {
+            w.close();
+        } catch (IOException e) {
+            System.err.println("rejects close failed: " + e);
+            return "ERROR CLOSING DAILY REJECTS FILE";
+        }
+        return null;
     }
 
     private void deleteRejectsFile() {

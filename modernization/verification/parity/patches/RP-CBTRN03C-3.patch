@@ -1,0 +1,21 @@
+--- a/app/cbl/CBTRN03C.cbl
++++ b/app/cbl/CBTRN03C.cbl
+@@ -135,6 +135,7 @@
+            05 WS-ACCOUNT-TOTAL   PIC S9(09)V99 VALUE 0.                         
+            05 WS-GRAND-TOTAL     PIC S9(09)V99 VALUE 0.                         
+            05 WS-CURR-CARD-NUM   PIC X(16) VALUE SPACES.                        
++       01 WS-MASKED-REC         PIC X(350).                                     
+                                                                                 
+        01 IO-STATUS.                                                            
+           05 IO-STAT1           PIC X.                                          
+@@ -176,7 +177,9 @@
+                    EXIT PERFORM CYCLE                                           
+                 END-IF                                                          
+                 IF END-OF-FILE = 'N'                                            
+-                   DISPLAY TRAN-RECORD                                          
++                   MOVE TRAN-RECORD TO WS-MASKED-REC                            
++                   MOVE '************' TO WS-MASKED-REC(263:12)                 
++                   DISPLAY WS-MASKED-REC                                        
+                    IF WS-CURR-CARD-NUM NOT= TRAN-CARD-NUM                       
+                      IF WS-FIRST-TIME = 'N'                                     
+                        PERFORM 1120-WRITE-ACCOUNT-TOTALS                        

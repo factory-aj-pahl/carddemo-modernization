@@ -1,0 +1,41 @@
+--- a/app/cbl/CBTRN01C.cbl
++++ b/app/cbl/CBTRN01C.cbl
+@@ -149,6 +149,7 @@
+        01  WS-MISC-VARIABLES.
+            05 WS-XREF-READ-STATUS  PIC 9(04).
+            05 WS-ACCT-READ-STATUS  PIC 9(04).
++       01  WS-MASKED-REC               PIC X(350).
+ 
+       *****************************************************************
+        PROCEDURE DIVISION.
+@@ -165,7 +166,9 @@
+                IF  END-OF-DAILY-TRANS-FILE = 'N'
+                    PERFORM 1000-DALYTRAN-GET-NEXT
+                    IF  END-OF-DAILY-TRANS-FILE = 'N'
+-                       DISPLAY DALYTRAN-RECORD
++                       MOVE DALYTRAN-RECORD TO WS-MASKED-REC
++                       MOVE '************' TO WS-MASKED-REC(263:12)
++                       DISPLAY WS-MASKED-REC
+                        MOVE 0                 TO WS-XREF-READ-STATUS
+                        MOVE DALYTRAN-CARD-NUM TO XREF-CARD-NUM
+                        PERFORM 2000-LOOKUP-XREF
+@@ -177,7 +180,8 @@
+                              DISPLAY 'ACCOUNT ' ACCT-ID ' NOT FOUND'
+                          END-IF
+                        ELSE
+-                         DISPLAY 'CARD NUMBER ' DALYTRAN-CARD-NUM
++                         DISPLAY 'CARD NUMBER ' '************'
++                     DALYTRAN-CARD-NUM(13:4)
+                      ' COULD NOT BE VERIFIED. SKIPPING TRANSACTION ID-'
+                          DALYTRAN-ID
+                        END-IF
+@@ -233,7 +237,8 @@
+                   MOVE 4 TO WS-XREF-READ-STATUS
+                 NOT INVALID KEY
+                   DISPLAY 'SUCCESSFUL READ OF XREF'
+-                  DISPLAY 'CARD NUMBER: ' XREF-CARD-NUM
++                  DISPLAY 'CARD NUMBER: ' '************'
++                          XREF-CARD-NUM(13:4)
+                   DISPLAY 'ACCOUNT ID : ' XREF-ACCT-ID
+                   DISPLAY 'CUSTOMER ID: ' XREF-CUST-ID
+            END-READ.

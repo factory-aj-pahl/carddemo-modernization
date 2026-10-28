@@ -1,0 +1,19 @@
+--- a/app/cbl/CBSTM03A.CBL
++++ b/app/cbl/CBSTM03A.CBL
+@@ -223,13 +223,13 @@
+            05  HTML-TRAN-LN PIC X(100).
+ 
+        01  WS-TRNX-TABLE.
+-           05  WS-CARD-TBL OCCURS 51 TIMES.
++           05  WS-CARD-TBL OCCURS 500 TIMES.
+                10  WS-CARD-NUM                          PIC X(16).
+-               10  WS-TRAN-TBL OCCURS 10 TIMES.
++               10  WS-TRAN-TBL OCCURS 50 TIMES.
+                    15  WS-TRAN-NUM                      PIC X(16).
+                    15  WS-TRAN-REST                     PIC X(318).
+        01  WS-TRN-TBL-CNTR.
+-           05  WS-TRN-TBL-CTR OCCURS 51 TIMES.
++           05  WS-TRN-TBL-CTR OCCURS 500 TIMES.
+                10  WS-TRCT               PIC S9(4) COMP.
+ 
+        01  PSAPTR                  POINTER.

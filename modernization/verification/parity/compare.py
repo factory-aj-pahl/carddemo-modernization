@@ -25,6 +25,7 @@ NORMALIZE = {
     "transact.txt": [(304, 330, DB2_TS)],  # TRAN-PROC-TS, BR-CBTRN02C-05
     "expfile.dat": [(1, 27, EXPORT_TS)],  # export timestamp, BR-CBEXPORT-01
     "errout.txt": [(0, 21, CURRENT_DATE)],  # FUNCTION CURRENT-DATE, BR-CBIMPORT-07
+    "systran.txt": [(278, 304, DB2_TS), (304, 330, DB2_TS)],  # interest TRAN-ORIG-TS, TRAN-PROC-TS, BR-CBACT04C-06
 }
 
 # Job-log lines that show the run's own date or time: (line prefix, pattern of the rest).
@@ -42,6 +43,7 @@ BINARY = {"expfile.dat": 500}
 # Card-number fields, masked in printed findings (B-MASK applies to evidence output too).
 CARD_FIELDS = {
     "transact.txt": [(262, 278)],
+    "systran.txt": [(262, 278)],
     "dalyrejs.txt": [(262, 278)],
     "dailytran.txt": [(262, 278)],
     "cardxref.txt": [(0, 16)],

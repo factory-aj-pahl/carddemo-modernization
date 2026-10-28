@@ -1,0 +1,19 @@
+--- a/app/cbl/CBACT04C.cbl
++++ b/app/cbl/CBACT04C.cbl
+@@ -36,6 +36,7 @@
+                   ACCESS MODE  IS RANDOM                                        
+                   RECORD KEY   IS FD-XREF-CARD-NUM                              
+                   ALTERNATE RECORD KEY IS FD-XREF-ACCT-ID                       
++                     WITH DUPLICATES                                            
+                   FILE STATUS  IS XREFFILE-STATUS.                              
+                                                                                 
+            SELECT ACCOUNT-FILE ASSIGN TO ACCTFILE                               
+@@ -400,7 +401,7 @@
+                   DISPLAY 'ACCOUNT NOT FOUND: ' FD-XREF-ACCT-ID                 
+            END-READ                                                             
+                                                                                 
+-           IF  XREFFILE-STATUS   = '00'                                         
++           IF  XREFFILE-STATUS   = '00' OR '02'                                 
+                MOVE 0 TO APPL-RESULT                                            
+            ELSE                                                                 
+                MOVE 12 TO APPL-RESULT                                           

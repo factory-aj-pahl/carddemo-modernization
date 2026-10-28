@@ -1,0 +1,35 @@
+--- a/app/cbl/CBSTM03A.CBL
++++ b/app/cbl/CBSTM03A.CBL
+@@ -263,32 +263,6 @@
+       *****************************************************************
+       *    Check Unit Control blocks                                  *
+       *****************************************************************
+-           SET ADDRESS OF PSA-BLOCK   TO PSAPTR.
+-           SET ADDRESS OF TCB-BLOCK   TO TCB-POINT.
+-           SET ADDRESS OF TIOT-BLOCK  TO TIOT-POINT.
+-           SET TIOT-INDEX             TO TIOT-POINT.
+-           DISPLAY 'Running JCL : ' TIOTNJOB ' Step ' TIOTJSTP.
+-
+-           COMPUTE BUMP-TIOT = BUMP-TIOT + LENGTH OF TIOT-BLOCK.
+-           SET ADDRESS OF TIOT-ENTRY  TO TIOT-INDEX.
+-
+-           DISPLAY 'DD Names from TIOT: '.
+-           PERFORM UNTIL END-OF-TIOT
+-                      OR TIO-LEN = LOW-VALUES
+-               IF NOT NULL-UCB
+-                   DISPLAY ': ' TIOCDDNM ' -- valid UCB'
+-               ELSE
+-                   DISPLAY ': ' TIOCDDNM ' --  null UCB'
+-               END-IF
+-               COMPUTE BUMP-TIOT = BUMP-TIOT + LENGTH OF TIOT-SEG
+-               SET ADDRESS OF TIOT-ENTRY TO TIOT-INDEX
+-           END-PERFORM.
+-
+-           IF NOT NULL-UCB
+-               DISPLAY ': ' TIOCDDNM ' -- valid UCB'
+-           ELSE
+-               DISPLAY ': ' TIOCDDNM ' -- null  UCB'
+-           END-IF.
+ 
+            OPEN OUTPUT STMT-FILE HTML-FILE.
+            INITIALIZE WS-TRNX-TABLE WS-TRN-TBL-CNTR.
