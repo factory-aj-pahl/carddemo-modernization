@@ -23,6 +23,16 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.carddemo</groupId>
+            <artifactId>iam</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.carddemo</groupId>
             <artifactId>test-support</artifactId>
             <version>${project.version}</version>

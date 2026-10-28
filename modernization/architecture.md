@@ -1,8 +1,8 @@
-# CardDemo target architecture (proposal)
+# CardDemo target architecture
 
-Status: **proposal for review**. Derived from the structured specification in `spec/`
-(44 programs, 36 entities, 46 jobs). Nothing here is binding until the mission promise
-is approved.
+Status: **approved** (2026-10-28) and being implemented. Derived from the structured specification in
+`spec/` (44 programs, 36 entities, 46 jobs). Decisions referenced as D-, DF-, and Q- IDs are in
+`decisions/`; where this document and a decision disagree, the decision governs.
 
 ## 1. Mapping at a glance
 
@@ -13,7 +13,7 @@ is approved.
 | Batch logic | 13 base batch programs | Spring Batch jobs in a separate runnable jar, same inputs and outputs (fixed-width files kept where they are interfaces) |
 | JCL + CA7/Control-M | 38 base JCL members, 2 schedulers | Apache Airflow DAGs calling the batch jar; setup JCL becomes Flyway migrations and a data loader; CICS open/close jobs disappear |
 | VSAM KSDS + AIX | 10 KSDS files, 3 alternate indexes | Microsoft SQL Server tables with primary keys, foreign keys, and secondary indexes |
-| Db2 / IMS / MQ (optional modules) | Db2 tables, IMS HIDAM segments, MQ request/reply | SQL Server tables (IMS parent/child -> two tables), REST endpoints in place of MQ request/reply |
+| Db2 / IMS / MQ (optional modules) | Db2 tables, IMS HIDAM segments, MQ request/reply | SQL Server tables (IMS parent/child -> two tables); MQ request/reply moves to RabbitMQ queues with the COBOL queue names, plus equivalent REST endpoints (D-MQ) |
 | Security | RACF + plaintext USRSEC passwords, no authorization checks in programs | Spring Security, BCrypt password hashes, role checks enforced on the server |
 
 ## 2. Runtime view
@@ -27,7 +27,26 @@ flowchart LR
     B --> DB
     B --> F[/Reports, statements,<br/>reject files/]
     A -->|trigger report DAG| AF
+    R[(RabbitMQ)] <-->|request/reply| A
 ```
+
+### Screen API
+
+Each CICS program with a map is one resource, `/api/screens/<PROGRAM>` (for example
+`/api/screens/COBIL00C`). `GET` is first entry; `POST` is one screen turn with the attention key
+(`ENTER`, `PF3`, ...) and the input fields. Every response is the same envelope (C-RENDER):
+
+```json
+{ "fields": { "accountId": "00000000001", "currentBalance": "+00000000194.00" },
+  "message": "Confirm to make a bill payment...", "messageColor": "RED",
+  "focus": "confirm", "navigate": null }
+```
+
+The server decides what each key means, including the invalid-key message, so key handling stays in
+one place. `navigate` replaces XCTL: the web app shows that program next (`EXIT` = signed off).
+Message texts are the COBOL texts verbatim. Sessions are server-side (D-AUTH); the web app sends the
+CSRF token from the `XSRF-TOKEN` cookie. The web app holds keys until a screen's first entry has
+arrived, as a 3270 keyboard lock would. `GET /api/session` returns the signed-on user.
 
 - The report request screen (CORPT00C) today writes JCL to the internal reader. In the target it
   calls the Airflow REST API to start the `transaction_report` DAG with the date range, and shows
@@ -38,11 +57,16 @@ flowchart LR
 
 ## 3. Bounded contexts and modules
 
-Each context is a Maven module with its own REST controllers, services, and repositories. They
-run together in one Spring Boot service (a modular monolith) and can be split into separate
-services later because they only talk to each other through published service interfaces. That
-is what makes **selective conversion** possible: one context can be converted alone, and
-`spec/components.md` lists exactly what each context needs from the rest of the system.
+Each context is a Maven module under `backend/` with three packages: `web` (controllers),
+`internal` (services and repositories), and `api` (the published interfaces and records other
+contexts may use). They run together in one Spring Boot service (`app`, a modular monolith) and can
+be deployed separately because a context reaches another only through its `api` package; the
+architecture test `app/.../ModuleBoundariesTest` enforces this. That is what makes **selective
+conversion** possible: `billpay-service` runs bill payment alone as its own service (port 8082) on
+the same modules, and `spec/components.md` lists exactly what each context needs from the rest.
+Shared code without business rules (screen envelope, formatting, security principal, clock, batch
+job log) is in `common`; the schema is in `schema` (Flyway), the sample-data loader and exporter in
+`migration`.
 
 | Context | COBOL programs | Owns | API (sketch) |
 |:--|:--|:--|:--|
@@ -55,8 +79,19 @@ is what makes **selective conversion** possible: one context can be converted al
 | Batch cycle | CBTRN01C, CBTRN02C, CBACT04C, CBSTM03A/B, COMBTRAN | category balances, disclosure groups, daily transactions | Spring Batch jobs `posttran`, `intcalc`, `combtran`, `creastmt`, `tranrept` |
 | Reference data | TRANTYPE/TRANCATG files; optional COTRTLIC, COTRTUPC, COBTUPDT | transaction types and categories | `/api/transaction-types` CRUD (optional module) |
 | Data exchange & utilities | CBEXPORT, CBIMPORT, CBACT01C-03C, CBCUS01C | export file format | batch jobs `export`, `import`, listing jobs |
-| Authorizations (optional) | COPAUA0C, COPAUS0C-2C, CBPAUP0C, IMS utilities | pending auth summary + detail, fraud records | `POST /api/authorizations` (replaces MQ), list/detail/fraud endpoints, `purge` batch job |
-| MQ inquiry (optional) | COACCT01, CODATE01 | none | `GET /api/inquiry/account/{id}`, `GET /api/inquiry/date` |
+| Authorizations (optional) | COPAUA0C, COPAUS0C-2C, CBPAUP0C, IMS utilities | pending auth summary + detail, fraud records | RabbitMQ request/reply plus `POST /api/authorizations`, list/detail/fraud screens, `purge` batch job |
+| MQ inquiry (optional) | COACCT01, CODATE01 | none | RabbitMQ `CARD.DEMO.REQUEST.DATE` -> `CARD.DEMO.REPLY.DATE` (and the ACCT pair), plus `GET /api/inquiry/account/{id}`, `GET /api/inquiry/date` |
+
+Screen endpoints follow the screen API above; the sketches in the last column describe the
+non-screen endpoints and jobs.
+
+### Messaging (D-MQ)
+
+RabbitMQ (vhost `carddemo`) keeps the COBOL queue names. A reply goes to the request's `reply_to`
+(the fixed reply queue when absent) with `correlation_id` = the request `message_id`. Request
+queues are quorum queues with a delivery limit of 3 and dead-letter to `CARD.DEMO.DLQ`; reply
+queues are bounded. Queue replies keep the legacy text layouts; the REST equivalents return JSON
+(decimal amounts, ISO 8601 times).
 
 ## 4. Data
 
@@ -83,6 +118,14 @@ flowchart LR
 - Spring Batch jobs read and write SQL Server, and still emit the same file outputs (reject
   file, transaction report, text and HTML statements, export file) in the same byte layout, so
   they can be compared with the COBOL originals.
+- Batch commands run as `java -jar carddemo-batch.jar <JOB> businessDate=YYYY-MM-DD ...` with exit
+  codes 0 (ok), 4 (warnings), 8 (refused, for example already completed), 12 (invalid business date,
+  B-DATE), 16 (usage), 99 (abend, B-ABEND). Each daily record commits with its effects (B-UOW), so a
+  failed run restarts from its last committed record. The jar also carries `load`, `export`, and
+  `reset` for the data migration.
+- Airflow tasks call the jar through `airflow/dags/carddemo_batch.py`: 0 and 4 succeed, every other
+  code fails the task without retry. Inputs come from `$CARDDEMO_INBOX/<date>/`, outputs go to
+  `$CARDDEMO_OUTBOX/<date>/`.
 - Airflow DAG `carddemo_daily_cycle` follows the runbook order (the CA7 and Control-M definitions
   in the repository are inconsistent with each other and with the runbook; see `spec/jobs.md`).
   Interest runs on the first business day of each month (D-INTEREST) and inserts its transactions
@@ -94,10 +137,12 @@ flowchart LR
 
 ## 6. Verification approach
 
-- **Batch:** differential testing. The same input data is run through the original COBOL under
-  GnuCOBOL (with mainframe sign semantics, `-fsign=EBCDIC`) and through the Java jobs; outputs and
-  resulting table contents must match exactly, except for approved defect fixes whose expected
-  difference is stated in advance.
+- **Batch:** differential testing (`verification/parity/`, `make -C modernization verify-batch`). The
+  same dataset is run through the original COBOL under GnuCOBOL (`-std=ibm -fsign=EBCDIC`) with the
+  ledger's reference patches applied to temporary copies (`refrun.py`), and through the Java job on a
+  fresh database (`javarun.py`); output files, return code, SYSOUT, and exported tables must match
+  record for record (`compare.py`). Owed program x dataset pairs are listed in
+  `verification/parity/datasets.md`.
 - **Online:** the 523 spec test scenarios become API tests and browser tests. A traceability
   matrix maps every BR, VR, NAV, and ERR rule to a test or to an approved exclusion.
 - **Data:** every sample file loads; row counts and a byte-for-byte round-trip export match.
