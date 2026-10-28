@@ -16,6 +16,7 @@ import java.util.UUID;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -96,6 +97,7 @@ class AuthRequestListener {
         out.setContentEncoding(StandardCharsets.US_ASCII.name());
         out.setMessageId(UUID.randomUUID().toString());
         out.setType("reply");
+        out.setDeliveryMode(MessageDeliveryMode.NON_PERSISTENT);
         out.setExpiration("5000");
         String correlation = request.getMessageId() != null ? request.getMessageId() : request.getCorrelationId();
         if (correlation != null) {
