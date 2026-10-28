@@ -137,6 +137,25 @@ export const SCREENS: Record<string, ScreenInfo> = {
   },
   // The COTRTUPC key legend depends on the state (BR-COTRTUPC-26); the screen passes it to ScreenFrame.
   COTRTUPC: { tran: 'CTTU', title: 'Maintain Transaction Type', keys: [] },
+  COPAUS0C: {
+    tran: 'CPVS',
+    title: 'View Authorizations',
+    keys: [
+      { key: 'ENTER', label: 'Continue' },
+      { key: 'F3', label: 'Back' },
+      { key: 'F7', label: 'Backward' },
+      { key: 'F8', label: 'Forward' },
+    ],
+  },
+  COPAUS1C: {
+    tran: 'CPVD',
+    title: 'View Authorization Details',
+    keys: [
+      { key: 'F3', label: 'Back' },
+      { key: 'F5', label: 'Mark/Remove Fraud' },
+      { key: 'F8', label: 'Next Auth' },
+    ],
+  },
 };
 
 /** Legend key text to the attention identifier the server expects. */

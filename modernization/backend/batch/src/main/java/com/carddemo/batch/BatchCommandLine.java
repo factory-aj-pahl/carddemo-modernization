@@ -1,5 +1,7 @@
 package com.carddemo.batch;
 
+import com.carddemo.authorization.api.AuthorizationJobResult;
+import com.carddemo.authorization.api.AuthorizationJobs;
 import com.carddemo.batch.backup.CycleBackupService;
 import com.carddemo.batch.cycle.CycleJobsConfig;
 import com.carddemo.batch.posting.PosttranJobConfig;
@@ -10,6 +12,7 @@ import com.carddemo.dataexchange.api.DataExchangeJobs;
 import com.carddemo.dataexchange.api.ImportFiles;
 import com.carddemo.dataexchange.api.JobResult;
 import com.carddemo.migration.Db2Seeds;
+import com.carddemo.migration.ImsPendingAuthUnload;
 import com.carddemo.migration.Layout;
 import com.carddemo.migration.Layouts;
 import com.carddemo.migration.SampleDataLoader;
@@ -58,11 +61,17 @@ import org.springframework.stereotype.Component;
  * <li>{@code BACKUP businessDate=YYYY-MM-DD}: pre-cycle snapshot; {@code RESTORE backupId=N | businessDate=YYYY-MM-DD}</li>
  * <li>{@code COBTUPDT inputFile=PATH}: apply transaction type add, update, and delete records (JOB-MNTTRDB2); exit
  * code 0, 4 when a record was rejected, 12 when the run stopped and was rolled back</li>
- * <li>{@code load DIR [usrsec=FILE]}: load sample-format files (seed and migration step)</li>
+ * <li>{@code CBPAUP0C [sysin=EE,CCCCC,DDDDD,F]}: purge expired pending authorizations (CBPAUP0J)</li>
+ * <li>{@code PAUDBUNL rootFile=PATH childFile=PATH}, {@code DBUNLDGS rootFile=PATH childFile=PATH}: unload the
+ * pending-authorization tables (UNLDPADB, UNLDGSAM)</li>
+ * <li>{@code PAUDBLOD rootFile=PATH childFile=PATH}: load a PAUDBUNL unload (LOADPADB)</li>
+ * <li>{@code load DIR [usrsec=FILE] [ims=FILE]}: load sample-format files (seed and migration step); {@code ims} is
+ * the DBPAUTP0 IMS unload</li>
  * <li>{@code loaddb2 [types=FILE] [categories=FILE]}: replace the transaction types and categories with the Db2
  * module seed files (DB2LTTYP.ctl, DB2LTCAT.ctl)</li>
- * <li>{@code export DIR [files=a.txt,b.txt]}: write tables back in their legacy layouts ({@code DB2LTTYP.ctl} and
- * {@code DB2LTCAT.ctl} are written as the Db2 seed SQL)</li>
+ * <li>{@code export DIR [files=a.txt,b.txt] [ims=NAME]}: write tables back in their legacy layouts ({@code DB2LTTYP.ctl}
+ * and {@code DB2LTCAT.ctl} are written as the Db2 seed SQL); {@code ims} writes the pending-authorization tables as an
+ * IMS unload file named NAME (only that file unless {@code files} is given)</li>
  * <li>{@code reset}: drop and re-create the schema (only with {@code --spring.flyway.clean-disabled=false})</li>
  * </ul>
  */
@@ -81,12 +90,13 @@ public class BatchCommandLine {
     private final DataExchangeJobs dataExchange;
     private final CycleBackupService backups;
     private final TranTypeBatchUpdate tranTypeUpdate;
+    private final AuthorizationJobs authorizations;
 
     BatchCommandLine(JobLauncher launcher, @Qualifier(PosttranJobConfig.JOB) Job posttran,
             @Qualifier(CycleJobsConfig.INTCALC) Job intcalc, @Qualifier(CycleJobsConfig.CREASTMT) Job creastmt,
             @Qualifier(CycleJobsConfig.TRANVERIFY) Job tranverify, @Qualifier(CycleJobsConfig.TRANREPT) Job tranrept,
             JobLog log, JdbcTemplate jdbc, Flyway flyway, CycleBackupService backups, DataExchangeJobs dataExchange,
-            TranTypeBatchUpdate tranTypeUpdate) {
+            TranTypeBatchUpdate tranTypeUpdate, AuthorizationJobs authorizations) {
         this.launcher = launcher;
         this.jobs = Map.of(PosttranJobConfig.JOB, posttran, CycleJobsConfig.INTCALC, intcalc, CycleJobsConfig.CREASTMT, creastmt,
             CycleJobsConfig.TRANVERIFY, tranverify, CycleJobsConfig.TRANREPT, tranrept);
@@ -96,6 +106,7 @@ public class BatchCommandLine {
         this.dataExchange = dataExchange;
         this.backups = backups;
         this.tranTypeUpdate = tranTypeUpdate;
+        this.authorizations = authorizations;
     }
 
     public int execute(String... args) {
@@ -124,6 +135,8 @@ public class BatchCommandLine {
                 case "BACKUP" -> backup(params);
                 case "RESTORE" -> restore(params);
                 case "COBTUPDT" -> cobtupdt(params);
+                case "CBPAUP0C" -> authResult(authorizations.purgeExpired(params.getOrDefault("sysin", "")));
+                case "PAUDBUNL", "PAUDBLOD", "DBUNLDGS" -> imsFiles(words.get(0), params);
                 case "load" -> load(params);
                 case "loaddb2" -> loadDb2(params);
                 case "export" -> export(params);
@@ -146,7 +159,9 @@ public class BatchCommandLine {
             + " | CBEXPORT exportFile=PATH"
             + " | CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH"
             + " | COBTUPDT inputFile=PATH"
-            + " | load DIR [usrsec=FILE] | loaddb2 [types=FILE] [categories=FILE] | export DIR [files=NAMES] | reset");
+            + " | CBPAUP0C [sysin=EE,CCCCC,DDDDD,F] | PAUDBUNL|PAUDBLOD|DBUNLDGS rootFile=PATH childFile=PATH"
+            + " | load DIR [usrsec=FILE] [ims=FILE] | loaddb2 [types=FILE] [categories=FILE] | export DIR [files=NAMES] [ims=NAME]"
+            + " | reset");
         return ExitCodes.USAGE;
     }
 
@@ -323,6 +338,23 @@ public class BatchCommandLine {
         return rc == 12 ? ExitCodes.STOPPED : rc == 4 ? ExitCodes.WARNING : ExitCodes.OK;
     }
 
+    private int imsFiles(String program, Map<String, String> params) {
+        Map<String, Path> p = paths(params, "rootFile", "childFile");
+        if (p == null) {
+            return usage(program + " needs rootFile and childFile");
+        }
+        return authResult(switch (program) {
+            case "PAUDBUNL" -> authorizations.unload(p.get("rootFile"), p.get("childFile"));
+            case "PAUDBLOD" -> authorizations.load(p.get("rootFile"), p.get("childFile"));
+            default -> authorizations.unloadGsam(p.get("rootFile"), p.get("childFile"));
+        });
+    }
+
+    /** The program's own return code: 0, or 16 from its 9999-ABEND path. */
+    private static int authResult(AuthorizationJobResult r) {
+        return r.returnCode() == 0 ? ExitCodes.OK : ExitCodes.PROGRAM_RC16;
+    }
+
     /** The named path parameters, or null when one is missing. */
     private static Map<String, Path> paths(Map<String, String> params, String... names) {
         Map<String, Path> out = new LinkedHashMap<>();
@@ -406,6 +438,11 @@ public class BatchCommandLine {
             SampleDataLoader.Result u = loader.loadUsers(Path.of(params.get("usrsec")));
             System.out.println("USERS " + u.users() + " ACCOUNT LINKS " + u.links());
         }
+        if (params.containsKey("ims")) {
+            ImsPendingAuthUnload.Result r2 = new ImsPendingAuthUnload(jdbc).load(Path.of(params.get("ims")));
+            System.out.println("LOADED IMS ROOTS " + r2.roots() + " CHILDREN " + r2.children() + " INVALID ROOTS SKIPPED "
+                + r2.invalidRoots() + " CHILDREN OF INVALID ROOTS SKIPPED " + r2.skippedChildren());
+        }
         return ExitCodes.OK;
     }
 
@@ -424,6 +461,13 @@ public class BatchCommandLine {
         String dir = params.get("");
         if (dir == null) {
             return usage("export needs a directory");
+        }
+        if (params.containsKey("ims")) {
+            int[] n = new ImsPendingAuthUnload(jdbc).export(Path.of(dir, params.get("ims")));
+            System.out.println("EXPORTED IMS " + params.get("ims") + " ROOTS " + n[0] + " CHILDREN " + n[1]);
+            if (!params.containsKey("files")) {
+                return ExitCodes.OK;
+            }
         }
         List<String> names = params.containsKey("files") ? List.of(params.get("files").split(","))
             : Layouts.BASE.stream().map(Layout::fileName).toList();

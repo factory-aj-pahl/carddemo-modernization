@@ -60,6 +60,26 @@ and 18 rows (the literal rows of the statement; the DDL files hold no rows), and
 DIR files=DB2LTTYP.ctl,DB2LTCAT.ctl` writes the tables back as the same SQL text; the export must equal
 the source file byte for byte, with no normalization.
 
+### DBPAUTP0 IMS unload: what is compared
+
+`AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat` is the IMS HD unload (DFSURGU0 format) of the pending-authorization
+database: 226 variable-length records, each with a 4-byte length prefix. Record 1 is a statistics header
+and record 226 a statistics trailer (88 bytes each); the others are 22 `PAUTSUM0` roots (140 bytes: a
+35-byte unload prefix naming the segment, a 2-byte value of the source database, the 100-byte CIPAUSMY
+segment, one zero byte) and 202 `PAUTDTL1` children (240 bytes, the 200-byte CIPAUDTY segment). Segment
+bytes are code page 037 text, COMP-3 and binary fields. It is loaded with `carddemo-batch load DIR
+ims=FILE` and written back with `carddemo-batch export DIR ims=NAME`.
+
+One root (the last) has the key X'404040404040', which is not a packed account number; it has no
+children. The migration rejects it (Q-PAUDBUNL-02, Q-PAUDBLOD-07), so 21 summaries and 202 details are
+loaded. The expected export is therefore the source with two documented changes: that root record is
+removed, and the trailer's root count (bytes 21-24 and 41-44) is 21 instead of 22. Every other byte,
+including the header, the unload prefixes, the 2-byte values (kept in `legacy_rba`), the non-text status
+bytes of three roots (`legacy_status`) and the non-blank FILLER bytes (`legacy_filler`), is compared
+unchanged. The detail key (`PA-AUTH-DATE-9C`, `PA-AUTH-TIME-9C`) is not stored: it is rebuilt from
+the stored insert timestamp `auth_ts` (Q-ENT-27), so the comparison also proves that conversion.
+Row counts checked: `pending_auth_summary` 21, `pending_auth_detail` 202.
+
 ## Files
 
 | File | Records | Record length | Table | Status | Owner | Notes |
@@ -76,7 +96,7 @@ the source file byte for byte, with no normalization.
 | `app/data/EBCDIC/AWS.M2.CARDDEMO.USRSEC.PS` | 10 | 80 | `app_user` | owed | W1 (P-DATA) | EBCDIC cp037; compared as described above (password bytes as BCrypt) |
 | `app/app-transaction-type-db2/ctl/DB2LTTYP.ctl` | 7 | n/a | `transaction_type` | owed | W5 (transaction-type Db2) | Db2 seed SQL (JOB-CREADB21); round trip on a fresh schema, exact bytes (see above) |
 | `app/app-transaction-type-db2/ctl/DB2LTCAT.ctl` | 18 | n/a | `transaction_category` | owed | W5 (transaction-type Db2) | Db2 seed SQL; loaded with `DB2LTTYP.ctl` (FK category to type, V50) |
-| `app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat` | n/a | n/a | pending authorization tables | pending | module worker (authorization IMS/Db2/MQ) | IMS unload sample, 51,736 bytes |
+| `app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat` | 226 | n/a | `pending_auth_summary`, `pending_auth_detail` | owed | W6 (authorization) | IMS HD unload (DFSURGU0), 51,736 bytes; compared as described above (invalid-key root dropped, trailer root count) |
 | `app/data/EBCDIC/AWS.M2.CARDDEMO.ACCTDATA.PS` | 50 | 300 | n/a | not-owed | n/a | EBCDIC twin of `acctdata.txt`; the ASCII set is the migration baseline (DF-2) |
 | `app/data/EBCDIC/AWS.M2.CARDDEMO.ACCDATA.PS` | 50 | 300 | n/a | not-owed | n/a | Duplicate of `ACCTDATA.PS` (entities.md sample findings); DF-2 |
 | `app/data/EBCDIC/AWS.M2.CARDDEMO.CARDDATA.PS` | 50 | 150 | n/a | not-owed | n/a | EBCDIC twin of `carddata.txt`; DF-2 |

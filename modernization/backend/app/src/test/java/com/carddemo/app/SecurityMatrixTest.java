@@ -148,7 +148,15 @@ class SecurityMatrixTest extends SecurityTestBase {
         op("GET /api/reports/{runId}/TRANREPT.txt", ACCOUNT_SCOPED),
         // MQ inquiry REST equivalents (D-MQ)
         op("GET /api/inquiry/date", AUTHENTICATED),
-        op("GET /api/inquiry/account/{id}", ACCOUNT_SCOPED));
+        op("GET /api/inquiry/account/{id}", ACCOUNT_SCOPED),
+        // Pending authorizations (COPAUS0C/1C screens; COPAUA0C REST equivalent, D-MQ). COPAUS1C works on the
+        // selection COPAUS0C made, so its scope is checked through COPAUS0C; without a selection it only prompts.
+        op("GET /api/screens/COPAUS0C", AUTHENTICATED),
+        op("POST /api/screens/COPAUS0C", ACCOUNT_SCOPED, t -> screen("accountId", t.accountId(), "sel", Collections.nCopies(5, ""))),
+        op("GET /api/screens/COPAUS1C", AUTHENTICATED),
+        op("POST /api/screens/COPAUS1C", AUTHENTICATED, t -> screen()),
+        // A card that does not exist is declined 3100 without touching any account (Q-COPAUA0C-02).
+        op("POST /api/authorizations", ADMIN_ONLY, t -> authRequest("9999999999999999")));
 
     /** Endpoints outside the OpenAPI document that must stay public and leak-free. */
     static final List<String> INFRASTRUCTURE = List.of("GET /actuator/health", "GET /v3/api-docs");
@@ -633,6 +641,20 @@ class SecurityMatrixTest extends SecurityTestBase {
 
     static Map.Entry<String, Rule> op(String operation, Access access, ListCheck listCheck) {
         return Map.entry(operation, new Rule(access, null, listCheck));
+    }
+
+    /** An ENT-AUTH-REQUEST for the given card, otherwise the spec's example request. */
+    static Map<String, Object> authRequest(String cardNum) {
+        String[] names = {"authDate", "authTime", "cardNum", "authType", "cardExpiryDate", "messageType", "messageSource",
+            "processingCode", "transactionAmt", "merchantCategoryCode", "acqrCountryCode", "posEntryMode", "merchantId",
+            "merchantName", "merchantCity", "merchantState", "merchantZip", "transactionId"};
+        String[] values = {"231026", "143015", cardNum, "0100", "1226", "1234  ", "102030", "000000", "100.00", "5442", "USA", "01",
+            "MERCH0000000001", "Amazon.com", "Wilmington", "DE", "19801", "TXN000000000001"};
+        Map<String, Object> m = new LinkedHashMap<>();
+        for (int i = 0; i < names.length; i++) {
+            m.put(names[i], values[i]);
+        }
+        return m;
     }
 
     /** An ENTER turn with the given field name/value pairs. */

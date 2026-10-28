@@ -55,5 +55,38 @@ class ReportRetentionTest(unittest.TestCase):
             carddemo_batch.report_dir("a/b")
 
 
+class ExitCodeTest(unittest.TestCase):
+    def run_with(self, rc: int, stderr: str, *args: str) -> str:
+        done = mock.Mock(returncode=rc, stdout="", stderr=stderr)
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"CARDDEMO_OUTBOX": tmp}), \
+                mock.patch.object(carddemo_batch.subprocess, "run", return_value=done):
+            if rc in carddemo_batch.SUCCESS:
+                self.assertEqual(carddemo_batch.run_batch(*args), rc)
+                return ""
+            with self.assertRaises(carddemo_batch.AirflowFailException) as e:
+                carddemo_batch.run_batch(*args)
+            return str(e.exception)
+
+    def test_rc16_of_an_authorization_program_is_its_9999_abend_not_a_usage_error(self):
+        for program in ("CBPAUP0C", "PAUDBUNL", "PAUDBLOD", "DBUNLDGS"):
+            self.assertEqual(self.run_with(16, "", program, "x=y"),
+                             f"{program} ended with program return code 16 (9999-ABEND) (exit 16)")
+
+    def test_rc16_with_the_usage_line_is_a_usage_error_for_every_command(self):
+        usage = "carddemo-batch: PAUDBUNL needs rootFile and childFile\nusage: POSTTRAN ...\n"
+        self.assertEqual(self.run_with(16, usage, "PAUDBUNL"), "PAUDBUNL usage error (exit 16)")
+        self.assertEqual(self.run_with(16, "carddemo-batch: missing parameter dailyFile\nusage: POSTTRAN ...", "POSTTRAN"),
+                         "POSTTRAN usage error (exit 16)")
+        self.assertEqual(self.run_with(16, "", "POSTTRAN"), "POSTTRAN usage error (exit 16)")
+
+    def test_other_codes_keep_their_labels(self):
+        self.assertEqual(self.run_with(0, "", "CBPAUP0C"), "")
+        self.assertEqual(self.run_with(4, "", "POSTTRAN"), "")
+        self.assertEqual(self.run_with(8, "", "INTCALC"), "INTCALC refused (exit 8)")
+        self.assertEqual(self.run_with(12, "", "POSTTRAN"), "POSTTRAN invalid date or date range (exit 12)")
+        self.assertEqual(self.run_with(99, "", "CBPAUP0C"), "CBPAUP0C abend (exit 99)")
+        self.assertEqual(self.run_with(3, "", "CBPAUP0C"), "CBPAUP0C failed (exit 3)")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -17,7 +17,12 @@ const batch = (...args) =>
   execFileSync('java', ['-jar', jar, '--spring.flyway.clean-disabled=false', ...args], { env, stdio: ['ignore', 'pipe', 'inherit'] });
 
 batch('reset');
-batch('load', resolve(repo, 'app/data/ASCII'), `usrsec=${resolve(repo, 'app/data/EBCDIC/AWS.M2.CARDDEMO.USRSEC.PS')}`);
+batch(
+  'load',
+  resolve(repo, 'app/data/ASCII'),
+  `usrsec=${resolve(repo, 'app/data/EBCDIC/AWS.M2.CARDDEMO.USRSEC.PS')}`,
+  `ims=${resolve(repo, 'app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat')}`,
+);
 // The transaction screens (COTRN00C-02C) browse TRANSACT; their spec's test data is the 300 daily
 // records loaded as the transaction file.
 const tranDir = mkdtempSync(join(tmpdir(), 'carddemo-e2e-transact-'));

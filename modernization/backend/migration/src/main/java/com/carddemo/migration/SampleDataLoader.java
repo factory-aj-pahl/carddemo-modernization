@@ -21,7 +21,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 public class SampleDataLoader {
 
     /** Tables cleared by {@link #clear()}, children first. */
-    public static final List<String> TABLES = List.of("user_account", "audit_log", "app_user", "posting_reject",
+    public static final List<String> TABLES = List.of("auth_fraud_report", "auth_error_log",
+            "pending_auth_detail", "pending_auth_summary", "user_account", "audit_log", "app_user", "posting_reject",
             "card_transaction", "tran_cat_balance", "card_xref", "card", "account", "customer", "disclosure_group",
             "transaction_category", "transaction_type");
 

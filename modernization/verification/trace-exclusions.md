@@ -34,3 +34,6 @@ C-/B- convention (covered by passing tests). Columns: owed ID, resolving ledger 
 | ERR-CODATE01-05 | Q-CODATE01-16 | PLATFORM: as ERR-COACCT01-05, except that an oversized date request gets a normal date reply (Q-CODATE01-07, `mq-roundtrip`). |
 | ERR-CODATE01-08 | Q-CODATE01-08 | PLATFORM: as ERR-COACCT01-09 (`DateInquiryMessagingTest.a_closed_broker_connection_is_recovered_and_the_next_request_is_answered`). |
 | ERR-CODATE01-11 | Q-CODATE01-16 | PLATFORM: as ERR-COACCT01-11. |
+| ERR-COPAUA0C-01 | Q-COPAUA0C-15 | MQOPEN of the request queue per task has no counterpart: a long-lived RabbitMQ listener consumes the request queue; a broker that is down is a container restart, not an M001 record. |
+| ERR-COPAUA0C-11 | Q-COPAUA0C-15 | MQCLOSE at the end of a task has no counterpart for the long-lived listener, so there is no M005 warning. |
+| TS-PAUDBLOD-09 | Q-PAUDBLOD-01 | The DLITCBL entry that binds only the I/O PCB has no counterpart: the load writes the tables directly, so the first root insert cannot fail for that reason. |
