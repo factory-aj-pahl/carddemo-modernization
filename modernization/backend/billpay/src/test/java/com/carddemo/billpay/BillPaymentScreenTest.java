@@ -1,6 +1,7 @@
 package com.carddemo.billpay;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.carddemo.common.msg.CommonMessages;
 import com.carddemo.migration.Layouts;
@@ -14,6 +15,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,6 +28,8 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** COBIL00C screen turns against the sample data with TRANSACT loaded from dailytran.txt (spec test assumptions). */
 @SpringBootTest(classes = TestApplication.class)
@@ -36,6 +45,8 @@ class BillPaymentScreenTest {
     SampleData sample;
     @Autowired
     JdbcTemplate jdbc;
+    @Autowired
+    PlatformTransactionManager txm;
 
     ScreenClient client;
 
@@ -87,7 +98,7 @@ class BillPaymentScreenTest {
     @Test
     @Covers({"TS-COBIL00C-01", "BR-COBIL00C-01", "BR-COBIL00C-03", "BR-COBIL00C-04", "BR-COBIL00C-05", "BR-COBIL00C-06",
         "BR-COBIL00C-08", "BR-COBIL00C-09", "NAV-COBIL00C-03", "Q-COBIL00C-01", "Q-COBIL00C-05", "Q-COBIL00C-06",
-        "Q-COBIL00C-13", "D-RECEIPT"})
+        "D-RECEIPT"})
     void show_balance_then_confirm_pays_the_full_balance() {
         client.signOn(ownerOf(1));
         Map<String, Object> before = accountRow(1);
@@ -147,6 +158,15 @@ class BillPaymentScreenTest {
         assertThat(r.at("/message").asText()).startsWith("Payment successful.  Your Transaction ID is ");
         assertThat(r.at("/fields/receipt/amountPaid").asText()).isEqualTo("158.00");
         assertThat(balance(2)).isEqualByComparingTo("0.00");
+        String tranId = r.at("/fields/receipt/tranId").asText();
+        assertThat(r.at("/message").asText()).isEqualTo("Payment successful.  Your Transaction ID is " + tranId + ".");
+        Map<String, Object> tran = jdbc.queryForMap("SELECT * FROM card_transaction WHERE tran_id = ?", tranId);
+        assertThat(tran.get("type_cd")).isEqualTo("02");
+        assertThat(tran.get("cat_cd")).isEqualTo((short) 2);
+        assertThat(tran.get("description")).isEqualTo("BILL PAYMENT - ONLINE");
+        assertThat((BigDecimal) tran.get("amount")).isEqualByComparingTo("158.00");
+        assertThat(tran.get("card_num"))
+            .isEqualTo(jdbc.queryForObject("SELECT MIN(card_num) FROM card_xref WHERE account_id = 2", String.class));
     }
 
     @Test
@@ -273,6 +293,51 @@ class BillPaymentScreenTest {
 
         JsonNode paid = enter(ACCT1, "Y", r.at("/fields/currentBalance").asText());
         assertThat(paid.at("/fields/receipt/amountPaid").asText()).isEqualTo("200.00");
+    }
+
+    @Test
+    @Covers({"Q-COBIL00C-13"})
+    void the_display_turn_reads_without_a_lock_and_only_the_confirmed_payment_locks() throws Exception {
+        client.signOn(ownerOf(1));
+        int count = transactionCount();
+        ExecutorService ex = Executors.newFixedThreadPool(2);
+        CountDownLatch locked = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        try {
+            // Another unit of work holds the update lock a confirmed payment would take on the account row.
+            Future<?> holder = ex.submit(() -> new TransactionTemplate(txm).executeWithoutResult(st -> {
+                jdbc.queryForList("SELECT account_id FROM account WITH (UPDLOCK, ROWLOCK) WHERE account_id = 1");
+                locked.countDown();
+                try {
+                    release.await(30, TimeUnit.SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                st.setRollbackOnly();
+            }));
+            assertThat(locked.await(10, TimeUnit.SECONDS)).isTrue();
+
+            JsonNode shown = ex.submit(() -> enter(ACCT1, "", "")).get(5, TimeUnit.SECONDS);
+            assertThat(shown.at("/fields/currentBalance").asText()).as("answered while the row is locked")
+                .isEqualTo("+0000000194.00");
+            assertThat(shown.at("/message").asText()).isEqualTo("Confirm to make a bill payment...");
+
+            Future<JsonNode> paying = ex.submit(() -> enter(ACCT1, "Y", "+0000000194.00"));
+            assertThatThrownBy(() -> paying.get(2, TimeUnit.SECONDS)).as("the confirmed payment waits for the lock")
+                .isInstanceOf(TimeoutException.class);
+            assertThat(transactionCount()).isEqualTo(count);
+            assertThat(balance(1)).isEqualByComparingTo("194.00");
+
+            release.countDown();
+            holder.get(10, TimeUnit.SECONDS);
+            JsonNode paid = paying.get(10, TimeUnit.SECONDS);
+            assertThat(paid.at("/message").asText()).startsWith("Payment successful.  Your Transaction ID is ");
+            assertThat(balance(1)).isEqualByComparingTo("0.00");
+            assertThat(transactionCount()).isEqualTo(count + 1);
+        } finally {
+            release.countDown();
+            ex.shutdownNow();
+        }
     }
 
     @Test

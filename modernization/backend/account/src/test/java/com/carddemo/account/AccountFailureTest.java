@@ -136,7 +136,7 @@ class AccountFailureTest extends AccountScreenTestBase {
     }
 
     @Test
-    @Covers({"TS-COACTUPC-15", "ERR-COACTUPC-07", "BR-COACTUPC-15", "BR-COACTUPC-18", "BR-COACTUPC-21"})
+    @Covers({"TS-COACTUPC-15", "ERR-COACTUPC-07", "BR-COACTUPC-15", "BR-COACTUPC-18", "BR-COACTUPC-21", "Q-COACTUPC-19"})
     void account_lock_failure() throws Exception {
         confirmChange();
         JsonNode r = whileLocked("account", "account_id", 24);
@@ -145,6 +145,11 @@ class AccountFailureTest extends AccountScreenTestBase {
         assertThat(r.at("/fields/mode").asText()).isEqualTo("L");
         assertThat(r.at("/fields/cancelKey").asBoolean()).isTrue();
         assertThat(r.at("/fields/values/zip").asText()).isEqualTo("66044");
+        assertThat(r.at("/fields/saveKey").asBoolean()).isFalse();
+        // BR-COACTUPC-18 with Q-COACTUPC-19 (PRESERVE): the result screen of state L protects every field,
+        // the account number, customer id, and country included.
+        assertThat(r.at("/fields/editable").isArray()).isTrue();
+        assertThat(r.at("/fields/editable")).isEmpty();
         assertNothingWritten();
         assertThat(update("ENTER", Map.of()).at("/fields/mode").asText()).isEqualTo("SEARCH");
     }
