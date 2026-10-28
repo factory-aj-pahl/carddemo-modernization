@@ -569,9 +569,12 @@ the cited line. "Record" means the CARDDAT record after the turn.
   state is `E`.
 - **TS-COCRDUPC-09** (VR-COCRDUPC-07): Given state `S`, when the name is erased, then the error is
   `Card name not provided` and the name field shows `*` in red.
-- **TS-COCRDUPC-10** (VR-COCRDUPC-09): Given state `S`, when the status is changed to `y`, then
-  the error is `Card Active Status must be Y or N`. When it is erased, the same message appears
-  with `*` in the field.
+- **TS-COCRDUPC-10** (VR-COCRDUPC-09): Given state `S` with status `Y`, when the status is changed
+  to `y` together with another field (for example the month), then the error is
+  `Card Active Status must be Y or N`. When it is erased, the same message appears with `*` in
+  the field. (Correction: `y` as the only change gives BR-COCRDUPC-03 `No change detected with
+  respect to values fetched.`, because the change check compares upper-cased values,
+  `app/cbl/COCRDUPC.cbl:680-683`.)
 - **TS-COCRDUPC-11** (VR-COCRDUPC-10): Given state `S`, when the month is changed to `13`, then the
   error is `Card expiry month must be between 1 and 12`. With `00` the same message appears and
   the field shows `*`.
