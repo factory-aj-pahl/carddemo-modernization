@@ -132,7 +132,12 @@ JOB-MNTTRDB2 (`modernization/spec/jobs.md`, Q-MNTTRDB2-01).
   `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:151-163`, `:177-194`, `:207-225`.
 - **ERR-COBTUPDT-07**: SQLCODE -911 (deadlock or timeout with rollback) is reported like any other negative code,
   but Db2 has already rolled back the whole unit of work, that is, every change applied earlier in the run; the
-  program goes on and the later records are committed at the end (Q-COBTUPDT-04).
+  program goes on and the later records are committed at the end (Q-COBTUPDT-04). Source:
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:154-162 (10031-INSERT-DB)`,
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:185-193 (10032-UPDATE-DB)`,
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:216-224 (10033-DELETE-DB)`,
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:230-233 (9999-ABEND)`; no COMMIT or ROLLBACK statement
+  exists in the program.
 - No SQL error stops the run; there is no Db2 connection check (a failing `DSN` connection stops the step before
   the program runs).
 
