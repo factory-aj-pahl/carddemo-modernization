@@ -8,6 +8,7 @@ table in datasets.md, read before anything runs; a pair that cannot run counts a
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 import tempfile
@@ -68,6 +69,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"{'MATCH   ' if not findings else 'MISMATCH'} {tag}")
         for f in findings:
             print(f"    {f}")
+    (root / "results.json").write_text(json.dumps(results, indent=2))
     matched = sum(1 for f in results.values() if not f)
     print(f"batch parity: {matched}/{len(pairs)} owed pairs matched; outputs in {root}")
     return 0 if matched == len(pairs) else 1

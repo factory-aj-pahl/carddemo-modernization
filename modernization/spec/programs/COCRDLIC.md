@@ -390,7 +390,7 @@ locks). Every turn issues at most one browse.
   EIBCALEN). Source: `app/cbl/COCRDLIC.cbl:326-343`.
 - **Q-COCRDLIC-15**: Dead or unused code:
   - Lines 586-601 after the EVALUATE are unreachable.
-  - `WS-RETURN-FLAG`, `WS-EXIT-MESSAGE` (set on PF3 but never shown), `CCARD-ERROR-MSG`, the
+  - `WS-RETURN-FLAG`, `WS-EXIT-MESSAGE` ("PF03 PRESSED.EXITING", set on PF3 but never shown), `CCARD-ERROR-MSG`, the
     CVV edit fields, `CSUSR01Y`, and `CSMSG01Y` are not used.
   - The `WHEN CCARD-AID-PFK07 AND CA-FIRST-PAGE` branch is written twice.
 
