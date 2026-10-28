@@ -80,7 +80,7 @@ public class CardViewController {
         if (st.fromList()) {
             return read(st, CardForms.accountText(st.account()));
         }
-        KeyEdit edit = CardForms.editKeys(req.accountId(), req.cardNum(), st.card());
+        KeyEdit edit = CardForms.editKeys(req.accountId(), req.cardNum(), st.card(), false);
         ViewState next = new ViewState(false, edit.account(), edit.card());
         session.setAttribute(STATE, next);
         if (!edit.ok()) {

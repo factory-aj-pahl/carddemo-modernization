@@ -35,7 +35,7 @@ public final class CardForms {
     /**
      * Result of the search-key edits (2210-EDIT-ACCOUNT, 2220-EDIT-CARD).
      *
-     * @param accountShown what the account field shows next (input, {@code *} when blank, empty when invalid)
+     * @param accountShown what the account field shows next (input, {@code *} when blank; when invalid, empty or as typed)
      * @param cardShown    what the card field shows next (masked when valid, C-MASK)
      * @param account      edited account, null when blank or invalid
      * @param card         edited full card number, null when blank or invalid
@@ -52,9 +52,10 @@ public final class CardForms {
     /**
      * Edits the account and card keys of the view and update search screens. {@code heldCard} is the
      * full card number behind a masked value the server sent; submitting that mask unchanged means
-     * that card (C-MASK).
+     * that card (C-MASK). With {@code echoInvalidAccount} a non-numeric account is shown as typed
+     * (COCRDUPC, VR-COCRDUPC-02); otherwise it is shown empty (COCRDSLC).
      */
-    public static KeyEdit editKeys(String accountIn, String cardIn, String heldCard) {
+    public static KeyEdit editKeys(String accountIn, String cardIn, String heldCard, boolean echoInvalidAccount) {
         String a = accountIn == null ? "" : accountIn;
         String c = cardIn == null ? "" : cardIn;
         String message = null;
@@ -69,7 +70,7 @@ public final class CardForms {
         } else if (!digits(a, 11)) {
             message = ACCOUNT_FILTER_INVALID;
             errors.add(ACCOUNT);
-            accountShown = "";
+            accountShown = echoInvalidAccount ? (a.length() > 11 ? a.substring(0, 11) : a) : "";
         } else {
             account = Long.parseLong(a);
             accountShown = a;

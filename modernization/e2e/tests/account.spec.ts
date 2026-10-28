@@ -136,6 +136,23 @@ test.describe('COACTUPC account update', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
+  test('Q-COACTUPC-31 TS-COACTUPC-32 every invalid SSN part is highlighted, also when part 1 is invalid', async ({ page }) => {
+    await page.getByLabel('Account Number').fill(fixtures.unlinkedAccount);
+    await page.keyboard.press('Enter');
+    await expect(form(page)).toHaveAttribute('data-mode', 'S');
+    await page.locator('#ssn1').fill('ABC');
+    await page.locator('#ssn2').fill('45');
+    await page.locator('#ssn3').fill('12X4');
+    await page.keyboard.press('Enter');
+    await expect(form(page)).toHaveAttribute('data-mode', 'E');
+    await expectMessage(page, 'SSN: First 3 chars must be all numeric.');
+    await expect(page.locator('#ssn1')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#ssn3')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#ssn2')).not.toHaveAttribute('aria-invalid', 'true');
+    await expect(page.locator('#ssn1')).toBeFocused();
+    await expectNoSeriousA11yViolations(page);
+  });
+
   test('NAV-COACTUPC-08 NAV-COACTUPC-01 NAV-COACTUPC-02 keyboard only: F12 discards changes, other keys act like ENTER, F3 exits', async ({ page }) => {
     await expect(page.getByLabel('Account Number')).toBeFocused();
     await page.keyboard.type(fixtures.unlinkedAccount);
