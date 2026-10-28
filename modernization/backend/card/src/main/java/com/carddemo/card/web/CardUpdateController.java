@@ -167,7 +167,7 @@ public class CardUpdateController {
             // Q-COCRDUPC-09: the keys from the list stay read-only; ENTER only re-reads them.
             return fetch(session, st);
         }
-        KeyEdit edit = CardForms.editKeys(req.accountId(), req.cardNum(), st.card());
+        KeyEdit edit = CardForms.editKeys(req.accountId(), req.cardNum(), st.card(), true);
         UpdState next = new UpdState(false, Mode.NOT_FETCHED, edit.account(), edit.card(), null, null);
         if (!edit.ok()) {
             session.setAttribute(STATE, next);

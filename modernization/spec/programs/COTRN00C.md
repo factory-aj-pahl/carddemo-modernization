@@ -176,7 +176,8 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
 - **BR-COTRN00C-08**: PF7 restarts at `TRNID-FIRST`, skips that record, and fills rows 10 down to 1 with
   the 10 preceding records. A look-ahead READPREV then sets the page number: if an earlier record
   exists and the page is greater than 1, the page number goes down by 1. If no earlier record exists,
-  the page number becomes 1. After PF7 the next-page flag is always Y.
+  the page number becomes 1. After PF7 the next-page flag is always Y, also when PF7 is rejected on
+  page 1 (Q-COTRN00C-13).
   Source: `app/cbl/COTRN00C.cbl:234-252 (PROCESS-PF7-KEY)`, `:333-376 (PROCESS-PAGE-BACKWARD)`.
 - **BR-COTRN00C-09**: Selection uses only the first row, from top to bottom, whose Sel field is not
   blank. When its value is `S` or `s` and its TRNID is not blank, the program sets
@@ -210,9 +211,11 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
   Source: `app/cbl/COTRN00C.cbl:122-124 (MAIN-PARA)`.
 - **NAV-COTRN00C-05**: PF7 pages backward. When the page number is 1 or less, the message is
   "You are already at the top of the page..." and the screen is sent without erase, so the rows stay.
+  The next-page flag is still set to Y (Q-COTRN00C-13).
   Source: `app/cbl/COTRN00C.cbl:125-126, 234-252 (PROCESS-PF7-KEY)`.
 - **NAV-COTRN00C-06**: PF8 pages forward. When the next-page flag is not Y, the message is
   "You are already at the bottom of the page..." and the screen is sent without erase.
+  The flag can be Y without a next page after PF7 on page 1 (NAV-COTRN00C-05, Q-COTRN00C-13).
   Source: `app/cbl/COTRN00C.cbl:127-128, 257-274 (PROCESS-PF8-KEY)`.
 - **NAV-COTRN00C-07**: Any other AID shows "Invalid key pressed. Please see below..." (the 50-character
   constant, padded with trailing spaces) with the cursor on TRNIDIN. The screen is sent with erase from
@@ -295,6 +298,14 @@ after a STARTBR error or after a non-numeric search ID, where the browse is left
 - **Q-COTRN00C-12**: The date column is the origination date with a 2-digit year. The description is
   cut to 26 of 100 characters. Recommendation: decide the target display.
   Source: `app/cbl/COTRN00C.cbl:383-396`.
+- **Q-COTRN00C-13**: PF7 sets the next-page flag to Y before testing the page number, so PF7 on page 1
+  marks a next page that may not exist. When page 1 is a full page that is also the last page, PF8 then
+  restarts at `TRNID-LAST`, skips that record, clears all ten rows, hits end of file, and shows an empty
+  list with "You have reached the bottom of the page..." and the page number unchanged, instead of
+  "You are already at the bottom of the page..." with the rows kept. When page 1 is a partial page,
+  `TRNID-LAST` still holds the previous value (BR-COTRN00C-10), so PF8 continues from that older
+  position. Recommendation: fix. Source: `app/cbl/COTRN00C.cbl:242, 245-252 (PROCESS-PF7-KEY)`,
+  `:267-268 (PROCESS-PF8-KEY)`, `:285-293, 316-319 (PROCESS-PAGE-FORWARD)`, `:639-645 (READNEXT-TRANSACT-FILE)`.
 
 ## Test scenarios
 Assumption: TRANSACT holds the 300 records of `app/data/ASCII/dailytran.txt`. Sorted by ID, record 1 is
@@ -339,6 +350,13 @@ Assumption: TRANSACT holds the 300 records of `app/data/ASCII/dailytran.txt`. So
   shown.
 - **TS-COTRN00C-12** (covers NAV-COTRN00C-04, -07): PF3 transfers to COMEN01C. PF10 shows
   "Invalid key pressed. Please see below...".
+- **TS-COTRN00C-13** (covers BR-COTRN00C-08, NAV-COTRN00C-05, -06, Q-COTRN00C-13): Given the user pressed
+  ENTER with search ID `0000000957864065`, so page 1 holds records 291-300 with
+  "You have reached the bottom of the page...", when the user presses PF7, then the message is
+  "You are already at the top of the page...". When the user then presses PF8, then (as coded) all ten
+  rows are blank, PAGENUM is `00000001`, and the message is "You have reached the bottom of the page...".
+  Expected in the target system (ledger FIX): the message is "You are already at the bottom of the
+  page...", the rows still hold records 291-300, and PAGENUM is `00000001`.
 
 ## Open questions
 - Should regular users be restricted to their own account's transactions (Q-COTRN00C-08)?

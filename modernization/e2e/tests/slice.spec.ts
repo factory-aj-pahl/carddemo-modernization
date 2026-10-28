@@ -76,6 +76,25 @@ test.describe('Menus and roles', () => {
     await other.close();
   });
 
+  test('NAV-COMEN01C-03 TS-COMEN01C-09 an invalid key keeps the typed option on the main menu', async ({ page }) => {
+    await signOn(page, 'USER0001');
+    await expectProgram(page, 'CM00 · COMEN01C');
+    await page.getByLabel('Please select an option').fill('4');
+    await page.keyboard.press('F7');
+    await expectMessage(page, MSG.INVALID_KEY);
+    await expect(page.getByLabel('Please select an option')).toHaveValue('4');
+    await expectNoSeriousA11yViolations(page);
+  });
+
+  test('NAV-COADM01C-03 TS-COADM01C-07 an invalid key keeps the typed option on the admin menu', async ({ page }) => {
+    await signOn(page, 'ADMIN001');
+    await expectProgram(page, 'CA00 · COADM01C');
+    await page.getByLabel('Please select an option').fill('3');
+    await page.keyboard.press('F2');
+    await expectMessage(page, MSG.INVALID_KEY);
+    await expect(page.getByLabel('Please select an option')).toHaveValue('3');
+  });
+
   test('NAV-COMEN01C F3 from the main menu returns to sign-on and ends the session', async ({ page }) => {
     await signOn(page, 'USER0001');
     await expectProgram(page, 'CM00 · COMEN01C');

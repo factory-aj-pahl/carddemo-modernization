@@ -115,6 +115,23 @@ class CardScreenFailureTest extends CardScreenTestSupport {
     }
 
     @Test
+    @Covers({"ERR-COCRDUPC-01", "Q-COCRDUPC-20"})
+    void a_failed_pf12_reread_on_the_menu_path_shows_the_file_error_on_the_search_screen() {
+        JsonNode n = confirmed();
+        doThrow(DOWN).when(repo).find(anyString());
+        JsonNode r = admin.post("COCRDUPC", "PF12", keys(ACCT1, n.at("/fields/cardNum").asText()));
+        assertThat(r.at("/message").asText()).isEqualTo(FILE_ERROR);
+        assertThat(r.at("/fields/errors").toString()).isEqualTo("[\"accountId\"]");
+        assertThat(r.at("/focus").asText()).isEqualTo("accountId");
+        assertThat(r.at("/fields/state").asText()).isEmpty();
+        assertThat(r.at("/fields/accountId").asText()).isEqualTo(ACCT1);
+        assertThat(r.at("/fields/cardNum").asText()).isEqualTo(n.at("/fields/cardNum").asText());
+        assertThat(r.at("/fields/keysEditable").asBoolean()).isTrue();
+        assertThat(r.at("/fields/detailsEditable").asBoolean()).isFalse();
+        assertThat(r.at("/fields/name").asText()).isEmpty();
+    }
+
+    @Test
     @Covers({"ERR-COCRDUPC-03"})
     void a_failed_rewrite_shows_update_failed_and_writes_nothing() {
         Map<String, Object> before = cardRow(CARD1);

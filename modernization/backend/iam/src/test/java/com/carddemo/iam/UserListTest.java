@@ -51,6 +51,25 @@ class UserListTest extends UserScreenTestSupport {
     }
 
     @Test
+    @Covers({"Q-COUSR00C-15", "TS-COUSR00C-17", "NAV-COUSR00C-03", "NAV-COUSR00C-04"})
+    void pf7_on_page_one_does_not_mark_a_next_page() {
+        admin.show("COUSR00C");
+        JsonNode up = admin.post("COUSR00C", "PF7", Map.of());
+        assertThat(up.at("/message").asText()).isEqualTo("You are already at the top of the page...");
+        JsonNode down = admin.post("COUSR00C", "PF8", Map.of());
+        assertThat(down.at("/message").asText()).isEqualTo("You are already at the bottom of the page...");
+        assertThat(userIds(down)).containsExactlyElementsOf(SAMPLE);
+        assertThat(down.at("/fields/pageNum").asText()).isEqualTo("00000001");
+
+        twentyFiveUsers();
+        admin.show("COUSR00C");
+        admin.post("COUSR00C", "PF7", Map.of());
+        JsonNode next = admin.post("COUSR00C", "PF8", Map.of());
+        assertThat(userIds(next)).as("with more users F8 still pages as usual").containsExactlyElementsOf(range(11, 20));
+        assertThat(next.at("/fields/pageNum").asText()).isEqualTo("00000002");
+    }
+
+    @Test
     @Covers({"BR-COUSR00C-09", "BR-COUSR00C-16", "TS-COUSR00C-04", "Q-COUSR00C-12"})
     void search_starts_the_list_at_the_key_and_clears_the_search_field() {
         admin.show("COUSR00C");

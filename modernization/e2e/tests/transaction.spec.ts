@@ -77,6 +77,29 @@ test.describe('COTRN00C transaction list', () => {
     await expectMessage(page, 'You are already at the bottom of the page...');
   });
 
+  test('TS-COTRN00C-13 Q-COTRN00C-13 BR-COTRN00C-08 F7 on a page 1 that is also the last page does not open a next page', async ({ page }) => {
+    await open(page, '/screens/COTRN00C', 'CT00 · COTRN00C');
+    const message = () => page.getByTestId('message').textContent();
+    for (let i = 0; i < 12 && !(await message())?.includes('You have reached the bottom of the page...'); i++) {
+      const before = await page.getByTestId('page').getAttribute('data-raw');
+      await page.keyboard.press('F8');
+      await expect(page.getByTestId('page')).not.toHaveAttribute('data-raw', before ?? '');
+    }
+    const lastPageFirst = (await firstRowId(page).textContent()) ?? '';
+    await page.getByLabel('Search Tran ID').fill(lastPageFirst);
+    await page.keyboard.press('Enter');
+    await expect(firstRowId(page)).toHaveText(lastPageFirst);
+    await expect(page.getByTestId('page')).toHaveAttribute('data-raw', '00000001');
+    await expectMessage(page, 'You have reached the bottom of the page...');
+    const shown = await rows(page).locator('td:nth-child(2)').allTextContents();
+    await page.keyboard.press('F7');
+    await expectMessage(page, 'You are already at the top of the page...');
+    await page.keyboard.press('F8');
+    await expectMessage(page, 'You are already at the bottom of the page...');
+    await expect(page.getByTestId('page')).toHaveAttribute('data-raw', '00000001');
+    await expect(rows(page).locator('td:nth-child(2)')).toHaveText(shown);
+  });
+
   test('TS-COTRN00C-08 NAV-COTRN00C-08 TS-COTRN01C-01 TS-COTRN01C-07 keyboard only: S opens the view and F3 returns to the list', async ({ page }) => {
     await open(page, '/screens/COTRN00C', 'CT00 · COTRN00C');
     await expect(page.getByLabel('Search Tran ID')).toBeFocused();

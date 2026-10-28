@@ -160,10 +160,13 @@ public class TransactionListController {
         return message == null ? r : r.error(message);
     }
 
-    /** PROCESS-PF7-KEY / PROCESS-PAGE-BACKWARD; after PF7 the next-page flag is always Y (BR-COTRN00C-08). */
+    /**
+     * PROCESS-PF7-KEY / PROCESS-PAGE-BACKWARD. A page shown by PF7 always has a next page (BR-COTRN00C-08);
+     * a rejected PF7 on page 1 keeps the next-page state (Q-COTRN00C-13).
+     */
     private ScreenResponse<Fields> backward(HttpSession session, Scope scope, Position pos, String search) {
         if (pos.page() <= 1 || pos.firstId() == null) {
-            return redisplay(session, scope, pos.withNextPage(true), search).error(ALREADY_TOP);
+            return redisplay(session, scope, pos, search).error(ALREADY_TOP);
         }
         List<TransactionRow> before = reader.page(scope, pos.firstId(), Bound.BEFORE, PAGE_SIZE + 1);
         List<TransactionRow> shown;

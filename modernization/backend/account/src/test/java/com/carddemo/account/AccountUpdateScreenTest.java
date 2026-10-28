@@ -500,6 +500,32 @@ class AccountUpdateScreenTest extends AccountScreenTestBase {
     }
 
     @Test
+    @Covers({"TS-COACTUPC-32", "Q-COACTUPC-31", "VR-COACTUPC-17", "VR-COACTUPC-18", "VR-COACTUPC-34"})
+    void every_ssn_part_is_edited_even_when_part_one_fails() {
+        JsonNode s = fetched24();
+        JsonNode r = change(s, f -> { f.put("ssn1", "ABC"); f.put("ssn2", "45"); f.put("ssn3", "12X4"); });
+        assertEdit(r, "SSN: First 3 chars must be all numeric.", "ssn1");
+        assertThat(list(r, "errorFields")).as("part 3 is edited although part 1 failed").containsExactly("ssn1", "ssn3");
+
+        r = change(s, f -> { f.put("ssn1", "ABC"); f.put("ssn3", "12X4"); });
+        assertEdit(r, "SSN: First 3 chars must be all numeric.", "ssn1");
+        assertThat(list(r, "errorFields")).as("part 2 left masked also fails (Q-COACTUPC-28)")
+            .containsExactly("ssn1", "ssn2", "ssn3");
+
+        r = change(s, f -> { f.put("ssn1", ""); f.put("ssn2", "0A"); f.put("ssn3", "0000"); });
+        assertEdit(r, "SSN: First 3 chars must be supplied.", "ssn1");
+        assertThat(list(r, "errorFields")).containsExactly("ssn1", "ssn2", "ssn3");
+
+        r = change(s, f -> { f.put("ssn1", "123"); f.put("ssn2", "45"); f.put("ssn3", "12X4"); });
+        assertEdit(r, "SSN Last 4 chars must be all numeric.", "ssn3");
+        assertThat(list(r, "errorFields")).containsExactly("ssn3");
+
+        r = change(s, f -> { f.put("ssn1", "123"); f.put("ssn2", "AB"); f.put("ssn3", "12X4"); });
+        assertEdit(r, "SSN 4th & 5th chars must be all numeric.", "ssn2");
+        assertThat(list(r, "errorFields")).containsExactly("ssn2", "ssn3");
+    }
+
+    @Test
     @Covers({"TS-COACTUPC-25", "VR-COACTUPC-19", "Q-COACTUPC-27"})
     void date_of_birth_must_be_in_the_past() {
         JsonNode s = fetched24();

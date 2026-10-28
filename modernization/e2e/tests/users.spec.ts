@@ -110,6 +110,17 @@ test.describe('COUSR00C user list', () => {
     await page.keyboard.press('F3');
     await expectProgram(page, 'CA00 · COADM01C');
   });
+
+  test('Q-COUSR00C-15 TS-COUSR00C-17 F8 after F7 on page 1 stays on the last page with the rows kept', async ({ page }) => {
+    await openOption(page, /User List/, 'CU00 · COUSR00C');
+    await page.keyboard.press('F7');
+    await expectMessage(page, 'You are already at the top of the page...');
+    await page.keyboard.press('F8');
+    await expectMessage(page, 'You are already at the bottom of the page...');
+    expect(await userIds(page)).toEqual(SAMPLE);
+    await expect(page.getByTestId('page')).toHaveText('Page 1');
+    await expectNoSeriousA11yViolations(page);
+  });
 });
 
 test.describe('COUSR01C add user', () => {
