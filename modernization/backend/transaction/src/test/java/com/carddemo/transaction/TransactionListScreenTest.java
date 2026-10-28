@@ -129,6 +129,30 @@ class TransactionListScreenTest extends TransactionScreenTestBase {
     }
 
     @Test
+    @Covers({"TS-COTRN00C-13", "Q-COTRN00C-13", "BR-COTRN00C-08", "NAV-COTRN00C-05", "NAV-COTRN00C-06"})
+    void backward_on_a_last_page_one_does_not_open_a_next_page() {
+        client.signOn(ADMIN);
+        client.show("COTRN00C");
+        JsonNode first = search("0000000957864065");
+        assertThat(first.at("/fields/page").asText()).isEqualTo("00000001");
+        assertThat(ids(first)).isEqualTo(allIds().subList(290, 300));
+        assertThat(first.at("/message").asText()).isEqualTo(BOTTOM_REACHED);
+        assertThat(key("PF7").at("/message").asText()).isEqualTo(ALREADY_TOP);
+        JsonNode r = key("PF8");
+        assertThat(r.at("/message").asText()).isEqualTo(ALREADY_BOTTOM);
+        assertThat(r.at("/fields/rows")).isEqualTo(first.at("/fields/rows"));
+        assertThat(r.at("/fields/page").asText()).isEqualTo("00000001");
+
+        JsonNode partial = search("0000000996722787");
+        assertThat(ids(partial)).containsExactly("0000000996722787");
+        key("PF7");
+        JsonNode again = key("PF8");
+        assertThat(again.at("/message").asText()).as("partial last page 1").isEqualTo(ALREADY_BOTTOM);
+        assertThat(again.at("/fields/rows")).isEqualTo(partial.at("/fields/rows"));
+        assertThat(again.at("/fields/page").asText()).isEqualTo("00000001");
+    }
+
+    @Test
     @Covers({"TS-COTRN00C-07", "VR-COTRN00C-02", "Q-COTRN00C-04", "Q-COTRN00C-07", "C-KEYLEN"})
     void search_id_must_be_16_digits_and_keeps_the_current_page() {
         client.signOn(ADMIN);

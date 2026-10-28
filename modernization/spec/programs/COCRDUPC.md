@@ -351,7 +351,9 @@ Search keys (state not-fetched only):
   account message), with `*` in red. Source: `app/cbl/COCRDUPC.cbl:762-780 (1220-EDIT-CARD)`.
 - **VR-COCRDUPC-04**: The card must be numeric in all 16 positions. Otherwise
   `CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER` (only if no account message); the field
-  is red. Source: `app/cbl/COCRDUPC.cbl:784-799`.
+  is red and shows the raw input as typed (3200 echoes CC-CARD-NUM unless CC-CARD-NUM-N = 0; see Open
+  questions). CDEMO-CARD-NUM is set to 0. Source: `app/cbl/COCRDUPC.cbl:784-799 (1220-EDIT-CARD)`,
+  `app/cbl/COCRDUPC.cbl:1093-1097 (3200-SETUP-SCREEN-VARS)`, `app/cbl/COCRDUPC.cbl:1253-1255`.
 - **VR-COCRDUPC-05**: If both keys are blank, the message is `No input received`, replacing the
   account message. Source: `app/cbl/COCRDUPC.cbl:655-659`.
 - **VR-COCRDUPC-06**: The card must exist. NOTFND gives
@@ -620,7 +622,8 @@ the cited line. "Record" means the CARDDAT record after the turn.
   - Account empty, card 0683********1516: `Account number not provided`.
   - Account `00000000027`, card empty: `Card number not provided`.
   - Account `27`: `ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER`.
-  - Card `0683X`: `CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER`.
+  - Card `0683X`: `CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER`; the card field is red and
+    shows `0683X`.
 - **TS-COCRDUPC-18** (VR-COCRDUPC-06): On the search screen, account `00000000027` and card
   `0000000000000001` give `Did not find cards for this search condition`, both keys red, and the
   state stays not-fetched.
@@ -661,10 +664,11 @@ the cited line. "Record" means the CARDDAT record after the turn.
   current behavior (Q-COCRDUPC-01 to Q-COCRDUPC-03) looks unintended.
 - Should the menu path verify that the card belongs to the entered account, and should regular
   users be limited to their own cards (Q-COCRDUPC-02, Q-COCRDUPC-17)?
-- VR-COCRDUPC-02 echo: on a non-numeric account the program sets CDEMO-ACCT-ID to 0 but echoes
-  CC-ACCT-ID (raw input) unless CC-ACCT-ID-N = 0. Whether the raw text is redisplayed depends on
-  how the platform evaluates a numeric test on non-numeric data. Confirm on the target platform,
-  or decide to always echo the input.
+- VR-COCRDUPC-02 and VR-COCRDUPC-04 echo: on a non-numeric account the program sets CDEMO-ACCT-ID to 0
+  but echoes CC-ACCT-ID (raw input) unless CC-ACCT-ID-N = 0; on a non-numeric card it sets
+  CDEMO-CARD-NUM to 0 but echoes CC-CARD-NUM unless CC-CARD-NUM-N = 0. Whether the raw text is
+  redisplayed depends on how the platform evaluates a numeric test on non-numeric data. Confirm on
+  the target platform, or decide to always echo the input.
 - BMS padding of partially typed input fields (spaces or nulls) decides whether a shortened name
   passes the alphabetic check, and whether one-digit months pass. The modern implementation should
   treat trailing nulls as spaces and accept 1-12 without leading zero, unless a byte-for-byte match

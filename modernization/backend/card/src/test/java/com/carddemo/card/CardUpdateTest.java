@@ -380,6 +380,8 @@ class CardUpdateTest extends CardScreenTestSupport {
         JsonNode badCard = keys(admin, "ENTER", ACCT2, "0683X");
         assertThat(badCard.at("/message").asText()).isEqualTo("CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER");
         assertThat(badCard.at("/fields/errors").toString()).isEqualTo("[\"cardNum\"]");
+        assertThat(badCard.at("/fields/cardNum").asText()).as("raw input echoed").isEqualTo("0683X");
+        assertThat(badCard.at("/fields/accountId").asText()).isEqualTo(ACCT2);
         assertThat(badCard.at("/fields/state").asText()).isEmpty();
     }
 

@@ -168,6 +168,7 @@ test.describe('COCRDUPC credit card update', () => {
     await page.keyboard.press('Enter');
     await expectMessage(page, 'CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER');
     await expect(page.getByLabel('Card Number')).toHaveAttribute('aria-invalid', 'true');
+    await expect(page.getByLabel('Card Number')).toHaveValue('1234');
     await expectNoSeriousA11yViolations(page);
   });
 

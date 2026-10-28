@@ -258,6 +258,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COTRN00C-10 | Paging assumes the boundary record still exists | concurrency | FIX | Keyset paging on exclusive bounds (`id > last shown` forward, `id < first shown` backward). Deleted boundary records cause no skipped or repeated rows; records added between turns appear in key order. | n/a |
 | Q-COTRN00C-11 | Backward page reaching the file start leaves rows blank and keys stale | functional-defect | FIX | A backward page that reaches the first in-scope transaction shows the first 10 in-scope transactions as page 1 with `You have reached the top of the page...`. | n/a |
 | Q-COTRN00C-12 | Date column has a 2-digit year; description cut to 26 characters | cosmetic | PRESERVE | The list shows the origination date as `MM/DD/YY` and the first 26 characters of the description. | n/a |
+| Q-COTRN00C-13 | PF7 on page 1 sets the next-page flag, so a following PF8 can page past the end | functional-defect | FIX | F7 on page 1 shows `You are already at the top of the page...` with the rows unchanged and does not change the next-page state. A following F8 behaves as if F7 had not been pressed: when page 1 is also the last page (for example a search at `0000000957864065`, TS-COTRN00C-13), it gives `You are already at the bottom of the page...` with the same rows and page `00000001`; when more transactions exist it shows the next page as usual. TS-COTRN00C-13 changes accordingly. | n/a |
 
 ## COTRN01C
 
@@ -461,6 +462,7 @@ Transactions, bill payment, reports:
 - Q-COTRN00C-07: a non-numeric search ID keeps the current page displayed.
 - Q-COTRN00C-08: a USER lists only transactions of linked accounts.
 - Q-COTRN00C-11: a backward page reaching the start shows a full first page.
+- Q-COTRN00C-13: F8 after F7 on page 1 no longer pages past the last transaction; with no next page it gives `You are already at the bottom of the page...` and keeps the rows.
 - Q-COTRN01C-05: card number masked.
 - Q-COTRN01C-07: out-of-scope transaction gives `Transaction ID NOT found...`.
 - Q-COTRN02C-01 and Q-COBIL00C-01: concurrent adds and payments no longer fail with `Tran ID already exist...`.
@@ -479,17 +481,17 @@ Transactions, bill payment, reports:
 
 ## Counts
 
-Rows by category and decision (223 rows).
+Rows by category and decision (224 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 24 | 0 | 0 | 0 | 0 | 24 |
 | data-corruption | 13 | 0 | 0 | 0 | 0 | 13 |
 | concurrency | 9 | 0 | 0 | 0 | 0 | 9 |
-| functional-defect | 54 | 0 | 0 | 0 | 0 | 54 |
+| functional-defect | 55 | 0 | 0 | 0 | 0 | 55 |
 | cosmetic | 0 | 18 | 0 | 0 | 0 | 18 |
 | business-choice | 0 | 42 | 0 | 0 | 0 | 42 |
 | platform | 0 | 0 | 0 | 37 | 0 | 37 |
 | dead-code | 0 | 0 | 0 | 0 | 20 | 20 |
 | user-decision | 0 | 0 | 6 | 0 | 0 | 6 |
-| Total | 100 | 60 | 6 | 37 | 20 | 223 |
+| Total | 101 | 60 | 6 | 37 | 20 | 224 |
