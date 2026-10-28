@@ -1,11 +1,11 @@
 """Runs one carddemo-batch command for an Airflow task and maps its exit code (ExitCodes.java).
 
 0 and 4 succeed (4 = completed with warnings, like a JCL step RC 4). Anything else fails the task
-without retry: 8 = refused (already completed), 12 = invalid business date or report range, or a COBTUPDT
+without retry: 8 = refused (already completed), 12 = invalid business date or report range, or for COBTUPDT a
 run that stopped and was rolled back, 16 = usage error (the jar prints a `usage:` line), or, for the IMS module
 programs, the program's own RETURN-CODE 16 from its 9999-ABEND paragraph, 99 = abend (B-ABEND). After an abend
-the operator fixes the input and clears the task; Spring
-Batch then restarts the job from its last committed record.
+the operator fixes the input and clears the task; Spring Batch then restarts the job from its last committed
+record.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ log = logging.getLogger(__name__)
 
 _REPO_JAR = Path(__file__).resolve().parents[2] / "backend" / "batch" / "target" / "carddemo-batch.jar"
 SUCCESS = {0: "completed", 4: "completed with warnings"}
-FAILURE = {8: "refused", 12: "invalid date or date range, or stopped run", 16: "usage error", 99: "abend"}
+FAILURE = {8: "refused", 12: "invalid date or date range", 16: "usage error", 99: "abend"}
 # Commands whose RETURN-CODE 16 is the program's (ExitCodes.PROGRAM_RC16), not a usage error.
 PROGRAM_RC16 = {"CBPAUP0C", "PAUDBUNL", "PAUDBLOD", "DBUNLDGS"}
 
@@ -32,6 +32,8 @@ def failure_label(command: str, rc: int, stderr: str = "") -> str:
     """What a failing exit code means for this command (architecture.md section 5)."""
     if rc == 16 and command in PROGRAM_RC16 and not any(line.startswith("usage:") for line in stderr.splitlines()):
         return "ended with program return code 16 (9999-ABEND)"
+    if rc == 12 and command == "COBTUPDT":
+        return "stopped and rolled back"
     return FAILURE.get(rc, "failed")
 
 

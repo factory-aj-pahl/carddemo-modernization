@@ -87,6 +87,9 @@ class ExitCodeTest(unittest.TestCase):
         self.assertEqual(self.run_with(99, "", "CBPAUP0C"), "CBPAUP0C abend (exit 99)")
         self.assertEqual(self.run_with(3, "", "CBPAUP0C"), "CBPAUP0C failed (exit 3)")
 
+    def test_rc12_of_cobtupdt_is_a_stopped_and_rolled_back_run(self):
+        self.assertEqual(self.run_with(12, "", "COBTUPDT", "inputFile=x"), "COBTUPDT stopped and rolled back (exit 12)")
+
 
 if __name__ == "__main__":
     unittest.main()
