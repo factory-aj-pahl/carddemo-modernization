@@ -26,7 +26,8 @@ The reporting date range is read from a parameter file and printed in the page h
 - DATEPARM record layout (first 21 bytes used): start date X(10), one filler byte, end date X(10), for example
   `2022-01-01 2022-07-06`. No job in the repository creates `AWS.M2.CARDDEMO.DATEPARM`.
 - Working-storage state: WS-FIRST-TIME (`Y` until the first detail line), WS-LINE-COUNTER (9(9) COMP-3, starts 0,
-  counts every line written except page/grand total and detail-check exceptions noted below), WS-PAGE-SIZE = 20,
+  incremented for every line written: headers, details, account-total and page-total lines and their dashes
+  lines; only the grand-total line is not counted), WS-PAGE-SIZE = 20,
   WS-PAGE-TOTAL / WS-ACCOUNT-TOTAL / WS-GRAND-TOTAL (S9(9)V99, start 0), WS-CURR-CARD-NUM (X(16), starts spaces),
   CARD-XREF-RECORD (account of the current card), TRAN-TYPE-RECORD, TRAN-CAT-RECORD.
 - Return code: never set (RC 0); errors end in abend U999 via CEE3ABD.
@@ -86,7 +87,7 @@ Line writers (every write goes through 1111-WRITE-REPORT-REC):
   9(4), `-`, category description X(29) (first 29 characters of TRAN-CAT-TYPE-DESC), space, TRAN-SOURCE X(10), 4 spaces,
   amount edited `-ZZZ,ZZZ,ZZZ.ZZ` (15 characters: a leading `-` for negative values, a space for positive; leading zeros
   and their commas replaced by spaces; zero prints as 15 spaces), 2 spaces. Examples: `183.88` -> `         183.88`
-  preceded by one space; -47.88 -> `-         47.88`.
+  (15 characters: 9 spaces, the first being the sign position, then `183.88`); -47.88 -> `-         47.88`.
   Source: `app/cbl/CBTRN03C.cbl:361-374 (1120-WRITE-DETAIL)`, `app/cpy/CVTRA07Y.cpy:15-31`.
 - **BR-CBTRN03C-05**: Header block (4 lines): (1) `DALYREPT` padded to 38, `Daily Transaction Report` padded to 41,
   `Date Range: `, start date, ` to `, end date (115 bytes); (2) 133 spaces; (3) `Transaction ID` (17), `Account ID` (12),

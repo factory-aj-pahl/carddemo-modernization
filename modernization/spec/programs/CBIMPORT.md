@@ -2,7 +2,7 @@
 
 | Attribute | Value |
 |:--|:--|
-| Source | `app/cbl/CBIMPORT.cbl` (491 lines) |
+| Source | `app/cbl/CBIMPORT.cbl` (490 lines) |
 | Module | base |
 | Kind | Batch |
 | Transaction ID / Job | CBIMPORT, step STEP01 (`app/jcl/CBIMPORT.jcl:22-65`) |
