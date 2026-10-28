@@ -185,6 +185,8 @@ class PurgeJob {
                 try {
                     page = repo.detailsFrom(acct, lastTs, lastId, false, PAGE);
                 } catch (DataAccessException e) {
+                    // BR-CBPAUP0C-09: the program shows the debug line before the GNP that fails.
+                    debug("DEBUG: AUTH DTL READ : " + count(detailsRead));
                     log.display("AUTH DETAIL READ FAILED  :" + status(e));
                     log.display("SUMMARY AUTH APP ID      :" + signedAccount(acct));
                     log.display("DETAIL READ BEFORE ABEND :" + count(detailsRead));

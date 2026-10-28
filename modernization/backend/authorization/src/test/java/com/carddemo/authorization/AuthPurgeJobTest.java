@@ -10,6 +10,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.reset;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.carddemo.authorization.api.AuthorizationJobs;
 import com.carddemo.authorization.internal.PendingAuthRepository;
 import com.carddemo.common.batch.JobLog;
@@ -26,6 +30,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
@@ -194,6 +199,75 @@ class AuthPurgeJobTest {
         assertThat(s.get("declined_count")).isEqualTo(3);
         assertThat((BigDecimal) s.get("declined_amt")).isEqualByComparingTo("90.00");
         assertThat(count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = 2")).isEqualTo(3);
+    }
+
+    List<String> debugLines(String sysin) {
+        Logger logger = (Logger) LoggerFactory.getLogger("com.carddemo.authorization.internal.PurgeJob");
+        Level level = logger.getLevel();
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        logger.setLevel(Level.DEBUG);
+        try {
+            assertThat(jobs.purgeExpired(sysin).returnCode()).isZero();
+        } finally {
+            logger.detachAppender(appender);
+            logger.setLevel(level);
+        }
+        return appender.list.stream().filter(e -> e.getLevel() == Level.DEBUG).map(ILoggingEvent::getFormattedMessage).toList();
+    }
+
+    @Test
+    @Covers({"BR-CBPAUP0C-09", "Q-CBPAUP0J-02", "Q-CBPAUP0C-09"})
+    void debug_flag_logs_a_line_before_every_read_and_delete_at_debug_level_only() {
+        jdbc.update("DELETE FROM pending_auth_detail");
+        jdbc.update("DELETE FROM pending_auth_summary");
+        today(LocalDateTime.of(2024, 3, 5, 9, 0));
+        declinedAccount2(LocalDateTime.of(2024, 3, 4, 12, 0), LocalDateTime.of(2024, 1, 2, 8, 0));
+        // Newest first: the fresh detail is kept, the January one is deleted; one detail remains, so the summary stays.
+        assertThat(debugLines("05,00005,00010,Y")).containsExactly(
+            "DEBUG: AUTH SMRY READ : +00000000",
+            "DEBUG: AUTH DTL READ : +00000000",
+            "DEBUG: AUTH DTL READ : +00000001",
+            "DEBUG: AUTH DTL DLET : +00000000002",
+            "DEBUG: AUTH DTL READ : +00000002",
+            "DEBUG: AUTH SMRY READ : +00000001");
+        // DEBUG lines never reach SYSOUT, which keeps exactly the program's other DISPLAY lines.
+        assertThat(log.captured()).noneMatch(l -> l.startsWith("DEBUG"));
+        assertThat(log.captured()).startsWith("STARTING PROGRAM CBPAUP0C::", DASHES, "CBPAUP0C PARM RECEIVED :05,00005,00010,Y ",
+            "TODAYS DATE            :24065", " ");
+
+        log.startCapture();
+        today(LocalDateTime.of(2024, 3, 20, 9, 0));
+        assertThat(debugLines("05,00005,00010,Y")).containsExactly(
+            "DEBUG: AUTH SMRY READ : +00000000",
+            "DEBUG: AUTH DTL READ : +00000000",
+            "DEBUG: AUTH DTL DLET : +00000000002",
+            "DEBUG: AUTH DTL READ : +00000001",
+            "DEBUG: AUTH SMRY DLET : +00000000002",
+            "DEBUG: AUTH SMRY READ : +00000001");
+        assertThat(log.captured()).endsWith(totals(1, 1, 1, 1).toArray(String[]::new));
+
+        // Any flag other than 'Y' is off.
+        declinedAccount2(LocalDateTime.of(2024, 1, 2, 8, 0));
+        assertThat(debugLines("05,00005,00010,y")).isEmpty();
+    }
+
+    @Test
+    @Covers({"BR-CBPAUP0C-10", "Q-CBPAUP0C-04", "BR-CBPAUP0C-08"})
+    void chkp_success_is_shown_once_per_display_frequency_checkpoints_with_the_count_and_account() {
+        assertThat(jobs.purgeExpired("05,00005,00002,N").returnCode()).isZero();
+        // 21 summaries: checkpoints after 5, 10, 15 and 20 summaries and the final one; every second is shown.
+        assertThat(log.captured()).filteredOn(l -> l.startsWith("CHKP")).containsExactly(
+            "CHKP SUCCESS: AUTH COUNT - +00000010, APP ID - 00000000029",
+            "CHKP SUCCESS: AUTH COUNT - +00000020, APP ID - 00000000047");
+        assertThat(log.captured()).endsWith(totals(21, 21, 202, 202).toArray(String[]::new));
+        log.startCapture();
+        load();
+        // Display frequency 3 with checkpoint frequency 7: checkpoints after 7, 14, 21 summaries and the final one.
+        assertThat(jobs.purgeExpired("05,00007,00003,N").returnCode()).isZero();
+        assertThat(log.captured()).filteredOn(l -> l.startsWith("CHKP")).containsExactly(
+            "CHKP SUCCESS: AUTH COUNT - +00000021, APP ID - 00000000048");
     }
 
     @Test
