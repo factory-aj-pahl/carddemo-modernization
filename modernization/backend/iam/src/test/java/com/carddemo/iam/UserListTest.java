@@ -23,7 +23,7 @@ class UserListTest extends UserScreenTestSupport {
 
     @Test
     @Covers({"BR-COUSR00C-02", "BR-COUSR00C-03", "BR-COUSR00C-04", "BR-COUSR00C-11", "BR-COUSR00C-14", "TS-COUSR00C-01",
-        "Q-COUSR00C-02"})
+        "Q-COUSR00C-02", "ERR-COUSR00C-03"})
     void first_entry_lists_the_ten_sample_users_on_page_one() {
         JsonNode r = admin.show("COUSR00C");
         assertThat(userIds(r)).containsExactlyElementsOf(SAMPLE);
@@ -112,7 +112,7 @@ class UserListTest extends UserScreenTestSupport {
 
     @Test
     @Covers({"BR-COUSR00C-10", "BR-COUSR00C-11", "BR-COUSR00C-12", "BR-COUSR00C-13", "TS-COUSR00C-08", "Q-COUSR00C-04",
-        "Q-COUSR00C-07"})
+        "Q-COUSR00C-07", "ERR-COUSR00C-03", "ERR-COUSR00C-05"})
     void twenty_five_users_page_forward_and_back() {
         twentyFiveUsers();
         JsonNode p1 = admin.show("COUSR00C");

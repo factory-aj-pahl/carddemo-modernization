@@ -80,7 +80,8 @@ class UserUpdateTest extends UserScreenTestSupport {
     }
 
     @Test
-    @Covers({"BR-COUSR02C-04", "BR-COUSR02C-05", "TS-COUSR02C-05", "NAV-COUSR02C-04", "C-AUDIT", "Q-COUSR02C-07"})
+    @Covers({"BR-COUSR02C-04", "BR-COUSR02C-05", "TS-COUSR02C-05", "NAV-COUSR02C-04", "NAV-COUSR02C-07", "C-AUDIT",
+        "Q-COUSR02C-07"})
     void pf5_saves_the_changed_field_only() {
         Map<String, Object> f = fetched(admin, "USER0002");
         String first = column("USER0002", "first_name");
