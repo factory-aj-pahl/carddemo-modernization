@@ -123,7 +123,7 @@ class TranTypeMaintFaultsTest {
         doThrow(fail(BROKEN)).when(store).update(eq("01"), anyString(), anyLong());
         JsonNode r = send("PF5", "01", "PURCHASES");
         assertThat(r.at("/message").asText())
-            .isEqualTo("Error updating: TRANSACTION_TYPE Table. SQLCODE: -901:UNSUCCESSFUL EXECUTIO").hasSize(75);
+            .isEqualTo("Update of record failed. Error updating: TRANSACTION_TYPE Table. SQLCODE: -901:UNSUCCESSFUL EXECUTIO");
         assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Changes unsuccessful").isNotEqualTo("Changes committed to database");
         assertThat(r.at("/fields/typeEditable").asBoolean()).isTrue();
         assertThat(description(jdbc, "01")).isEqualTo("PURCHASE");
@@ -139,9 +139,10 @@ class TranTypeMaintFaultsTest {
         // Another user adds the same type first: the INSERT fails with a duplicate key.
         jdbc.update("INSERT INTO transaction_type (type_cd, description) VALUES ('15', 'OTHER')");
         JsonNode r = send("PF5", "15", "INTEREST");
-        assertThat(r.at("/message").asText()).startsWith("Error inserting record into: TRANSACTION_TYPE Table. SQLCODE: -803:")
-            .hasSizeLessThanOrEqualTo(75);
-        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Changes unsuccessful");
+        assertThat(r.at("/message").asText())
+            .startsWith("Update of record failed. Error inserting record into: TRANSACTION_TYPE Table. SQLCODE: -803:");
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Changes unsuccessful").isNotEqualTo("Changes committed to database");
+        assertThat(r.at("/fields/typeEditable").asBoolean()).isTrue();
         assertThat(description(jdbc, "15")).isEqualTo("OTHER");
     }
 

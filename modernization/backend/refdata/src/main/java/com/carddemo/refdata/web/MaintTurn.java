@@ -39,6 +39,7 @@ final class MaintTurn {
     static final String NOT_FOUND = "No record found for this key in database";
     static final String NO_CHANGES = "No change detected with respect to values fetched.";
     static final String LOCK_FAILED = "Could not lock record for update";
+    static final String UPDATE_FAILED = "Update of record failed";
     static final String UPDATE_CANCELLED = "Update was cancelled";
     static final String DELETE_CANCELLED = "Delete was cancelled";
     static final String CULPRIT = "COTRTUPC";
@@ -240,8 +241,9 @@ final class MaintTurn {
 
     /**
      * BR-COTRTUPC-17: an add (no row was read) inserts; an update applies only while the row is unchanged since it
-     * was read and never inserts (Q-COTRTUPC-17). A failure reaches state {@code F} (Q-COTRTUPC-02) with the SQLCODE
-     * of the failing statement (Q-COTRTUPC-04).
+     * was read and never inserts (Q-COTRTUPC-17). A failure reaches state {@code F} (Q-COTRTUPC-02): the error line
+     * shows "Update of record failed" followed by the SQL message with the SQLCODE of the failing statement
+     * (Q-COTRTUPC-04), and the info line "Changes unsuccessful".
      */
     private Result save() {
         boolean add = ca.oldTypeBlank();
@@ -257,17 +259,26 @@ final class MaintTurn {
             }
         } catch (Db2Failure e) {
             if (add) {
-                msg = sqlMessage("Error inserting record into: TRANSACTION_TYPE Table. SQLCODE:", e.error());
+                msg = saveFailed(sqlMessage("Error inserting record into: TRANSACTION_TYPE Table. SQLCODE:", e.error()));
                 ca.action = Action.FAILED;
             } else if (e.error().sqlcode() == Db2Codes.DEADLOCK) {
                 msg = LOCK_FAILED;
                 ca.action = Action.LOCK_ERROR;
             } else {
-                msg = sqlMessage("Error updating: TRANSACTION_TYPE Table. SQLCODE:", e.error());
+                msg = saveFailed(sqlMessage("Error updating: TRANSACTION_TYPE Table. SQLCODE:", e.error()));
                 ca.action = Action.FAILED;
             }
         }
         return screen();
+    }
+
+    /**
+     * The COBOL sets "Update of record failed" and then overwrites it with the SQL message; both are kept. The SQL
+     * message alone fills the 75 bytes of WS-RETURN-MSG, so the combined text is not cut (the web error line has
+     * no 75-column limit).
+     */
+    private static String saveFailed(String sqlMessage) {
+        return UPDATE_FAILED + ". " + sqlMessage;
     }
 
     // ---- 9800-DELETE-PROCESSING ----------------------------------------------------------------------------
@@ -347,7 +358,7 @@ final class MaintTurn {
             center(info(st, blankOldB)), keys, null);
         ScreenResponse<Fields> r = ScreenResponse.show(f).withFocus(focus);
         if (msg != null) {
-            r = r.error(cut(msg, MSG_LEN));
+            r = r.error(msg.startsWith(UPDATE_FAILED) ? msg : cut(msg, MSG_LEN));
         }
         return new Result(r, false, false);
     }
