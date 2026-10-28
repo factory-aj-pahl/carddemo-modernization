@@ -46,6 +46,20 @@ source record; for bytes 49-56 it checks that the stored value is a BCrypt hash 
 and not the clear text. That each hash verifies against the source password is checked by the Java
 test `DataLoadRoundTripTest` (batch module). Row count: 10 users; 50 account links (D-SEED).
 
+### Db2 module seeds: SQL text, one shared table
+
+`DB2LTTYP.ctl` and `DB2LTCAT.ctl` (module app-transaction-type-db2, run by JOB-CREADB21) are not
+fixed-width files: each is one `INSERT ... SELECT ... UNION ALL` statement with a 14-line license header.
+The target keeps one `transaction_type` and one `transaction_category` table for online and batch
+(DF-1, A-4); the default seed is `trantype.txt` / `trancatg.txt` (mixed case, `Reversal`), and the Db2
+seed (upper case, `REVERAL`, Q-CREADB21-04) is the alternative starting content for an installation of
+the Db2 module and the fixture of its online scenarios. JOB-TRANEXTR (unload Db2 to the VSAM files) is
+not needed (Q-TRANEXTR-01): there is nothing to synchronize. The round trip runs on a second fresh schema
+(`carddemo-batch reset`): `carddemo-batch loaddb2 types=DB2LTTYP.ctl categories=DB2LTCAT.ctl` loads 7
+and 18 rows (the literal rows of the statement; the DDL files hold no rows), and `carddemo-batch export
+DIR files=DB2LTTYP.ctl,DB2LTCAT.ctl` writes the tables back as the same SQL text; the export must equal
+the source file byte for byte, with no normalization.
+
 ## Files
 
 | File | Records | Record length | Table | Status | Owner | Notes |
@@ -60,8 +74,8 @@ test `DataLoadRoundTripTest` (batch module). Row count: 10 users; 50 account lin
 | `app/data/ASCII/trancatg.txt` | 18 | 60 | `transaction_category` | owed | W1 (P-DATA) | CRLF; FILLER zeros kept in `legacy_filler` |
 | `app/data/ASCII/trantype.txt` | 7 | 60 | `transaction_type` | owed | W1 (P-DATA) | mixed CRLF and LF; FILLER zeros kept in `legacy_filler` |
 | `app/data/EBCDIC/AWS.M2.CARDDEMO.USRSEC.PS` | 10 | 80 | `app_user` | owed | W1 (P-DATA) | EBCDIC cp037; compared as described above (password bytes as BCrypt) |
-| `app/app-transaction-type-db2/ctl/DB2LTTYP.ctl` | 7 | n/a | `transaction_type` | pending | module worker (transaction-type Db2) | Db2 LOAD seed; DF-1 seeds types from `trantype.txt`, the module decides how this seed is reconciled |
-| `app/app-transaction-type-db2/ctl/DB2LTCAT.ctl` | 18 | n/a | `transaction_category` | pending | module worker (transaction-type Db2) | Db2 LOAD seed (with `app/app-transaction-type-db2/ddl/*.ddl`) |
+| `app/app-transaction-type-db2/ctl/DB2LTTYP.ctl` | 7 | n/a | `transaction_type` | owed | W5 (transaction-type Db2) | Db2 seed SQL (JOB-CREADB21); round trip on a fresh schema, exact bytes (see above) |
+| `app/app-transaction-type-db2/ctl/DB2LTCAT.ctl` | 18 | n/a | `transaction_category` | owed | W5 (transaction-type Db2) | Db2 seed SQL; loaded with `DB2LTTYP.ctl` (FK category to type, V50) |
 | `app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat` | n/a | n/a | pending authorization tables | pending | module worker (authorization IMS/Db2/MQ) | IMS unload sample, 51,736 bytes |
 | `app/data/EBCDIC/AWS.M2.CARDDEMO.ACCTDATA.PS` | 50 | 300 | n/a | not-owed | n/a | EBCDIC twin of `acctdata.txt`; the ASCII set is the migration baseline (DF-2) |
 | `app/data/EBCDIC/AWS.M2.CARDDEMO.ACCDATA.PS` | 50 | 300 | n/a | not-owed | n/a | Duplicate of `ACCTDATA.PS` (entities.md sample findings); DF-2 |
