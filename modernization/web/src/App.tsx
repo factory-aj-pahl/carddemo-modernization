@@ -5,6 +5,8 @@ import { Menu } from './screens/Menu';
 import { NotAvailable } from './screens/NotAvailable';
 import { SignOn } from './screens/SignOn';
 import { SignedOff } from './screens/SignedOff';
+import { TranTypeList } from './screens/TranTypeList';
+import { TranTypeMaint } from './screens/TranTypeMaint';
 import { SessionContext, useSessionTracker } from './session';
 
 const REGISTRY: Record<string, ComponentType> = {
@@ -12,6 +14,8 @@ const REGISTRY: Record<string, ComponentType> = {
   COMEN01C: () => <Menu program="COMEN01C" />,
   COADM01C: () => <Menu program="COADM01C" />,
   COBIL00C: BillPayment,
+  COTRTLIC: TranTypeList,
+  COTRTUPC: TranTypeMaint,
 };
 
 function ScreenRoute() {
