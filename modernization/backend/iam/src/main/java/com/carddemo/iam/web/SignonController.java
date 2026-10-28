@@ -6,6 +6,7 @@ import com.carddemo.common.screen.MessageColor;
 import com.carddemo.common.screen.ScreenResponse;
 import com.carddemo.common.security.CurrentUser;
 import com.carddemo.iam.internal.SignonService;
+import com.carddemo.iam.security.ActiveSessions;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -41,10 +42,12 @@ public class SignonController {
 
     private final SignonService signon;
     private final SecurityContextRepository contexts;
+    private final ActiveSessions sessions;
 
-    public SignonController(SignonService signon, SecurityContextRepository contexts) {
+    public SignonController(SignonService signon, SecurityContextRepository contexts, ActiveSessions sessions) {
         this.signon = signon;
         this.contexts = contexts;
+        this.sessions = sessions;
     }
 
     @GetMapping
@@ -94,7 +97,7 @@ public class SignonController {
         if (old != null) {
             old.invalidate();
         }
-        http.getSession(true);
+        sessions.register(user.userId(), http.getSession(true));
         var auth = new UsernamePasswordAuthenticationToken(user, null,
             List.of(new SimpleGrantedAuthority(user.role().authority())));
         SecurityContext ctx = SecurityContextHolder.createEmptyContext();
