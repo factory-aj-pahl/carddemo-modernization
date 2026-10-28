@@ -454,6 +454,9 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1777-1790 (8100-READ-BACKWARDS)`.
 - **ERR-COTRTLIC-09**: COUNT query SQLCODE not 0 -> INPUT-ERROR, action `'Error reading TRANSACTION_TYPE table '`
   (if the line is empty). Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1819-1832 (9100-CHECK-FILTERS)`.
+  Note (port, W5): WS-RECORDS-COUNT stays 0 after a failed COUNT, so 1290-CROSS-EDITS then applies VR-COTRTLIC-02
+  and the DB2 message is overwritten by `No Records found for these filter conditions` (`:1251-1266`); the user
+  never sees the SQLCODE text. The port keeps this behaviour.
 - **ERR-COTRTLIC-10**: UPDATE SQLCODE +100 -> update stays pending (`Y`), action `'Record not found. Deleted by
   others ? '`; not an input error, so the page is re-read and shown. Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1861-1869 (9200-UPDATE-RECORD)`.
