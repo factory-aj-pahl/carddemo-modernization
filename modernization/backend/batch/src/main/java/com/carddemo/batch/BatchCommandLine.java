@@ -1,5 +1,7 @@
 package com.carddemo.batch;
 
+import com.carddemo.authorization.api.AuthorizationJobResult;
+import com.carddemo.authorization.api.AuthorizationJobs;
 import com.carddemo.batch.posting.PosttranJobConfig;
 import com.carddemo.common.batch.JobLog;
 import com.carddemo.dataexchange.api.AccountExtractFiles;
@@ -45,6 +47,10 @@ import org.springframework.stereotype.Component;
  * <li>{@code CBEXPORT exportFile=PATH}: branch migration export (CBEXPORT)</li>
  * <li>{@code CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH}
  * (CBIMPORT)</li>
+ * <li>{@code CBPAUP0C [sysin=EE,CCCCC,DDDDD,F]}: purge expired pending authorizations (CBPAUP0J)</li>
+ * <li>{@code PAUDBUNL rootFile=PATH childFile=PATH}, {@code DBUNLDGS rootFile=PATH childFile=PATH}: unload the
+ * pending-authorization tables (UNLDPADB, UNLDGSAM)</li>
+ * <li>{@code PAUDBLOD rootFile=PATH childFile=PATH}: load a PAUDBUNL unload (LOADPADB)</li>
  * <li>{@code load DIR [usrsec=FILE] [ims=FILE]}: load sample-format files (seed and migration step); {@code ims} is
  * the DBPAUTP0 IMS unload</li>
  * <li>{@code export DIR [files=a.txt,b.txt] [ims=NAME]}: write tables back in their legacy layouts; {@code ims} writes
@@ -63,15 +69,17 @@ public class BatchCommandLine {
     private final JdbcTemplate jdbc;
     private final Flyway flyway;
     private final DataExchangeJobs dataExchange;
+    private final AuthorizationJobs authorizations;
 
     BatchCommandLine(JobLauncher launcher, @Qualifier(PosttranJobConfig.JOB) Job posttran, JobLog log, JdbcTemplate jdbc,
-            Flyway flyway, DataExchangeJobs dataExchange) {
+            Flyway flyway, DataExchangeJobs dataExchange, AuthorizationJobs authorizations) {
         this.launcher = launcher;
         this.posttran = posttran;
         this.log = log;
         this.jdbc = jdbc;
         this.flyway = flyway;
         this.dataExchange = dataExchange;
+        this.authorizations = authorizations;
     }
 
     public int execute(String... args) {
@@ -93,6 +101,8 @@ public class BatchCommandLine {
                 case "READACCT" -> readacct(params);
                 case "CBEXPORT" -> cbexport(params);
                 case "CBIMPORT" -> cbimport(params);
+                case "CBPAUP0C" -> authResult(authorizations.purgeExpired(params.getOrDefault("sysin", "")));
+                case "PAUDBUNL", "PAUDBLOD", "DBUNLDGS" -> imsFiles(words.get(0), params);
                 case "load" -> load(params);
                 case "export" -> export(params);
                 case "reset" -> reset();
@@ -109,6 +119,7 @@ public class BatchCommandLine {
         System.err.println("usage: POSTTRAN businessDate=YYYY-MM-DD dailyFile=PATH rejectsFile=PATH | READCARD | READXREF"
             + " | READCUST | READACCT outFile=PATH arryFile=PATH vbrcFile=PATH | CBEXPORT exportFile=PATH"
             + " | CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH"
+            + " | CBPAUP0C [sysin=EE,CCCCC,DDDDD,F] | PAUDBUNL|PAUDBLOD|DBUNLDGS rootFile=PATH childFile=PATH"
             + " | load DIR [usrsec=FILE] [ims=FILE] | export DIR [files=NAMES] [ims=NAME] | reset");
         return ExitCodes.USAGE;
     }
@@ -188,6 +199,23 @@ public class BatchCommandLine {
         }
         return result(dataExchange.importAll(p.get("exportFile"), new ImportFiles(p.get("custOut"), p.get("acctOut"),
             p.get("xrefOut"), p.get("trnxOut"), p.get("cardOut"), p.get("errOut"))));
+    }
+
+    private int imsFiles(String program, Map<String, String> params) {
+        Map<String, Path> p = paths(params, "rootFile", "childFile");
+        if (p == null) {
+            return usage(program + " needs rootFile and childFile");
+        }
+        return authResult(switch (program) {
+            case "PAUDBUNL" -> authorizations.unload(p.get("rootFile"), p.get("childFile"));
+            case "PAUDBLOD" -> authorizations.load(p.get("rootFile"), p.get("childFile"));
+            default -> authorizations.unloadGsam(p.get("rootFile"), p.get("childFile"));
+        });
+    }
+
+    /** The program's own return code: 0, or 16 from its 9999-ABEND path. */
+    private static int authResult(AuthorizationJobResult r) {
+        return r.returnCode() == 0 ? ExitCodes.OK : ExitCodes.PROGRAM_RC16;
     }
 
     /** The named path parameters, or null when one is missing. */

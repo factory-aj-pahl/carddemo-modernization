@@ -12,6 +12,8 @@ public final class ExitCodes {
     public static final int INVALID_DATE = 12;
     /** Unknown command or missing parameter. */
     public static final int USAGE = 16;
+    /** RETURN-CODE 16 set by an IMS module program's 9999-ABEND paragraph (CBPAUP0C, PAUDBUNL, PAUDBLOD, DBUNLDGS). */
+    public static final int PROGRAM_RC16 = 16;
     /** B-ABEND: the COBOL would have abended (U999). */
     public static final int ABEND = 99;
 

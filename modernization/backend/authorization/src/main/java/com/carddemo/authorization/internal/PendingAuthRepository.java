@@ -70,6 +70,23 @@ public class PendingAuthRepository {
             s.declinedCount(), s.approvedAmt(), s.declinedAmt(), s.accountId()) == 1;
     }
 
+    /** GN on the root: the summary with the lowest account id above {@code after}. */
+    public Optional<Summary> nextSummary(long after) {
+        return jdbc.query("SELECT TOP 1 * FROM pending_auth_summary WHERE account_id > ? ORDER BY account_id",
+            PendingAuthTables.SUMMARY, after).stream().findFirst();
+    }
+
+    public boolean deleteDetail(long authId) {
+        return jdbc.update("DELETE FROM pending_auth_detail WHERE auth_id = ?", authId) == 1;
+    }
+
+    /** True when the account already holds a detail with this IMS key (the key is the insert timestamp). */
+    public boolean lockDetailKey(long accountId, LocalDateTime authTs) {
+        Integer n = jdbc.queryForObject("SELECT COUNT(*) FROM pending_auth_detail WITH (UPDLOCK, HOLDLOCK) WHERE account_id = ? "
+            + "AND auth_ts = ?", Integer.class, accountId, java.sql.Timestamp.valueOf(authTs));
+        return n != null && n > 0;
+    }
+
     public boolean deleteSummary(long accountId) {
         return jdbc.update("DELETE FROM pending_auth_summary WHERE account_id = ?", accountId) == 1;
     }
