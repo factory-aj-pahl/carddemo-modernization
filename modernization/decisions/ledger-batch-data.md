@@ -335,6 +335,9 @@ COPAUS1C).
 | Q-COTRTLIC-20 | Boundary message shown on arrival at first or last page | functional-defect | FIX | The boundary message appears only when PF7 or PF8 is pressed at the boundary. | n/a |
 | Q-COTRTLIC-21 | Filter error shows old rows with page 0 | functional-defect | FIX | Paging variables are kept when a filter is in error; the old rows show their page number. | n/a |
 | Q-COTRTLIC-22 | Count-query failure reported as "no matching records" | functional-defect | FIX | When the filter count query fails, the message line shows the database error built per ERR-COTRTLIC-02 with action `Error reading TRANSACTION_TYPE table ` and the database error text (Q-COTRTLIC-13). `No Records found for these filter conditions` is not shown, no filter is highlighted, and the select fields are not protected; as for other input errors the list is not re-read (rows and page number kept, Q-COTRTLIC-21). TS-COTRTLIC-23 changes accordingly. | n/a |
+| Q-COTRTLIC-23 | Delete or update confirmed without its prompt | data-corruption | FIX | PF10 performs only the action (delete or update) on the row that the user was prompted to confirm. The confirmation is armed only when `Delete HIGHLIGHTED row ? Press F10 to confirm` or `Update HIGHLIGHTED row. Press F10 to save` is shown for that action and row. Any other key, or any change of the selected row, its action code, the record in that row, or a filter, disarms it; PF10 is then processed as ENTER, so the input is validated again and a new prompt is shown. A confirmed action that fails and stays pending (ERR-COTRTLIC-11 to -14, Q-COTRTLIC-19) stays armed for the same row. A delete never runs unless its delete prompt was shown for that row. TS-COTRTLIC-24 and TS-COTRTLIC-25 change accordingly. | n/a |
+| Q-COTRTLIC-24 | Paging key pressed with a filter change | functional-defect | FIX | A filter change entered together with PF7 or PF8 is applied as a new search, as ENTER would apply it: page 1 of the new results is shown with no boundary message (`No previous pages to display`, `No more pages for these search conditions`, `No more pages to display`) and no database error, consistent with Q-COTRTLIC-07, -20, and -21. A filter in error is handled as for ENTER (VR-COTRTLIC-01, -02). TS-COTRTLIC-26 and TS-COTRTLIC-27 change accordingly. | n/a |
+| Q-COTRTLIC-25 | Pending update moves to another record after "Record not found" | data-corruption | FIX | After the `Record not found. Deleted by others ? ` error (ERR-COTRTLIC-10) the list is re-read and no update or delete is left pending: the select codes are cleared, every row shows its database values, and a second PF10 is processed as ENTER, so it cannot change another record. TS-COTRTLIC-20 changes accordingly. | n/a |
 
 ## COTRTUPC
 
@@ -641,6 +644,7 @@ Transaction-type module (Db2):
 - Q-COTRTLIC-05, Q-COTRTUPC-05, Q-COTRTUPC-10: ADMIN only (C-ROLE); keys from server-side state (Q-COTRTLIC-17, Q-COTRTUPC-21).
 - Q-COTRTLIC-01, -04, -06, -07, -13, -18, -20, -21: selections cleared on filter change; user kept after delete; pages above 9; full first page on backward paging; Db2 error text shown; warnings treated as success; boundary messages only at the boundary; page number kept on filter error.
 - Q-COTRTLIC-22: a failed filter count query shows the database error instead of `No Records found for these filter conditions`.
+- Q-COTRTLIC-23, -24, -25: PF10 confirms only the prompted action and row; a filter change with PF7 or PF8 shows page 1 of the new search without a boundary message; after `Record not found. Deleted by others ?` nothing stays pending.
 - Q-COTRTLIC-19, Q-COTRTUPC-17: concurrent changes rejected with `Deadlock. Someone else updating ?` (COTRTLIC) or `Could not lock record for update` (COTRTUPC); a deleted row is never re-inserted by an update.
 - Q-COTRTUPC-01, -02, -03, -04, -06, -07, -08, -09, -14, -18, -19: type edit always applied (01-99 digits only); save failures shown as `Update of record failed`; clean SQL messages with the right SQLCODE; no abend after a failed delete or PF5 in state `9`; abend screen shows its code and default text; lookup errors not treated as not found; state `S` shows `Update transaction type details shown.`; typed input after a reset is processed.
 - Q-COBTUPDT-01, -02, -04, -05, -07: stops with exit 12 on open/read errors and on any negative SQLCODE (whole file rolled back); clean messages; online validation rules applied; **NEW** end-of-run summary.
@@ -727,17 +731,17 @@ Still open: none.
 
 ## Counts
 
-Rows by category and decision (387 rows).
+Rows by category and decision (390 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 19 | 4 | 0 | 0 | 0 | 23 |
-| data-corruption | 37 | 0 | 0 | 0 | 0 | 37 |
+| data-corruption | 39 | 0 | 0 | 0 | 0 | 39 |
 | concurrency | 4 | 0 | 0 | 0 | 0 | 4 |
-| functional-defect | 88 | 0 | 0 | 0 | 0 | 88 |
+| functional-defect | 89 | 0 | 0 | 0 | 0 | 89 |
 | cosmetic | 0 | 14 | 0 | 0 | 0 | 14 |
 | business-choice | 0 | 45 | 0 | 0 | 0 | 45 |
 | platform | 0 | 0 | 0 | 114 | 0 | 114 |
 | dead-code | 0 | 0 | 0 | 0 | 30 | 30 |
 | user-decision | 0 | 0 | 32 | 0 | 0 | 32 |
-| Total | 148 | 63 | 32 | 114 | 30 | 387 |
+| Total | 151 | 63 | 32 | 114 | 30 | 390 |

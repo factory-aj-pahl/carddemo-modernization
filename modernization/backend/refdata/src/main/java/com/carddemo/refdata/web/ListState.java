@@ -23,8 +23,27 @@ final class ListState implements Serializable {
     int page = 1;
     boolean lastPageShown;
     boolean nextPage;
-    boolean deletePending;
-    boolean updatePending;
+    /**
+     * Q-COTRTLIC-23: the action ({@code D} or {@code U}) whose confirmation prompt was shown, with its row and the
+     * type code in that row; a blank action means nothing is pending. PF10 confirms only this action and record.
+     */
+    char armedAction = ' ';
+    int armedRow;
+    String armedCode;
+
+    boolean armed() {
+        return armedAction != ' ';
+    }
+
+    void arm(char action, int row, String code) {
+        armedAction = action;
+        armedRow = row;
+        armedCode = code;
+    }
+
+    void disarm() {
+        arm(' ', 0, null);
+    }
 
     /** WS-CA-PAGING-VARIABLES initialized after a filter change (BR-COTRTLIC-08). */
     void resetPaging() {

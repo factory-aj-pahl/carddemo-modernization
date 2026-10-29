@@ -396,16 +396,169 @@ class TranTypeListScreenTest {
         assertThat(key("PF2", client.show(P)).at("/navigate").asText()).isEqualTo("COTRTUPC");
     }
 
+    private void deleteType(String code) {
+        jdbc.update("DELETE FROM transaction_category WHERE type_cd = ?", code);
+        jdbc.update("DELETE FROM transaction_type WHERE type_cd = ?", code);
+    }
+
+    private static void assertNothingPending(JsonNode r) {
+        for (JsonNode row : r.at("/fields/rows")) {
+            assertThat(row.get("select").asText()).isEmpty();
+            assertThat(row.get("highlighted").asBoolean()).isFalse();
+            assertThat(row.get("descriptionEditable").asBoolean()).isFalse();
+        }
+    }
+
     @Test
-    @Covers({"TS-COTRTLIC-20", "ERR-COTRTLIC-10"})
-    void update_of_a_row_deleted_meanwhile_reports_not_found() {
+    @Covers({"TS-COTRTLIC-20", "ERR-COTRTLIC-10", "Q-COTRTLIC-25"})
+    void update_of_a_row_deleted_meanwhile_reports_not_found_and_leaves_nothing_pending() {
         JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 5, "U"));
-        jdbc.update("DELETE FROM transaction_category WHERE type_cd = '05'");
-        jdbc.update("DELETE FROM transaction_type WHERE type_cd = '05'");
+        deleteType("05");
         r = client.post(P, "PF10", describe(listInput(r), 5, "REFUND CREDIT"));
         assertThat(r.at("/message").asText()).startsWith("Record not found. Deleted by others ? SQLCODE:  100 ");
         assertThat(description(jdbc, "05")).isNull();
+        // Q-COTRTLIC-25: the record now in row 5 is shown with its database values and is not selected.
+        assertThat(types(r)).containsExactly("01", "02", "03", "04", "06", "07");
+        assertThat(row(r, 5).get("type").asText()).isEqualTo("06");
+        assertThat(row(r, 5).get("description").asText()).isEqualTo("REVERAL");
+        assertNothingPending(r);
+        assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+        r = key("PF10", r);
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+        assertNothingPending(r);
+    }
+
+    @Test
+    @Covers({"TS-COTRTLIC-20", "VR-COTRTLIC-08", "Q-COTRTLIC-25"})
+    void unchanged_update_of_a_row_deleted_meanwhile_shows_no_change_and_leaves_nothing_pending() {
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 5, "U"));
+        deleteType("05");
+        r = key("PF10", r);
+        assertThat(r.at("/message").asText()).isEqualTo("No change detected with respect to database values.");
+        assertThat(row(r, 5).get("type").asText()).isEqualTo("06");
+        assertNothingPending(r);
+        key("PF10", r);
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+    }
+
+    @Test
+    @Covers({"TS-COTRTLIC-24", "BR-COTRTLIC-13", "Q-COTRTLIC-23"})
+    void delete_marked_with_a_paging_key_is_not_armed_until_its_prompt_is_shown() {
+        deleteType("06");
+        jdbc.update("INSERT INTO transaction_type (type_cd, description) VALUES ('06', 'REVERAL')");
+        for (String paging : new String[] {"PF7", "PF8"}) {
+            JsonNode r = client.post(P, paging, select(listInput(client.show(P)), 6, "D"));
+            assertThat(r.at("/message").asText())
+                .isEqualTo(paging.equals("PF7") ? "No previous pages to display" : "No more pages for these search conditions");
+            assertThat(r.at("/fields/info").asText()).doesNotContain("Delete");
+            assertThat(row(r, 6).get("select").asText()).isEqualTo("D");
+            // F10 without the delete prompt is ENTER: the prompt is shown now and nothing is deleted.
+            r = key("PF10", r);
+            assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+            assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Delete HIGHLIGHTED row ? Press F10 to confirm");
+            assertThat(row(r, 6).get("highlighted").asBoolean()).isTrue();
+        }
+        // After the prompt, F10 confirms.
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 6, "D"));
+        r = key("PF10", r);
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("HIGHLIGHTED row deleted.Hit Enter to continue");
+        assertThat(description(jdbc, "06")).isNull();
+    }
+
+    @Test
+    @Covers({"Q-COTRTLIC-23", "BR-COTRTLIC-15"})
+    void any_other_key_after_the_prompt_disarms_the_confirmation() {
+        deleteType("06");
+        jdbc.update("INSERT INTO transaction_type (type_cd, description) VALUES ('06', 'REVERAL')");
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 6, "D"));
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Delete HIGHLIGHTED row ? Press F10 to confirm");
+        r = key("PF8", r);
+        assertThat(r.at("/message").asText()).isEqualTo("No more pages for these search conditions");
+        assertThat(row(r, 6).get("select").asText()).isEqualTo("D");
+        r = key("PF10", r);
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Delete HIGHLIGHTED row ? Press F10 to confirm");
+    }
+
+    @Test
+    @Covers({"TS-COTRTLIC-25", "BR-COTRTLIC-15", "BR-COTRTLIC-14", "Q-COTRTLIC-23"})
+    void f10_runs_only_the_action_that_was_prompted() {
+        deleteType("06");
+        jdbc.update("INSERT INTO transaction_type (type_cd, description) VALUES ('06', 'REVERAL')");
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 6, "U"));
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Update HIGHLIGHTED row. Press F10 to save");
+        r = client.post(P, "PF10", select(listInput(r), 6, "D"));
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Delete HIGHLIGHTED row ? Press F10 to confirm");
+        assertThat(row(r, 6).get("highlighted").asBoolean()).isTrue();
+        // The reverse: a delete prompt does not confirm an update typed afterwards.
+        r = client.post(P, "ENTER", select(listInput(client.show(P)), 5, "D"));
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Delete HIGHLIGHTED row ? Press F10 to confirm");
+        r = client.post(P, "PF10", describe(select(listInput(r), 5, "U"), 5, "REFUND CREDIT"));
+        assertThat(description(jdbc, "05")).isEqualTo("REFUND");
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Update HIGHLIGHTED row. Press F10 to save");
         assertThat(row(r, 5).get("descriptionEditable").asBoolean()).isTrue();
+        r = key("PF10", r);
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("HIGHLIGHTED row was updated");
+        assertThat(description(jdbc, "05")).isEqualTo("REFUND CREDIT");
+    }
+
+    @Test
+    @Covers({"TS-COTRTLIC-26", "BR-COTRTLIC-08", "Q-COTRTLIC-24"})
+    void pf7_with_a_filter_change_shows_page_one_of_the_new_search() {
+        addTypes("08", "TEST A");
+        Map<String, Object> in = listInput(key("PF8", client.show(P)));
+        in.put("typeFilter", "03");
+        JsonNode r = client.post(P, "PF7", in);
+        assertThat(types(r)).containsExactly("03");
+        assertThat(r.at("/fields/page").asText()).isEqualTo("1");
+        assertThat(r.has("message")).isFalse();
+        assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+        // The new search is at its first page now: PF7 there gives the boundary message.
+        r = key("PF7", r);
+        assertThat(r.at("/message").asText()).isEqualTo("No previous pages to display");
+    }
+
+    @Test
+    @Covers({"TS-COTRTLIC-27", "BR-COTRTLIC-17", "Q-COTRTLIC-24"})
+    void pf8_with_a_filter_change_shows_page_one_of_the_new_search_without_a_boundary_message() {
+        Map<String, Object> in = listInput(client.show(P));
+        in.put("descFilter", "R");
+        JsonNode r = client.post(P, "PF8", in);
+        assertThat(types(r)).containsExactly("01", "03", "04", "05", "06");
+        assertThat(r.at("/fields/page").asText()).isEqualTo("1");
+        assertThat(r.has("message")).isFalse();
+        assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+        r = key("PF8", r);
+        assertThat(r.at("/message").asText()).isEqualTo("No more pages for these search conditions");
+        r = key("PF8", r);
+        assertThat(r.at("/message").asText()).isEqualTo("No more pages to display");
+        // A filter in error with PF8 is handled as with ENTER.
+        in = listInput(r);
+        in.put("typeFilter", "A1");
+        r = client.post(P, "PF8", in);
+        assertThat(r.at("/message").asText()).isEqualTo("TYPE CODE FILTER,IF SUPPLIED MUST BE A 2 DIGIT NUMBER");
+        assertThat(r.at("/fields/page").asText()).isEqualTo("1");
+    }
+
+    @Test
+    @Covers({"Q-COTRTLIC-11", "VR-COTRTLIC-05", "BR-COTRTLIC-14"})
+    void case_only_edit_is_discarded_by_enter_and_saved_by_f10() {
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 5, "U"));
+        r = client.post(P, "ENTER", describe(listInput(r), 5, "refund"));
+        assertThat(r.at("/message").asText()).isEqualTo("No change detected with respect to database values.");
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Update HIGHLIGHTED row. Press F10 to save");
+        assertThat(row(r, 5).get("description").asText()).isEqualTo("REFUND");
+        r = key("PF10", r);
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("HIGHLIGHTED row was updated");
+        assertThat(description(jdbc, "05")).isEqualTo("REFUND");
+        r = client.post(P, "ENTER", select(listInput(r), 5, "U"));
+        r = client.post(P, "PF10", describe(listInput(r), 5, "Refund"));
+        assertThat(r.at("/message").asText()).isEqualTo("No change detected with respect to database values.");
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("HIGHLIGHTED row was updated");
+        assertThat(description(jdbc, "05")).isEqualTo("Refund");
+        assertThat(row(r, 5).get("description").asText()).isEqualTo("Refund");
     }
 
     @Test

@@ -94,6 +94,41 @@ test.describe('COTRTLIC transaction type list', () => {
     await expect(page.getByTestId('row4').locator('td').nth(2)).toHaveText('Changed Elsewhere');
   });
 
+  test('Q-COTRTLIC-23 TS-COTRTLIC-24 a D marked with F7 is confirmed by F10 only after its delete prompt was shown', async ({ page }) => {
+    await page.getByLabel('Select row 6').fill('D');
+    await page.keyboard.press('F7');
+    await expectMessage(page, 'No previous pages to display');
+    await expect(page.getByTestId('info')).toHaveCount(0);
+    await expect(page.getByLabel('Select row 6')).toHaveValue('D');
+    // Without the prompt F10 is ENTER: the delete prompt is shown and nothing is deleted.
+    await page.keyboard.press('F10');
+    await expectInfo(page, 'Delete HIGHLIGHTED row ? Press F10 to confirm');
+    await expect(page.getByTestId('message')).toHaveText('');
+    await expect(page.getByTestId('row6').locator('td').nth(1)).toHaveText('06');
+    await expect(page.getByTestId('row6')).toHaveAttribute('aria-current', 'true');
+    await expectNoSeriousA11yViolations(page);
+  });
+
+  test('Q-COTRTLIC-24 TS-COTRTLIC-26 TS-COTRTLIC-27 a type filter typed with F8 or F7 shows page 1 of the new search without a boundary message', async ({ page }) => {
+    await page.getByLabel('Type Filter').fill('03');
+    await page.keyboard.press('F8');
+    await expect(page.getByTestId('row1').locator('td').nth(1)).toHaveText('03');
+    await expect(page.getByTestId('row2').locator('td').nth(1)).toHaveText('');
+    await expect(page.getByTestId('page')).toHaveText('1');
+    await expectInfo(page, 'Type U to update, D to delete any record');
+    await expect(page.getByTestId('message')).toHaveText('');
+    await page.getByLabel('Type Filter').fill('05');
+    await page.keyboard.press('F7');
+    await expect(page.getByTestId('row1').locator('td').nth(1)).toHaveText('05');
+    await expect(page.getByTestId('page')).toHaveText('1');
+    await expectInfo(page, 'Type U to update, D to delete any record');
+    await expect(page.getByTestId('message')).toHaveText('');
+    await expectNoSeriousA11yViolations(page);
+    // The new search is now shown: F8 at its end gives the boundary message.
+    await page.keyboard.press('F8');
+    await expectMessage(page, 'No more pages for these search conditions');
+  });
+
   test('NAV-COTRTLIC-01 F3 returns to the admin menu', async ({ page }) => {
     await page.keyboard.press('F3');
     await expectProgram(page, 'CA00 · COADM01C');

@@ -113,7 +113,7 @@ final class ListTurn {
         edits();
         key = req.key() == null ? Key.ENTER : req.key().folded();
         boolean pfkValid = key == Key.ENTER || key == Key.PF2 || key == Key.PF3 || key == Key.PF7 || key == Key.PF8
-            || key == Key.PF10 && (ca.deletePending || ca.updatePending);
+            || key == Key.PF10 && ca.armed();
         if (!pfkValid) {
             key = Key.ENTER;
         }
@@ -123,11 +123,19 @@ final class ListTurn {
         if (key == Key.PF2) {
             return new Result(ScreenResponse.navigate("COTRTUPC"), true, true);
         }
+        // Q-COTRTLIC-24: a filter change with PF7 or PF8 is a new search, exactly as with ENTER.
+        if ((typeChanged || descChanged) && (key == Key.PF7 || key == Key.PF8)) {
+            key = Key.ENTER;
+        }
         if (key != Key.PF8) {
             ca.lastPageShown = false;
         }
-        if (key == Key.PF10 && !((ca.deletePending || ca.updatePending) && !typeChanged && !descChanged && !rowSelectionChanged)) {
+        if (key == Key.PF10 && !(ca.armed() && !typeChanged && !descChanged && !rowSelectionChanged && confirmsArmedAction())) {
             key = Key.ENTER;
+        }
+        if (key != Key.PF10) {
+            // Q-COTRTLIC-23: any other key disarms; a new prompt arms again (info()).
+            ca.disarm();
         }
         Result down = priming();
         if (down != null) {
@@ -135,6 +143,12 @@ final class ListTurn {
         }
         decide();
         return screen();
+    }
+
+    /** Q-COTRTLIC-23: the selected row still holds the prompted action and the prompted record. */
+    private boolean confirmsArmedAction() {
+        TypeRow row = iSelected == 0 ? null : ca.rows[iSelected];
+        return iSelected == ca.armedRow && sel[iSelected] == ca.armedAction && row != null && row.code().equals(ca.armedCode);
     }
 
     // ---- 1100-RECEIVE-SCREEN ------------------------------------------------------------------------------
@@ -342,8 +356,7 @@ final class ListTurn {
                 // the same filters and is re-read, so the deleted row disappears.
                 ca.rows = new TypeRow[ROWS + 1];
                 ca.rowSelected = 0;
-                ca.deletePending = false;
-                ca.updatePending = false;
+                ca.disarm();
                 ca.resetPaging();
                 ca.page = 1;
                 clearSelections();
@@ -361,6 +374,17 @@ final class ListTurn {
 
     private void clearSelections() {
         java.util.Arrays.fill(sel, ' ');
+    }
+
+    /** Clears every action code and the tallies, so the screen shows no pending action and only database values. */
+    private void dropSelection() {
+        clearSelections();
+        ca.rowSelected = 0;
+        deletes = 0;
+        updates = 0;
+        requested = 0;
+        validActions = 0;
+        changesOccurred = false;
     }
 
     // ---- 8000-READ-FORWARD / 8100-READ-BACKWARDS ----------------------------------------------------------
@@ -477,15 +501,16 @@ final class ListTurn {
             switch (store.update(row.code(), text, row.version())) {
                 case DONE -> {
                     // Q-COTRTLIC-18: anything that is not an error is a success.
-                    ca.updatePending = false;
+                    ca.disarm();
                     updateCompleted = true;
                 }
                 case NOT_FOUND -> {
-                    ca.updatePending = true;
                     setDb2Message("Record not found. Deleted by others ? ", new Db2Error(Db2Codes.NOT_FOUND, Db2Codes.NOT_FOUND_TEXT));
+                    // Q-COTRTLIC-25: the re-read moves another record into this row, so nothing may stay pending.
+                    ca.disarm();
+                    dropSelection();
                 }
                 case CONFLICT -> {
-                    ca.updatePending = true;
                     updateConflict = true;
                     inputError = true;
                     if (msg == null) {
@@ -494,7 +519,6 @@ final class ListTurn {
                 }
             }
         } catch (Db2Failure e) {
-            ca.updatePending = true;
             if (e.error().sqlcode() == Db2Codes.DEADLOCK) {
                 inputError = true;
                 setDb2Message("Deadlock. Someone else updating ?", e.error());
@@ -509,14 +533,13 @@ final class ListTurn {
         try {
             switch (store.delete(row.code(), null)) {
                 case DONE -> {
-                    ca.deletePending = false;
+                    ca.disarm();
                     deleted = true;
                 }
                 default -> setDb2Message("Delete failed with message:", new Db2Error(Db2Codes.NOT_FOUND, Db2Codes.NOT_FOUND_TEXT));
             }
         } catch (Db2Failure e) {
             if (e.error().sqlcode() == Db2Codes.FK_DELETE) {
-                ca.deletePending = true;
                 setDb2Message("Please delete associated child records first:", e.error());
             } else {
                 setDb2Message("Delete failed with message:", e.error());
@@ -539,19 +562,13 @@ final class ListTurn {
             }
             boolean delete = sel[i] == 'D' && oneValid;
             boolean update = sel[i] == 'U' && oneValid;
-            if (delete) {
-                if (deleted) {
-                    sel[i] = ' ';
-                } else {
-                    ca.deletePending = true;
-                }
+            if (delete && deleted) {
+                sel[i] = ' ';
             }
             String description = r.description();
             if (update) {
                 if (updateCompleted) {
                     sel[i] = ' ';
-                } else {
-                    ca.updatePending = true;
                 }
                 if (changesOccurred && !updateConflict) {
                     description = rowDescCheck == TypeEdits.Check.BLANK ? "*" : descIn[i];
@@ -617,10 +634,10 @@ final class ListTurn {
             return null;
         }
         if (key == Key.ENTER && deletes > 0 && requested == 1 && validActions == 1) {
-            return !typeChanged && !descChanged ? INFO_DELETE : null;
+            return !typeChanged && !descChanged ? prompt('D', INFO_DELETE) : null;
         }
         if (key == Key.ENTER && updates > 0 && requested == 1 && validActions == 1) {
-            return !typeChanged && !descChanged ? INFO_UPDATE : null;
+            return !typeChanged && !descChanged ? prompt('U', INFO_UPDATE) : null;
         }
         // Q-COTRTLIC-20: the first-page message only when PF7 was pressed on the first page.
         if (key == Key.PF7 && ca.page == 1 && firstPageBefore) {
@@ -635,6 +652,15 @@ final class ListTurn {
             ca.lastPageShown = true;
         }
         return INFO_REC_ACTIONS;
+    }
+
+    /** Q-COTRTLIC-23: showing the confirmation prompt is what arms PF10, for this action and record only. */
+    private String prompt(char action, String info) {
+        TypeRow row = ca.rows[iSelected];
+        if (row != null) {
+            ca.arm(action, iSelected, row.code());
+        }
+        return info;
     }
 
     /** BR-COTRTLIC-18: centered in the 45-character info line. */

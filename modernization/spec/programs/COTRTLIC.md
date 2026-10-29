@@ -256,7 +256,10 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   filter is "unchanged" when the screen value equals WS-CA-TYPE-DESC, or when it is blank and WS-CA-TYPE-DESC is
   LOW-VALUES or spaces. On a change the paging variables are initialized (first/last key spaces, page 0,
   last-page indicator 0, next-page indicator space), the new value is stored in the COMMAREA, and the
-  "changed" flag is set; the list is then read from the first matching type. Source:
+  "changed" flag is set; the list is then read from the first matching type. Indicator 0 is
+  CA-LAST-PAGE-SHOWN; the space next-page indicator is neither CA-NEXT-PAGE-EXISTS nor
+  CA-NEXT-PAGE-NOT-EXISTS. The reset happens while the screen is received, before the key is handled, so a
+  PF7 or PF8 pressed on the same turn acts on the reset values (Q-COTRTLIC-24). Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1125-1140 (1220-EDIT-TYPECD-EXIT)`, `:1165-1178 (1230-EDIT-DESC-EXIT)`.
 - **BR-COTRTLIC-09**: Type filter: LOW-VALUES, spaces, or `00` means "no type filter" (WS-TYPE-CD-FILTER =
   zeros, flag blank). A numeric two-character value becomes the filter (WS-EDIT-TYPE-FLAG = `'1'`), matched with
@@ -289,10 +292,13 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   topmost marked row wins) and, if more than one action was requested, is flagged in error. The row selection is
   "unchanged" when I-SELECTED equals WS-CA-ROW-SELECTED; otherwise WS-CA-ROW-SELECTED is updated and the
   "changed" flag set. Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:982-1053 (1210-EDIT-ARRAY)`.
-- **BR-COTRTLIC-13**: Delete is a two-step action. Step 1: ENTER with exactly one `D` (and no other action)
-  re-reads the page; while building the screen the row is highlighted (type and description neutral, cursor on
-  its select field) and WS-CA-DELETE-FLAG is set to `Y`; the info line says "Delete HIGHLIGHTED row ? Press F10
-  to confirm" when the filters did not change on this turn. Step 2: PF10 (accepted per BR-COTRTLIC-15) runs
+- **BR-COTRTLIC-13**: Delete is a two-step action. Step 1: whenever the list is sent with exactly one valid
+  action code and no invalid one, a filled row marked `D` is highlighted (type and description neutral, cursor
+  on its select field, select field unprotected with FSET) and WS-CA-DELETE-FLAG is set to `Y` (`:1348-1354`,
+  `:1391-1399`), whatever the key. Normally this is ENTER (main decision branch 6), which re-reads the page and
+  also shows "Delete HIGHLIGHTED row ? Press F10 to confirm" when the filters did not change (BR-COTRTLIC-17
+  item 4). It also happens on PF7 on page 1, on PF8 without a next page (OTHERWISE branch), and in the
+  INPUT-ERROR branch, and these show no prompt (Q-COTRTLIC-23). Step 2: PF10 (accepted per BR-COTRTLIC-15) runs
   9300-DELETE-RECORD with the type code read back from that row's TRTTYP field:
   ```sql
   DELETE FROM CARDDEMO.TRANSACTION_TYPE
@@ -300,14 +306,19 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   ```
   SQLCODE 0 -> `EXEC CICS SYNCPOINT`, flag = succeeded (LOW-VALUES), info "HIGHLIGHTED row deleted.Hit Enter to
   continue", select code cleared on the screen; the rows are not re-read on this turn, and the COMMAREA is then
-  reset (Q-COTRTLIC-04, Q-COTRTLIC-21). Other results: ERR-COTRTLIC-13 / ERR-COTRTLIC-14. Source:
-  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:794-834 (0000-MAIN)`, `:1391-1399 (2300-SCREEN-ARRAY-INIT)`,
+  reset (Q-COTRTLIC-04). Other results: ERR-COTRTLIC-13 / ERR-COTRTLIC-14. Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:794-834 (0000-MAIN)`, `:1348-1354 (2200-SETUP-ARRAY-ATTRIBS)`,
+  `:1391-1399 (2300-SCREEN-ARRAY-INIT)`,
   `:1896-1938 (9300-DELETE-RECORD)`.
-- **BR-COTRTLIC-14**: Update is a two-step action. Step 1: ENTER with exactly one `U` re-reads the page, makes
-  that row's description field unprotected (FSET, cursor in it, red if the description edit failed), sets
-  WS-CA-UPDATE-FLAG = `Y`, and shows "Update HIGHLIGHTED row. Press F10 to save" when the filters did not
-  change. The description shown is the edited value from the screen if it differs from the stored one (or `*`
-  if it was blanked), otherwise the stored value. Step 2: PF10 runs 9200-UPDATE-RECORD with DCL-TR-TYPE = the
+- **BR-COTRTLIC-14**: Update is a two-step action. Step 1: whenever the list is sent with exactly one valid
+  action code and no invalid one, a filled row marked `U` gets a neutral type, its description field
+  unprotected (FSET, cursor in it, red if the description edit failed), and WS-CA-UPDATE-FLAG = `Y`
+  (`:1356-1370`, `:1404-1411`), whatever the key. Normally this is ENTER (main decision branch 8), which
+  re-reads the page and shows "Update HIGHLIGHTED row. Press F10 to save" when the filters did not change
+  (BR-COTRTLIC-17 item 5); on PF7 on page 1, on PF8 without a next page, and in the INPUT-ERROR branch no prompt
+  is shown (Q-COTRTLIC-23). The description shown is the edited value from the screen if it differs from the
+  stored one after trimming and ignoring case (VR-COTRTLIC-05) (or `*` if it was blanked), otherwise the stored
+  value from the re-read (`:1412-1422`). Step 2: PF10 runs 9200-UPDATE-RECORD with DCL-TR-TYPE = the
   row's type code, DCL-TR-DESCRIPTION-TEXT = TRIM(edited description), DCL-TR-DESCRIPTION-LEN = 50 (length of
   the untrimmed field, Q-COTRTLIC-10):
   ```sql
@@ -322,8 +333,10 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   `:1404-1425 (2300-SCREEN-ARRAY-INIT)`, `:1837-1892 (9200-UPDATE-RECORD)`.
 - **BR-COTRTLIC-15**: PF10 is processed as PF10 only when a delete or update confirmation is pending
   (WS-CA-DELETE-FLAG or WS-CA-UPDATE-FLAG = `Y`) AND the type filter, the description filter, and the selected
-  row are all unchanged on this turn; otherwise it is processed as ENTER. Source:
-  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:666-678 (0000-MAIN)`.
+  row are all unchanged on this turn; otherwise it is processed as ENTER. The test does not tie the pending flag
+  to the action now typed: with either flag `Y`, PF10 runs the delete branch when the selected row now holds
+  `D` and the update branch when it holds `U` (`:810-868`, Q-COTRTLIC-23). Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:580-581`, `:666-678 (0000-MAIN)`.
 - **BR-COTRTLIC-16**: Any key other than ENTER, PF2, PF3, PF7, PF8, or an accepted PF10 is processed as ENTER,
   without an error message. Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:574-587 (0000-MAIN)`.
 - **BR-COTRTLIC-17**: Info line and paging messages (2500-SETUP-MESSAGE, first true branch wins):
@@ -340,7 +353,10 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
      as shown;
   9. no info set, or next page exists -> info "Type U to update, D to delete any record";
   10. otherwise no info (unreachable, because the info is always empty when branch 9 is tested).
-  The message line ERRMSG = WS-RETURN-MSG. Source:
+  Before the main decision, every key other than PF8 sets the last-page indicator to 9 (not shown)
+  (`:657-661`); this runs after the edits, so a filter change on a PF8 turn leaves it at 0 (shown) and item 7
+  applies (Q-COTRTLIC-24). The message line ERRMSG = WS-RETURN-MSG. Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:657-661 (0000-MAIN)`,
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1504-1557 (2500-SETUP-MESSAGE)`.
 - **BR-COTRTLIC-18**: The info text is centered in 45 characters (start = (45 - trimmed length) / 2 + 1) and
   sent in neutral color, unless it is empty or the message line holds "No records found for this search
@@ -395,9 +411,11 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   field red with the cursor. Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1207-1233 (1240-EDIT-ALPHANUM-REQD)`.
 - **VR-COTRTLIC-08**: Message precedence within a turn: row-code messages (VR-03, VR-05 via SET, which always
   overwrites), then VR-04 (overwrites), then VR-06/VR-07 only if the line is empty, then VR-01 and VR-02
-  (unconditional MOVE, overwrite everything before), then SQL messages only if the line is empty, then the PF7/PF8
-  messages of BR-COTRTLIC-17 (unconditional). The line holds the last writer. Source:
-  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:960-1271`, `:1532-1540`.
+  (unconditional MOVE, overwrite everything before), then SQL messages only if the line is empty, then, during
+  the forward read, "No more pages for these search conditions" (only if the line is empty) and "No records
+  found for this search condition." (unconditional SET), then the PF7/PF8 messages of BR-COTRTLIC-17
+  (unconditional). The line holds the last writer. Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:960-1271`, `:1677-1705 (8000-READ-FORWARD)`, `:1532-1540`.
 
 ### Navigation and keys
 - **NAV-COTRTLIC-01**: PF3 -> CDEMO-TO-TRANID = CDEMO-FROM-TRANID unless it is LOW-VALUES, spaces, or `CTLI`
@@ -463,8 +481,13 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1251-1267 (1290-CROSS-EDITS)`,
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:154-156`, `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:500-502 (0000-MAIN)`.
 - **ERR-COTRTLIC-10**: UPDATE SQLCODE +100 -> update stays pending (`Y`), action `'Record not found. Deleted by
-  others ? '`; not an input error, so the page is re-read and shown. Source:
-  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1861-1869 (9200-UPDATE-RECORD)`.
+  others ? '`; not an input error, so the page is re-read and shown. Because the page is re-read, the selected
+  row index then holds the record that followed the deleted one (or is empty); that record's type code is shown
+  with the typed description and the pending `U`, so a second PF10 updates that other record (key read from
+  the screen, Q-COTRTLIC-17; Q-COTRTLIC-25). If the description was left unchanged, VR-COTRTLIC-05 has already
+  set "No change detected with respect to database values." and the Db2 text is not shown. Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1861-1869 (9200-UPDATE-RECORD)`, `:854-868 (0000-MAIN)`,
+  `:1404-1419 (2300-SCREEN-ARRAY-INIT)`.
 - **ERR-COTRTLIC-11**: UPDATE SQLCODE -911 -> update stays pending, INPUT-ERROR, action `'Deadlock. Someone else
   updating ?'`. Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1870-1879`.
 - **ERR-COTRTLIC-12**: UPDATE other negative SQLCODE (including -913) -> update stays pending, action `'Update
@@ -520,13 +543,19 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
 - **Q-COTRTLIC-05**: No authorization: the program never checks CDEMO-USRTYP; started directly as CTLI it sets
   itself to admin, PF3 sets admin, and PF2 sets CDEMO-USRTYP-USER before XCTL to COTRTUPC (which does not
   check it either and sets admin again on PF3, Q-COTRTUPC-10). Recommendation: fix (enforce admin role). Source: `COTRTLIC.cbl:520`, `:611`, `:634`.
-- **Q-COTRTLIC-06**: The page number is `9(1)`: after page 9, ADD gives 0 (page 0 is not "first page", so PF7
-  then reads backward), and PAGENO shows one digit left-justified in a 3-character field. 100 possible type codes
-  allow 15 pages. Recommendation: fix. Source: `COTRTLIC.cbl:403`, `:770`, `:1318`.
+- **Q-COTRTLIC-06**: The page number is `9(1)`. PF8 from page 9 adds 1 and the result is truncated to 0
+  (line 770); 8000-READ-FORWARD then sets a page number of 0 to 1 when it places the first row (lines
+  1646-1647, BR-COTRTLIC-05). The tenth page is therefore shown as page `1` and counts as the first page: PF7
+  there re-reads the same page forward with "No previous pages to display" (lines 721-734, 1532-1535), so the
+  user cannot page back from the tenth page to the ninth. Later pages show `2`, `3`, ...; PF7 from them
+  returns only as far as the tenth page. PAGENO shows one digit left-justified in a 3-character field. 100
+  possible type codes allow 15 pages. Recommendation: fix. Source: `COTRTLIC.cbl:403`, `:770`,
+  `:1646-1647`, `:721-734`, `:1318`.
 - **Q-COTRTLIC-07**: The backward read has no +100 branch: when fewer than seven rows precede the current first
-  row (possible after concurrent inserts/deletes or after the page counter wrapped), the user gets "Error on fetch
-  Cursor C-TR-TYPE-BACKWARD SQLCODE:  100 ..." and a page whose top rows are empty. Recommendation: fix.
-  Source: `COTRTLIC.cbl:1761-1790`.
+  row (possible after concurrent deletes, or when PF7 is pressed in the same turn as a filter change,
+  Q-COTRTLIC-24), the user gets "Error on fetch Cursor C-TR-TYPE-BACKWARD SQLCODE:  100 ..." and a page whose
+  top rows are empty when the resulting page is 2 or more; on page 1 that text is replaced by "No previous pages
+  to display" (BR-COTRTLIC-17 item 6). Recommendation: fix. Source: `COTRTLIC.cbl:1761-1790`, `:1532-1535`.
 - **Q-COTRTLIC-08**: A forward FETCH error inside the loop is reported as `C-TR-TYPE-FORWARD close`.
   Recommendation: fix. Source: `COTRTLIC.cbl:1712`.
 - **Q-COTRTLIC-09**: The description filter is case-sensitive (Db2 seed data is upper case, so `pay` finds
@@ -536,8 +565,10 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   (trim on migration). Source: `COTRTLIC.cbl:1841-1844`.
 - **Q-COTRTLIC-11**: "No change detected ..." (VR-COTRTLIC-05) is not an input error. On ENTER the user sees that
   message together with "Update HIGHLIGHTED row. Press F10 to save"; PF10 then runs the UPDATE even if nothing
-  changed, and a case-only change is reported as "no change" on ENTER but saved on PF10. Recommendation: decide.
-  Source: `COTRTLIC.cbl:1060-1076`, `:854-868`.
+  changed. A case-only edit followed by ENTER is reported as "no change" and the field is repainted with the
+  stored value (the edit is lost); a case-only edit followed directly by PF10 is saved, and the screen then shows
+  "No change detected with respect to database values." with "HIGHLIGHTED row was updated". Recommendation:
+  decide. Source: `COTRTLIC.cbl:1060-1076`, `:1412-1422`, `:854-868`.
 - **Q-COTRTLIC-12**: Message precedence is inconsistent: some edits SET or MOVE unconditionally (VR-01, VR-02,
   VR-03, VR-04, VR-05), others only when the line is empty (VR-COTRTLIC-08). Recommendation: decide.
 - **Q-COTRTLIC-13**: `INITIALIZE WS-MISC-STORAGE` (which contains CSDB2RWY) sets WS-DSNTIAC-MESG-LEN to 0,
@@ -547,9 +578,12 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   `app/app-transaction-type-db2/cpy/CSDB2RWY.cpy:33-34`.
 - **Q-COTRTLIC-14**: WS-DB2-ERROR set by the list reads is never tested after the read; the screen is sent with
   whatever rows were filled and the error text. Recommendation: preserve (acceptable) or fix.
-- **Q-COTRTLIC-15**: CA-DELETE-SUCCEEDED / CA-DELETE-NOT-REQUESTED (and the update pair) share LOW-VALUES, and a
-  failed update leaves WS-CA-UPDATE-FLAG = `Y` across turns, so PF10 is "valid" later with no selection; it then
-  falls to the OTHERWISE branch (re-read). Harmless. Recommendation: fix in the target (explicit state).
+- **Q-COTRTLIC-15**: CA-DELETE-SUCCEEDED / CA-DELETE-NOT-REQUESTED (and the update pair) share LOW-VALUES, and
+  WS-CA-DELETE-FLAG and WS-CA-UPDATE-FLAG are set to `Y` by any screen send with a single valid action and are
+  cleared only by a successful delete or update or a fresh start, so an abandoned or failed confirmation leaves
+  `Y` across turns, and PF10 is "valid" later with no selection; it then falls to the OTHERWISE branch
+  (re-read). With no selection this is harmless; with a selection it allows Q-COTRTLIC-23. Recommendation: fix
+  in the target (explicit state). Source: `COTRTLIC.cbl:1391-1411`, `:1857`, `:1910`, `:548`, `:827-829`.
 - **Q-COTRTLIC-16**: The map defines an eighth row (row 19: TRTSELA, TRTTYPA, TRTDSCA) that is never used.
   Recommendation: drop.
 - **Q-COTRTLIC-17**: The key for UPDATE/DELETE is read back from the protected TRTTYP field on the screen, not
@@ -573,6 +607,28 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:500-502 (0000-MAIN)`,
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1251-1267 (1290-CROSS-EDITS)`,
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1819-1832 (9100-CHECK-FILTERS)`.
+- **Q-COTRTLIC-23**: A delete can run without the delete prompt. (a) `D` typed and PF7 pressed on page 1, or
+  PF8 pressed on the last page, arms the delete (BR-COTRTLIC-13 step 1) with only the paging message shown, and
+  the next PF10 deletes. (b) `U` + ENTER (update prompt), then `D` on the same row + PF10 deletes, because
+  PF10 is accepted for either pending flag and the branch is chosen by the code typed now (BR-COTRTLIC-15).
+  `D` + ENTER, then `U` + PF10, runs a no-change UPDATE with the protected, unchanged description.
+  Recommendation: fix (PF10 confirms only the action and record that were prompted for). Source:
+  `COTRTLIC.cbl:580-581`, `:666-678`, `:721-734`, `:810-868`, `:870-878`, `:1391-1411`.
+- **Q-COTRTLIC-24**: Paging keys pressed with a filter change act on the paging variables just reset by the
+  change check (BR-COTRTLIC-08). PF7: page 0 is not the first page, so the backward read runs; SUBTRACT 1 from
+  the unsigned 0 stores 1, the backward cursor below key spaces returns +100 at once (ERR-COTRTLIC-08), and
+  BR-COTRTLIC-17 item 6 replaces that text: the list is empty, PAGENO `1`, message "No previous pages to
+  display". PF8: the next-page indicator is space, so the OTHERWISE branch reads the first page of the new
+  result; on a result of up to 7 rows the forward read sets "No more pages for these search conditions" and
+  BR-COTRTLIC-17 item 7 overwrites it with "No more pages to display" on the first display of that result.
+  Recommendation: fix. Source: `COTRTLIC.cbl:1134`, `:1172`, `:657-661`, `:780-790`, `:1777-1790`,
+  `:1532-1540`.
+- **Q-COTRTLIC-25**: After "Record not found. Deleted by others ?" (ERR-COTRTLIC-10) the update stays pending
+  and the page is re-read, so the selected row index now holds the record that followed the deleted one. That
+  record is shown with its own type code, the description the user typed, the `U`, and an editable
+  description; a second PF10 is accepted (flag `Y`, nothing changed) and updates that record, which the user
+  never chose. If the deleted row was the last filled slot, the slot is empty and the update cannot be repeated.
+  Recommendation: fix. Source: `COTRTLIC.cbl:854-868`, `:1404-1419`, `:1839`, `:1861-1869`.
 
 ## Test scenarios
 Unless stated otherwise: Db2 loaded by JOB-CREADB21 with the 7 seed types (`01 PURCHASE`, `02 PAYMENT`,
@@ -630,9 +686,12 @@ Unless stated otherwise: Db2 loaded by JOB-CREADB21 with the 7 seed types (`01 P
   with CDEMO-FROM-PROGRAM `COTRTLIC`, context 0, user type `U`.
 - **TS-COTRTLIC-19** (covers ERR-COTRTLIC-01): Given Db2 is unavailable, when CTLI is started, then a plain text
   screen starting "Db2 access failure. SQLCODE:" is sent and no next transaction is set.
-- **TS-COTRTLIC-20** (covers ERR-COTRTLIC-10): Given TS-13 step 1 for type 05 and type 05 is deleted by another
-  user before PF10, when PF10 is pressed, then the message starts "Record not found. Deleted by others ?
-  SQLCODE:  100" and the update stays pending.
+- **TS-COTRTLIC-20** (covers ERR-COTRTLIC-10, Q-COTRTLIC-25): Given TS-13 step 1 for type 05, the description
+  changed to `REFUND CREDIT`, and type 05 deleted by another user before PF10, when PF10 is pressed, then the
+  message starts "Record not found. Deleted by others ? SQLCODE:  100" and the update stays pending; row 5 now
+  shows type `06` with `REFUND CREDIT` and the `U`, and a second PF10 changes type 06's description to
+  `REFUND CREDIT` (as coded). If the description is left unchanged, the message is "No change detected with
+  respect to database values." and the Db2 text is not shown.
 - **TS-COTRTLIC-21** (covers Q-COTRTLIC-01): Given TS-01, when `D` is typed on row 3 (`03 CREDIT`) and at the same
   time `R` is typed in the description filter, then the list shows 01, 03, 04, 05, 06 and row 3 (`04
   AUTHORIZATION`) is highlighted for deletion with no info text.
@@ -643,6 +702,20 @@ Unless stated otherwise: Db2 loaded by JOB-CREADB21 with the 7 seed types (`01 P
   typed in the type filter and ENTER is pressed, then (as coded) the message is "No Records found for these
   filter conditions", the type filter is red, the select fields are protected, and the Db2 error text is not
   shown.
+- **TS-COTRTLIC-24** (covers BR-COTRTLIC-13, Q-COTRTLIC-23): Given TS-01 and type 06 without categories, when
+  `D` is typed on row 6 and PF7 pressed, then the message is "No previous pages to display", row 6 is
+  highlighted, and no delete prompt is shown; when PF10 is then pressed, then (as coded) type 06 is deleted and
+  the info is "HIGHLIGHTED row deleted.Hit Enter to continue". The same holds with PF8 instead of PF7 (message
+  "No more pages for these search conditions").
+- **TS-COTRTLIC-25** (covers BR-COTRTLIC-15, Q-COTRTLIC-23): Given TS-01 and type 06 without categories, when
+  `U` is typed on row 6 and ENTER pressed (info "Update HIGHLIGHTED row. Press F10 to save"), and then `D` is
+  typed over the `U` on row 6 and PF10 pressed, then (as coded) type 06 is deleted without the delete prompt
+  having been shown.
+- **TS-COTRTLIC-26** (covers BR-COTRTLIC-08, Q-COTRTLIC-24): Given TS-01, when `03` is typed in the type filter
+  and PF7 pressed, then (as coded) all rows are empty, PAGENO `1`, message "No previous pages to display".
+- **TS-COTRTLIC-27** (covers BR-COTRTLIC-17, Q-COTRTLIC-24): Given TS-01, when `R` is typed in the description
+  filter and PF8 pressed, then (as coded) the list shows 01, 03, 04, 05, 06 and the message is "No more pages to
+  display".
 
 ## Open questions
 - What isolation level and bind options does plan CARDDEMO use (cursor stability vs. uncommitted read)? The
