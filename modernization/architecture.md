@@ -175,7 +175,7 @@ queues are bounded. Queue replies keep the legacy text layouts; the REST equival
 
 ```mermaid
 flowchart LR
-    S[backup] --> P[posttran<br/>CBTRN02C] --> M{first business<br/>day of month?}
+    S[backup] --> P[posttran<br/>CBTRN02C] --> M{month's interest<br/>due?}
     M -->|yes| I[intcalc<br/>CBACT04C] --> ST[creastmt<br/>CBSTM03A/B]
     M -->|no| ST
 ```
@@ -195,7 +195,11 @@ flowchart LR
   `$CARDDEMO_OUTBOX/<date>/`.
 - Airflow DAG `carddemo_daily_cycle` follows the runbook order (the CA7 and Control-M definitions
   in the repository are inconsistent with each other and with the runbook; see `spec/jobs.md`).
-  Interest runs on the first business day of each month (D-INTEREST) and inserts its transactions
+  It is scheduled at 22:00 UTC Monday to Friday (a run posts its logical date; holidays from
+  `CARDDEMO_HOLIDAYS` are skipped) and is created paused (`airflow/start.sh` keeps it paused unless
+  `CARDDEMO_CYCLE_SCHEDULE=on`). Interest runs on the first cycle date of each month whose interest
+  is not calculated yet (B-CYCLE, D-INTEREST): normally the first business day, or the next date run
+  after a missed one (`INTSTATUS` reads the completed INTCALC runs). It inserts its transactions
   directly into the transaction table, so the COMBTRAN sort/merge and TRANBKP/TRANIDX steps disappear.
   The table keeps full history; statements cover only the current cycle (D-HISTORY).
   `carddemo_transaction_report` is triggered on demand.

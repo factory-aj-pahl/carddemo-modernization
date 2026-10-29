@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import shutil
 import subprocess
 from datetime import date
@@ -45,8 +46,8 @@ def outbox() -> Path:
     return Path(os.environ.get("CARDDEMO_OUTBOX", Path.home() / ".carddemo" / "outbox"))
 
 
-def run_batch(*args: str) -> int:
-    """Runs the jar with args; logs the job SYSOUT; returns the exit code or fails the task."""
+def _run_jar(*args: str) -> subprocess.CompletedProcess:
+    """Runs the jar with args and logs the job SYSOUT; fails the task unless the exit code is 0 or 4."""
     jar = os.environ.get("CARDDEMO_BATCH_JAR", str(_REPO_JAR))
     logs = outbox() / "logs"
     logs.mkdir(parents=True, exist_ok=True)
@@ -60,8 +61,27 @@ def run_batch(*args: str) -> int:
     rc = proc.returncode
     if rc in SUCCESS:
         log.info("%s %s (exit %d)", args[0], SUCCESS[rc], rc)
-        return rc
+        return proc
     raise AirflowFailException(f"{args[0]} {failure_label(args[0], rc, proc.stderr)} (exit {rc})")
+
+
+def run_batch(*args: str) -> int:
+    """Runs the jar with args; logs the job SYSOUT; returns the exit code or fails the task."""
+    return _run_jar(*args).returncode
+
+
+_INTSTATUS = re.compile(r"INTEREST (?:(ALREADY) CALCULATED FOR \d{4}-\d\d|NOT CALCULATED FOR \d{4}-\d\d; "
+                        r"(?:LAST CALCULATED FOR (\d{4}-\d\d)|NO EARLIER MONTH CALCULATED))")
+
+
+def interest_status(day: str) -> tuple[bool, str | None]:
+    """INTSTATUS: (INTCALC completed for day's month, latest earlier month it completed for or None)."""
+    proc = _run_jar("INTSTATUS", f"businessDate={day}")
+    for line in proc.stdout.splitlines():
+        m = _INTSTATUS.fullmatch(line.strip())
+        if m:
+            return m.group(1) is not None, m.group(2)
+    raise AirflowFailException(f"INTSTATUS printed no interest status for {day}")
 
 
 def holidays() -> set[date]:
@@ -81,6 +101,20 @@ def is_first_business_day(d: date, closed: set[date] | None = None) -> bool:
     if not is_business_day(d, closed):
         return False
     return not any(is_business_day(d.replace(day=k), closed) for k in range(1, d.day))
+
+
+def interest_due(d: date, calculated: bool, last_month: str | None, closed: set[date] | None = None) -> bool:
+    """B-CYCLE / Q-CBACT04C-08: INTCALC runs on the first cycle date of a month whose interest is not calculated yet.
+
+    That is the calendar's first business day, or, when that day's cycle was missed or its INTCALC did not complete, any
+    later business day of the month. The catch-up needs a month already calculated on this database: a freshly loaded
+    or migrated database has no record of the months the old system charged, so a mid-month date there does not charge
+    the month again.
+    """
+    closed = holidays() if closed is None else closed
+    if calculated or not is_business_day(d, closed):
+        return False
+    return is_first_business_day(d, closed) or last_month is not None
 
 
 REPORTS_KEPT = 10

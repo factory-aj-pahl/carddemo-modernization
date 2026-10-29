@@ -94,9 +94,19 @@ To start over, run `down`, then `db-reset`, `load`, `up`.
 
 ## Batch and scheduling
 
-The Airflow DAGs run the batch jar (`airflow/dags/carddemo_batch.py`). Trigger the daily cycle from the
-Airflow UI or REST API with conf `{"business_date": "YYYY-MM-DD"}` after placing the daily file in
-`~/.carddemo/inbox/<date>/dailytran.txt`; outputs (rejects, statements) go to `~/.carddemo/outbox/<date>/`.
+The Airflow DAGs run the batch jar (`airflow/dags/carddemo_batch.py`). The daily cycle
+(`carddemo_daily_cycle`) is scheduled at 22:00 UTC Monday to Friday; each scheduled run posts its own date (the
+run of Friday 2022-07-01 posts business date 2022-07-01), and a run on a date in `CARDDEMO_HOLIDAYS`
+(comma-separated YYYY-MM-DD) skips every task. It is created paused, and `airflow/start.sh` pauses it again on
+every start, so the stack never posts on its own. To schedule it, run
+`airflow dags unpause carddemo_daily_cycle` (after `. modernization/airflow/env.sh`; it lasts until the next
+start), or start the stack with `CARDDEMO_CYCLE_SCHEDULE=on`. A paused DAG also leaves manual runs queued, so
+unpause it before triggering one. Trigger a date by hand (for example one missed while the DAG was paused; there
+is no catchup) from the Airflow UI or REST API with conf `{"business_date": "YYYY-MM-DD"}` after placing the daily
+file in `~/.carddemo/inbox/<date>/dailytran.txt`; outputs (rejects, statements) go to `~/.carddemo/outbox/<date>/`.
+Interest (INTCALC) runs on the first business day of each month; if that day's cycle is missed, the next date run
+in the month charges it (the jar's `INTSTATUS` tells the DAG whether the month is already calculated), once some
+month has been calculated on the database.
 The transaction report DAG is started by the web app's report screen (CORPT00C); the file is downloadable
 there. The jar also runs on its own:
 `java -jar backend/batch/target/carddemo-batch.jar <COMMAND> key=value ...` (commands and exit codes in

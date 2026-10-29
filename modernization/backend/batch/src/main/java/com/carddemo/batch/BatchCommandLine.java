@@ -59,6 +59,8 @@ import org.springframework.stereotype.Component;
  * <li>{@code CBIMPORT exportFile=PATH custOut=PATH acctOut=PATH xrefOut=PATH trnxOut=PATH cardOut=PATH errOut=PATH}
  * (CBIMPORT)</li>
  * <li>{@code INTCALC businessDate=YYYY-MM-DD}: monthly interest (CBACT04C); at most one completed run per month</li>
+ * <li>{@code INTSTATUS businessDate=YYYY-MM-DD}: read-only; whether INTCALC completed for the date's month, and the
+ * latest earlier month it completed for (the daily cycle's month-start branch, B-CYCLE)</li>
  * <li>{@code CREASTMT businessDate=YYYY-MM-DD stmtFile=PATH htmlFile=PATH}: statements (CBSTM03A/B)</li>
  * <li>{@code TRANVERIFY dailyFile=PATH}: read-only check of a daily file (CBTRN01C)</li>
  * <li>{@code TRANREPT startDate=YYYY-MM-DD endDate=YYYY-MM-DD reportFile=PATH [userId=ID]}: report (CBTRN03C)</li>
@@ -145,6 +147,7 @@ public class BatchCommandLine {
                 case "CBEXPORT" -> cbexport(params);
                 case "CBIMPORT" -> cbimport(params);
                 case "INTCALC" -> intcalc(params);
+                case "INTSTATUS" -> intstatus(params);
                 case "CREASTMT" -> creastmt(params);
                 case "TRANVERIFY" -> tranverify(params);
                 case "TRANREPT" -> tranrept(params);
@@ -170,7 +173,7 @@ public class BatchCommandLine {
     private int usage(String problem) {
         System.err.println("carddemo-batch: " + problem);
         System.err.println("usage: POSTTRAN businessDate=YYYY-MM-DD dailyFile=PATH rejectsFile=PATH"
-            + " | INTCALC businessDate=YYYY-MM-DD | CREASTMT businessDate=YYYY-MM-DD stmtFile=PATH htmlFile=PATH"
+            + " | INTCALC businessDate=YYYY-MM-DD | INTSTATUS businessDate=YYYY-MM-DD | CREASTMT businessDate=YYYY-MM-DD stmtFile=PATH htmlFile=PATH"
             + " | TRANVERIFY dailyFile=PATH | TRANREPT startDate=YYYY-MM-DD endDate=YYYY-MM-DD reportFile=PATH [userId=ID]"
             + " | BACKUP businessDate=YYYY-MM-DD | RESTORE backupId=N|businessDate=YYYY-MM-DD"
             + " | READCARD | READXREF | READCUST | READACCT outFile=PATH arryFile=PATH vbrcFile=PATH"
@@ -239,6 +242,32 @@ public class BatchCommandLine {
             .addString("businessDate", date.toString(), false)
             .toJobParameters();
         return launch(CycleJobsConfig.INTCALC, jp, "INTEREST ALREADY CALCULATED FOR " + month, true);
+    }
+
+    /**
+     * B-CYCLE, Q-CBACT04C-08: reads the same completed INTCALC job instances that make INTCALC refuse a second run in a
+     * month (a RESTORE forgets the runs started after its backup, so a restored month reads as not calculated).
+     */
+    private int intstatus(Map<String, String> params) {
+        LocalDate date = businessDate(params);
+        if (date == null) {
+            log.display(INVALID_DATE);
+            return ExitCodes.INVALID_DATE;
+        }
+        String month = InterestCalculation.interestMonth(date);
+        String latest = jdbc.queryForObject("""
+            SELECT MAX(p.PARAMETER_VALUE) FROM BATCH_JOB_INSTANCE i
+            JOIN BATCH_JOB_EXECUTION e ON e.JOB_INSTANCE_ID = i.JOB_INSTANCE_ID
+            JOIN BATCH_JOB_EXECUTION_PARAMS p ON p.JOB_EXECUTION_ID = e.JOB_EXECUTION_ID
+            WHERE i.JOB_NAME = ? AND e.STATUS = 'COMPLETED' AND p.PARAMETER_NAME = 'interestMonth' AND p.PARAMETER_VALUE <= ?""",
+            String.class, CycleJobsConfig.INTCALC, month);
+        if (month.equals(latest)) {
+            log.display("INTEREST ALREADY CALCULATED FOR " + month);
+        } else {
+            log.display("INTEREST NOT CALCULATED FOR " + month + "; "
+                + (latest == null ? "NO EARLIER MONTH CALCULATED" : "LAST CALCULATED FOR " + latest));
+        }
+        return ExitCodes.OK;
     }
 
     private int creastmt(Map<String, String> params) {

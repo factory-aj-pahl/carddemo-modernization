@@ -12,6 +12,15 @@ airflow db migrate >"$run/db-migrate.log" 2>&1
 # The report DAG is triggered on request (web report screen), so it must not stay paused.
 airflow dags reserialize >"$run/reserialize.log" 2>&1
 airflow dags unpause carddemo_transaction_report >>"$run/reserialize.log" 2>&1 || echo "could not unpause carddemo_transaction_report (see $run/reserialize.log)"
+# The daily cycle is scheduled (22:00 UTC, Monday to Friday) and posts against $CARDDEMO_DB, so it stays paused unless
+# the operator asks for the schedule; manual runs need it unpaused too (verify_report.py unpauses it for its run).
+if [ "${CARDDEMO_CYCLE_SCHEDULE:-off}" = on ]; then
+    airflow dags unpause carddemo_daily_cycle >>"$run/reserialize.log" 2>&1 || echo "could not unpause carddemo_daily_cycle (see $run/reserialize.log)"
+    echo "carddemo_daily_cycle schedule on (CARDDEMO_CYCLE_SCHEDULE=on)"
+else
+    airflow dags pause carddemo_daily_cycle >>"$run/reserialize.log" 2>&1 || echo "could not pause carddemo_daily_cycle (see $run/reserialize.log)"
+    echo "carddemo_daily_cycle paused; schedule it with: airflow dags unpause carddemo_daily_cycle (or CARDDEMO_CYCLE_SCHEDULE=on)"
+fi
 for service in api-server scheduler dag-processor; do
     pidfile="$run/$service.pid"
     if [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; then

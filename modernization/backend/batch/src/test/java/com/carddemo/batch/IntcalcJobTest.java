@@ -69,6 +69,41 @@ class IntcalcJobTest extends CycleJobTestSupport {
     }
 
     @Test
+    @Covers({"B-CYCLE", "Q-CBACT04C-08"})
+    void interest_status_reports_the_month_and_the_latest_earlier_month_without_running_anything() throws IOException {
+        assertThat(cli.execute("INTSTATUS", "businessDate=2022-07-05")).isZero();
+        assertThat(log.captured()).containsExactly("INTEREST NOT CALCULATED FOR 2022-07; NO EARLIER MONTH CALCULATED");
+        postSample("2022-06-01");
+        assertThat(intcalc("2022-06-01")).isZero();
+        int rows = interestIds().size();
+        log.startCapture();
+        assertThat(cli.execute("INTSTATUS", "businessDate=2022-06-20")).isZero();
+        assertThat(cli.execute("INTSTATUS", "businessDate=2022-07-05")).isZero();
+        assertThat(cli.execute("INTSTATUS", "businessDate=2022-09-01")).isZero();
+        assertThat(cli.execute("INTSTATUS", "businessDate=2022-05-31")).isZero();
+        assertThat(log.captured()).containsExactly("INTEREST ALREADY CALCULATED FOR 2022-06",
+            "INTEREST NOT CALCULATED FOR 2022-07; LAST CALCULATED FOR 2022-06",
+            "INTEREST NOT CALCULATED FOR 2022-09; LAST CALCULATED FOR 2022-06",
+            "INTEREST NOT CALCULATED FOR 2022-05; NO EARLIER MONTH CALCULATED");
+        assertThat(interestIds()).hasSize(rows);
+        assertThat(count("SELECT COUNT(*) FROM BATCH_JOB_INSTANCE WHERE JOB_NAME = 'INTCALC'")).isEqualTo(1);
+    }
+
+    @Test
+    @Covers({"B-CYCLE", "Q-CBACT04C-08", "B-DATE"})
+    void interest_status_counts_only_completed_runs_and_needs_a_valid_date() throws IOException {
+        postSample("2022-07-01");
+        jdbc.update("DELETE FROM account WHERE account_id = 10");
+        assertThat(intcalc("2022-07-01")).isEqualTo(99);
+        log.startCapture();
+        assertThat(cli.execute("INTSTATUS", "businessDate=2022-07-05")).isZero();
+        assertThat(cli.execute("INTSTATUS", "businessDate=2022-02-30")).isEqualTo(12);
+        assertThat(cli.execute("INTSTATUS")).isEqualTo(12);
+        assertThat(log.captured()).containsExactly("INTEREST NOT CALCULATED FOR 2022-07; NO EARLIER MONTH CALCULATED",
+            "INVALID OR MISSING BUSINESS DATE", "INVALID OR MISSING BUSINESS DATE");
+    }
+
+    @Test
     @Covers({"Q-CBACT04C-08", "B-UOW", "B-ABEND", "ERR-CBACT04C-03", "ERR-CBACT04C-09", "TS-CBACT04C-07"})
     void a_rerun_after_an_abend_charges_only_the_accounts_not_yet_charged() throws IOException {
         postSample("2022-07-18");
