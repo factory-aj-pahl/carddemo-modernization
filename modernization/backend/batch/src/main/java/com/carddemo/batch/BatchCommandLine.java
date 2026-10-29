@@ -64,8 +64,8 @@ import org.springframework.stereotype.Component;
  * <li>{@code CREASTMT businessDate=YYYY-MM-DD stmtFile=PATH htmlFile=PATH}: statements (CBSTM03A/B)</li>
  * <li>{@code TRANVERIFY dailyFile=PATH}: read-only check of a daily file (CBTRN01C)</li>
  * <li>{@code TRANREPT startDate=YYYY-MM-DD endDate=YYYY-MM-DD reportFile=PATH [userId=ID]}: report (CBTRN03C)</li>
- * <li>{@code BACKUP businessDate=YYYY-MM-DD}: pre-cycle snapshot, refused (exit 8) once POSTTRAN has
- * completed for the date; {@code RESTORE backupId=N | businessDate=YYYY-MM-DD} (by date: the latest backup for it)</li>
+ * <li>{@code BACKUP businessDate=YYYY-MM-DD}: pre-cycle snapshot, refused (exit 8) once a POSTTRAN run, of any
+ * status, exists for the date; {@code RESTORE backupId=N | businessDate=YYYY-MM-DD} (by date: the latest backup for it)</li>
  * <li>{@code COBTUPDT inputFile=PATH}: apply transaction type add, update, and delete records (JOB-MNTTRDB2); exit
  * code 0, 4 when a record was rejected, 12 when the run stopped and was rolled back</li>
  * <li>{@code CBPAUP0C [sysin=EE,CCCCC,DDDDD,F]}: purge expired pending authorizations (CBPAUP0J)</li>
@@ -436,7 +436,7 @@ public class BatchCommandLine {
         try {
             Optional<CycleBackupService.Snapshot> taken = backups.backup(date);
             if (taken.isEmpty()) {
-                log.display("BACKUP REFUSED: POSTING ALREADY COMPLETED FOR " + date);
+                log.display("BACKUP REFUSED: POSTING ALREADY STARTED FOR " + date);
                 return ExitCodes.REFUSED;
             }
             CycleBackupService.Snapshot s = taken.get();

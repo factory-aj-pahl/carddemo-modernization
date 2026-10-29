@@ -523,6 +523,34 @@ class TranTypeListScreenTest {
     }
 
     @Test
+    @Covers({"Q-COTRTLIC-23", "VR-COTRTLIC-06", "VR-COTRTLIC-07"})
+    void f10_that_fails_the_description_edit_disarms_so_the_next_f10_prompts_again() {
+        String[][] failures = {
+            {"Bad#Text", "Transaction Desc can have numbers or alphabets only."},
+            {"", "Transaction Desc must be supplied."},
+        };
+        for (String[] failure : failures) {
+            JsonNode r = client.post(P, "ENTER", describe(select(listInput(client.show(P)), 5, "U"), 5, "First Text"));
+            assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Update HIGHLIGHTED row. Press F10 to save");
+            r = client.post(P, "PF10", describe(listInput(r), 5, failure[0]));
+            assertThat(r.at("/message").asText()).isEqualTo(failure[1]);
+            assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+            assertThat(description(jdbc, "05")).isEqualTo("REFUND");
+            // No prompt was shown on that turn, so this F10 is ENTER: validated, prompted, not saved.
+            r = client.post(P, "PF10", describe(listInput(r), 5, "Never Prompted"));
+            assertThat(r.has("message")).isFalse();
+            assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Update HIGHLIGHTED row. Press F10 to save");
+            assertThat(row(r, 5).get("description").asText()).isEqualTo("Never Prompted");
+            assertThat(row(r, 5).get("descriptionEditable").asBoolean()).isTrue();
+            assertThat(description(jdbc, "05")).isEqualTo("REFUND");
+            r = key("PF10", r);
+            assertThat(r.at("/fields/info").asText().strip()).isEqualTo("HIGHLIGHTED row was updated");
+            assertThat(description(jdbc, "05")).isEqualTo("Never Prompted");
+            jdbc.update("UPDATE transaction_type SET description = 'REFUND' WHERE type_cd = '05'");
+        }
+    }
+
+    @Test
     @Covers({"TS-COTRTLIC-26", "BR-COTRTLIC-08", "Q-COTRTLIC-24"})
     void pf7_with_a_filter_change_shows_page_one_of_the_new_search() {
         addTypes("08", "TEST A");

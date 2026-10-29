@@ -109,6 +109,26 @@ test.describe('COTRTLIC transaction type list', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
+  test('Q-COTRTLIC-23 VR-COTRTLIC-07 an F10 that fails the description edit disarms, so the next F10 prompts again before saving', async ({ page }) => {
+    await page.getByLabel('Select row 3').fill('U');
+    await page.keyboard.press('Enter');
+    await expectInfo(page, 'Update HIGHLIGHTED row. Press F10 to save');
+    const desc = page.getByLabel('Description row 3');
+    await desc.fill('Bad#Text');
+    await page.keyboard.press('F10');
+    await expectMessage(page, 'Transaction Desc can have numbers or alphabets only.');
+    await expectInfo(page, 'Type U to update, D to delete any record');
+    await desc.fill('Never Prompted');
+    await page.keyboard.press('F10');
+    await expectInfo(page, 'Update HIGHLIGHTED row. Press F10 to save');
+    await expect(page.getByTestId('message')).toHaveText('');
+    await expect(desc).toHaveValue('Never Prompted');
+    await expect(desc).toBeEditable();
+    await page.keyboard.press('F10');
+    await expectInfo(page, 'HIGHLIGHTED row was updated');
+    await expect(page.getByTestId('row3').locator('td').nth(2)).toHaveText('Never Prompted');
+  });
+
   test('Q-COTRTLIC-24 TS-COTRTLIC-26 TS-COTRTLIC-27 a type filter typed with F8 or F7 shows page 1 of the new search without a boundary message', async ({ page }) => {
     await page.getByLabel('Type Filter').fill('03');
     await page.keyboard.press('F8');

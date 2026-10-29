@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -77,13 +78,78 @@ class CycleBackupTest extends CycleJobTestSupport {
         // The daily cycle triggered again for the same date stops at BACKUP; no backup of the posted state exists.
         log.startCapture();
         assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isEqualTo(8);
-        assertThat(log.captured()).containsExactly("BACKUP REFUSED: POSTING ALREADY COMPLETED FOR 2022-07-01");
+        assertThat(log.captured()).containsExactly("BACKUP REFUSED: POSTING ALREADY STARTED FOR 2022-07-01");
         assertThat(state()).isEqualTo(posted);
         assertThat(count("SELECT COUNT(*) FROM cycle_backup WHERE business_date = '2022-07-01'")).isEqualTo(1);
 
         assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
         assertThat(state()).isEqualTo(before);
         assertThat(cli.execute(posttran)).isEqualTo(4);
+    }
+
+    /**
+     * Runs the day's POSTTRAN with a non-numeric amount in record 150, so it abends after committing the earlier
+     * records, then corrects the file in place: the job parameters stay the same, so the next run is a restart.
+     */
+    void abendMidFile(String[] posttran) throws IOException {
+        Path daily = Path.of(posttran[2].substring("dailyFile=".length()));
+        List<String> good = Files.readAllLines(daily, StandardCharsets.ISO_8859_1);
+        List<String> bad = new ArrayList<>(good);
+        String rec = bad.get(149);
+        bad.set(149, rec.substring(0, 132) + "ABCDEFGHIJK" + rec.substring(143));
+        Files.write(daily, bad, StandardCharsets.ISO_8859_1);
+        assertThat(cli.execute(posttran)).isEqualTo(99);
+        Files.write(daily, good, StandardCharsets.ISO_8859_1);
+    }
+
+    int postedOfDay() {
+        return count("SELECT COUNT(*) FROM card_transaction WHERE tran_id LIKE '9%'");
+    }
+
+    @Test
+    @Covers({"Q-ACCTFILE-02", "B-CYCLE", "B-UOW"})
+    void backup_after_an_abended_posting_is_refused_so_restore_by_date_returns_to_the_state_before_posting() throws IOException {
+        List<Map<String, Object>> before = state();
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        String[] posttran = posttranOfDay("2022-07-01");
+        abendMidFile(posttran);
+        List<Map<String, Object>> partlyPosted = state();
+        assertThat(postedOfDay()).isPositive();
+        assertThat(partlyPosted).isNotEqualTo(before);
+
+        // The cycle triggered again stops at BACKUP: no backup of the partly posted state exists.
+        log.startCapture();
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isEqualTo(8);
+        assertThat(log.captured()).containsExactly("BACKUP REFUSED: POSTING ALREADY STARTED FOR 2022-07-01");
+        assertThat(state()).isEqualTo(partlyPosted);
+        assertThat(count("SELECT COUNT(*) FROM cycle_backup WHERE business_date = '2022-07-01'")).isEqualTo(1);
+
+        // Restart with the corrected file continues from the last commit (B-UOW) and completes.
+        assertThat(cli.execute(posttran)).isEqualTo(4);
+        assertThat(postedOfDay()).isEqualTo(262);
+
+        assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+        assertThat(state()).isEqualTo(before);
+        assertThat(postedOfDay()).isZero();
+    }
+
+    @Test
+    @Covers({"Q-ACCTFILE-02", "B-CYCLE", "B-UOW"})
+    void after_an_abended_posting_restore_by_date_lets_the_whole_cycle_run_again() throws IOException {
+        List<Map<String, Object>> before = state();
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        String[] posttran = posttranOfDay("2022-07-01");
+        abendMidFile(posttran);
+        assertThat(postedOfDay()).isPositive();
+
+        assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+        assertThat(state()).isEqualTo(before);
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        assertThat(count("SELECT COUNT(*) FROM cycle_backup WHERE business_date = '2022-07-01'")).isEqualTo(2);
+        assertThat(cli.execute(posttran)).isEqualTo(4);
+        assertThat(postedOfDay()).isEqualTo(262);
+        assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+        assertThat(state()).isEqualTo(before);
     }
 
     @Test

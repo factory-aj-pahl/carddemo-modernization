@@ -170,12 +170,19 @@ queues are bounded. Queue replies keep the legacy text layouts; the REST equival
   under a row lock on a shared counter held until the writing transaction ends, which fixes the
   race (Q-COTRN02C-01, Q-COBIL00C-01).
 - GDG backups (TRANBKP) become snapshot tables written by the BACKUP step of the DAG before
-  posting, so a bad run can be rolled back. BACKUP for a date whose POSTTRAN has completed (and
-  was not undone by a restore) is refused with exit 8, so a repeated trigger of the cycle stops
-  at BACKUP and no backup of a posted state exists. `RESTORE businessDate=<date>` therefore
-  restores the latest backup for the date, the state just before its most recent posting, and
-  keeps online changes made before that backup; `RESTORE backupId=<n>` restores one specific
-  backup.
+  posting, so a bad run can be rolled back. BACKUP for a date with any POSTTRAN run (started,
+  failed, stopped, or completed, and not undone by a restore) is refused with exit 8 and
+  `BACKUP REFUSED: POSTING ALREADY STARTED FOR <date>`, so a repeated trigger of the cycle stops
+  at BACKUP and no backup of a posted or partly posted state exists (an abended POSTTRAN keeps
+  the records it committed, B-UOW). `RESTORE businessDate=<date>` therefore restores the latest
+  backup for the date, the state just before its most recent posting, and keeps online changes
+  made before that backup; `RESTORE backupId=<n>` restores one specific backup.
+- Recovery after an abended POSTTRAN (exit 99): either fix the cause and clear the failed
+  POSTTRAN task of the same DAG run (with its downstream tasks), which restarts the posting
+  from its last committed record (B-UOW) on top of the backup already taken; or run
+  `RESTORE businessDate=<date>`, which returns to the state before the posting and forgets its
+  job runs, and then trigger the whole cycle for the date again (BACKUP is accepted again). A
+  new trigger without the restore stops at BACKUP with exit 8.
 
 ## 5. Batch and scheduling
 
