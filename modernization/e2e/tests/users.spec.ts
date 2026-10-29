@@ -269,7 +269,7 @@ test.describe('COUSR02C update user', () => {
 });
 
 test.describe('COUSR03C delete user', () => {
-  test('TS-COUSR03C-03 TS-COUSR03C-05 TS-COUSR03C-11 empty, unknown, and invalid-key cases', async ({ page }) => {
+  test('TS-COUSR03C-03 TS-COUSR03C-05 TS-COUSR03C-11 Q-COUSR03C-06 empty, unknown, and invalid-key cases', async ({ page }) => {
     await openOption(page, /User Delete/, 'CU03 · COUSR03C');
     await expect(page.getByLabel('Enter User ID')).toBeFocused();
     await expectNoSeriousA11yViolations(page);
@@ -279,8 +279,10 @@ test.describe('COUSR03C delete user', () => {
     await page.keyboard.press('Enter');
     await expectMessage(page, 'User ID NOT found...');
     await expectNoSeriousA11yViolations(page);
+    await page.getByRole('heading', { level: 1 }).click();
     await page.keyboard.press('F8');
     await expectMessage(page, MSG.INVALID_KEY);
+    await expect(page.getByLabel('Enter User ID')).toBeFocused();
   });
 
   test('TS-COUSR03C-10 TS-COUSR03C-09 NAV-COUSR03C-02 F4 clears, F12 and F3 return without deleting', async ({ page }) => {

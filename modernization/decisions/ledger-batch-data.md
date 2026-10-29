@@ -9,7 +9,7 @@ PAUDBUNL, PAUDBLOD, DBUNLDGS). Decision values, the classification policy, and t
 specified in `../spec/`.
 
 Message text in backticks is verbatim. Text marked **NEW** does not exist in the COBOL. The online
-conventions C-ROLE, C-SCOPE, C-MASK, C-SESSION, C-RENDER, and C-AUDIT are defined in
+conventions C-ROLE, C-SCOPE, C-MASK, C-SESSION, C-RENDER, C-AUDIT, and C-SHORTREAD are defined in
 `ledger-online.md` and apply unchanged to the optional-module screens (COTRTLIC, COTRTUPC, COPAUS0C,
 COPAUS1C).
 
@@ -327,7 +327,7 @@ COPAUS1C).
 | Q-COTRTLIC-12 | Inconsistent message precedence | business-choice | PRESERVE | Business choice: same precedence. | n/a |
 | Q-COTRTLIC-13 | DSNTIAC called with zero length | functional-defect | FIX | Database errors show the database error text in the message line, as DSNTIAC was meant to. | n/a |
 | Q-COTRTLIC-14 | List read error not tested | business-choice | PRESERVE | Business choice: rows read so far are shown with the error text. | n/a |
-| Q-COTRTLIC-15 | Shared LOW-VALUES state flags | platform | PLATFORM | Explicit server-side state; same visible behavior. | n/a |
+| Q-COTRTLIC-15 | Shared LOW-VALUES state flags | platform | PLATFORM | Explicit server-side state; same visible behavior except as changed by Q-COTRTLIC-23 and Q-COTRTLIC-25. | n/a |
 | Q-COTRTLIC-16 | Unused eighth map row | dead-code | NOT-PORTED | Seven rows. | n/a |
 | Q-COTRTLIC-17 | Update/delete key read from the screen | security | FIX | The key comes from the server-side copy of the row. | n/a |
 | Q-COTRTLIC-18 | Positive SQLCODE warnings unhandled | functional-defect | FIX | A warning counts as success: commit and the normal success message. | n/a |
@@ -666,7 +666,7 @@ Authorization module (IMS, Db2, MQ):
 - Q-COPAUS2C-04: SQLSTATE shown as text.
 - Q-CBPAUP0J-01, Q-CBPAUP0C-09 (D-PURGE): purge expiry is a DAG parameter defaulting to 5 days (not the JCL's `00`); debug off by default.
 - Q-CBPAUP0C-01 (D-PURGE), -02, -03, -04, Q-ENT-42: purge saves the summary count and amount adjustments for deleted details (credit and cash balances unchanged), never deletes unexpired details, uses real day ages, and checkpoints by the numeric parameter.
-- Q-PAUDBUNL-01, -04, -06, -12, Q-DBUNLDGS-01, -03, -05: unloads print **NEW** root and child counts, fail on write errors, delete partial outputs; every detail record of both unloads carries its own parent key.
+- Q-PAUDBUNL-01, -04, -06, -12, Q-DBUNLDGS-01, -03, -05: unloads print **NEW** root and child counts, fail on write errors, delete partial outputs; every detail record of both unloads carries its own parent key (PAUDBUNL Q-PAUDBUNL-12; **NEW** for DBUNLDGS, Q-DBUNLDGS-01).
 - Q-PAUDBLOD-02, -03, -04, -07, -09: orphan children reported, read errors fatal, all-or-nothing load, invalid root keys rejected (**NEW** `INVALID ROOT KEY`), **NEW** end-of-run counts.
 
 ## Reference patches

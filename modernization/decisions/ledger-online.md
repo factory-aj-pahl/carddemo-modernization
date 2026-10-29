@@ -66,6 +66,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COADM01C-04 | Relies on HANDLE CONDITION PGMIDERR instead of an INQUIRE check | platform | PLATFORM | Each option has a feature flag (options 5 and 6 belong to the transaction-type module, on by D-SCOPE). A disabled option gives the Q-COADM01C-03 message. Failures inside an enabled function are handled by that function. | n/a |
 | Q-COADM01C-05 | Options 3 and 4 open empty from the menu but pre-fetched from the user list | business-choice | PRESERVE | Both entry modes are kept: from the menu the update and delete screens start empty with focus on User ID; from the list they open with the selected user fetched. | n/a |
 | Q-COADM01C-06 | Extra period and fall-through after RETURN in PGMIDERR-ERR-PARA | dead-code | NOT-PORTED | No counterpart. | n/a |
+| Q-COADM01C-07 | After "This option is not installed ..." the next key is ignored and only redraws the menu | functional-defect | FIX | After `This option is not installed ...` the Admin Menu processes the next key normally: ENTER with an option is validated and acted on (for example `1` opens the User List, `7` gives `Please enter a valid option number...`), F3 signs off, and any other key gives `Invalid key pressed. Please see below...         `. TS-COADM01C-10 changes accordingly. | n/a |
 
 ## COUSR00C
 
@@ -124,7 +125,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COUSR03C-03 | Delete errors say "Unable to Update User..."; unknown ID on PF5 ends with that text | cosmetic | PRESERVE | Delete failures still show `Unable to Update User...` verbatim. An unknown ID on PF5 is now handled as a fetch (Q-COUSR03C-01) and shows `User ID NOT found...`. A user deleted by someone else between fetch and PF5 shows `User ID NOT found...` (ERR-COUSR03C-04). | n/a |
 | Q-COUSR03C-04 | PF12 returns to the admin menu but is not in the key legend | cosmetic | PRESERVE | F12 goes to the Admin Menu, F3 goes back to the caller, and the legend is unchanged (F12 not listed). | n/a |
 | Q-COUSR03C-05 | Several SENDs per turn | platform | PLATFORM | C-RENDER. | n/a |
-| Q-COUSR03C-06 | Errors after a failed read put the cursor on protected First Name | platform | PLATFORM | After a read or delete error, focus goes to User ID, the only editable field. | n/a |
+| Q-COUSR03C-06 | Errors after a failed read put the cursor on protected First Name | platform | PLATFORM | After a read or delete error, and after an invalid key, focus goes to User ID, the only editable field. | n/a |
 | Q-COUSR03C-07 | No user-type check of the caller; no audit trail of deletions | security | FIX (D-FIX-SEC, D-SEC-EXTRAS) | ADMIN required (C-ROLE). Every deletion writes an audit record (C-AUDIT), and the deleted user's active sessions are ended. | n/a |
 | Q-COUSR03C-08 | Unused WS-USR-MODIFIED copied from COUSR02C | dead-code | NOT-PORTED | No counterpart. | n/a |
 
@@ -398,6 +399,7 @@ Sign-on and user administration:
 - Q-COSGN00C-05 (D-SEC-EXTRAS): 5 consecutive failed sign-ons lock the ID for 15 minutes (same generic message); a session expires after 15 idle minutes; sign-on events are audited (C-AUDIT).
 - C-AUDIT (D-SEC-EXTRAS): sign-ons and every saved user add, update, and delete, account or customer update, and card update write an audit record (not visible on screens).
 - Q-COADM01C-01: a USER session reaching admin functions gets the Main Menu with `No access - Admin Only option... ` (reused).
+- Q-COADM01C-07: after `This option is not installed ...` the next key on the Admin Menu is processed instead of only redrawing the menu.
 - Q-COUSR00C-02: `Invalid selection. Valid values are U and D` is no longer replaced by an end-of-file message.
 - Q-COUSR00C-03: a search beyond the last user shows an empty list with `User ID NOT found...` (reused) instead of an abend.
 - Q-COUSR00C-06: Sel fields are cleared whenever the list is rebuilt.
@@ -482,17 +484,17 @@ Transactions, bill payment, reports:
 
 ## Counts
 
-Rows by category and decision (224 rows).
+Rows by category and decision (225 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 24 | 0 | 0 | 0 | 0 | 24 |
 | data-corruption | 13 | 0 | 0 | 0 | 0 | 13 |
 | concurrency | 9 | 0 | 0 | 0 | 0 | 9 |
-| functional-defect | 55 | 0 | 0 | 0 | 0 | 55 |
+| functional-defect | 56 | 0 | 0 | 0 | 0 | 56 |
 | cosmetic | 0 | 18 | 0 | 0 | 0 | 18 |
 | business-choice | 0 | 42 | 0 | 0 | 0 | 42 |
 | platform | 0 | 0 | 0 | 37 | 0 | 37 |
 | dead-code | 0 | 0 | 0 | 0 | 20 | 20 |
 | user-decision | 0 | 0 | 6 | 0 | 0 | 6 |
-| Total | 101 | 60 | 6 | 37 | 20 | 224 |
+| Total | 102 | 60 | 6 | 37 | 20 | 225 |

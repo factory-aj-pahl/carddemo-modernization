@@ -2,6 +2,7 @@ package com.carddemo.iam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.carddemo.common.msg.CommonMessages;
 import com.carddemo.test.Covers;
 import com.carddemo.test.SampleData;
 import com.carddemo.test.ScreenClient;
@@ -45,5 +46,30 @@ class DisabledOptionsTest {
         assertThat(r.at("/message").asText()).isEqualTo("This option is not installed ...");
         assertThat(r.at("/messageColor").asText()).isEqualTo("GREEN");
         assertThat(r.has("navigate")).isFalse();
+    }
+
+    @Test
+    @Covers({"Q-COADM01C-07", "TS-COADM01C-10", "ERR-COADM01C-01"})
+    void after_not_installed_the_admin_menu_processes_the_next_key() {
+        sample.load();
+        ScreenClient client = new ScreenClient(mvc);
+        client.signOn("ADMIN001");
+
+        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        JsonNode invalidOption = client.post("COADM01C", "ENTER", Map.of("option", "7"));
+        assertThat(invalidOption.at("/message").asText()).isEqualTo("Please enter a valid option number...");
+        assertThat(invalidOption.at("/fields/option").asText()).isEqualTo("07");
+
+        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        JsonNode invalidKey = client.post("COADM01C", "PF2", Map.of("option", ""));
+        assertThat(invalidKey.at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
+
+        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        assertThat(client.post("COADM01C", "ENTER", Map.of("option", "1")).at("/navigate").asText()).isEqualTo("COUSR00C");
+
+        client.show("COADM01C");
+        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        assertThat(client.post("COADM01C", "PF3", Map.of("option", "")).at("/navigate").asText()).isEqualTo("COSGN00C");
+        assertThat(client.showRaw("COADM01C").getStatus()).isEqualTo(401);
     }
 }

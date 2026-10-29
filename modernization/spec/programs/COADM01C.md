@@ -123,7 +123,9 @@ Unnamed literals: `Tran:`, `Prog:`, `Date:`, `Time:` (blue), `Admin Menu` at row
       control goes to PGMIDERR-ERR-PARA. When the name starts with `DUMMY` (none shipped), set the message
       color green, message "This option is not installed ...", and send the menu.
 7. PGMIDERR-ERR-PARA (`app/cbl/COADM01C.cbl:270-284`): message color green, message
-   "This option is not installed ...", send the menu, RETURN TRANSID(CA00) with the COMMAREA.
+   "This option is not installed ...", send the menu, RETURN TRANSID(CA00) with the COMMAREA. That
+   COMMAREA still has the context 0 set at line 144 before the failing XCTL, so the next turn takes
+   step 3 (first entry) and ignores the key pressed (Q-COADM01C-07).
 8. SEND-MENU-SCREEN / BUILD-MENU-OPTIONS / POPULATE-HEADER-INFO behave as in COMEN01C, using the admin
    table, `CA00`, and `COADM01C` (`app/cbl/COADM01C.cbl:175-266`).
 
@@ -169,7 +171,13 @@ Unnamed literals: `Tran:`, `Prog:`, `Date:`, `Time:` (blue), `Admin Menu` at row
 - **ERR-COADM01C-01**: PGMIDERR on the option XCTL (typically options 5 and 6 when the Db2 module is not
   installed) -> the menu is redisplayed with the green message "This option is not installed ..." and the
   task returns with TRANSID CA00. The option name is not included (that part of the STRING is commented
-  out). Source: `app/cbl/COADM01C.cbl:77-79 (MAIN-PARA)`, `app/cbl/COADM01C.cbl:270-284 (PGMIDERR-ERR-PARA)`.
+  out). Line 144 has already set CDEMO-PGM-CONTEXT to 0 (and CDEMO-FROM-PROGRAM to `COADM01C`) before the
+  failing XCTL, so the COMMAREA returned with CA00 has context 0. On the next turn the program treats the
+  input as a first entry (BR-COADM01C-02): it does not RECEIVE the map and redisplays the menu with no
+  message and an empty option field. The key pressed (ENTER with an option, PF3, or any other key) is
+  ignored. The DUMMY path (BR-COADM01C-06) keeps context 1 and does not have this effect. See Q-COADM01C-07.
+  Source: `app/cbl/COADM01C.cbl:77-79 (MAIN-PARA)`, `app/cbl/COADM01C.cbl:142-148 (PROCESS-ENTER-KEY)`,
+  `app/cbl/COADM01C.cbl:270-284 (PGMIDERR-ERR-PARA)`, `app/cbl/COADM01C.cbl:91-94 (MAIN-PARA)`.
 - **ERR-COADM01C-02**: The HANDLE CONDITION is active for the whole task, so a PGMIDERR on the sign-off
   XCTL to COSGN00C would also show "This option is not installed ...".
   Source: `app/cbl/COADM01C.cbl:77-79`, `app/cbl/COADM01C.cbl:168-170`.
@@ -202,6 +210,11 @@ None. No file is read or written.
   fetched. Recommendation: preserve both entry modes. Source: `app/cbl/COUSR02C.cbl:99-104`, `app/cbl/COUSR03C.cbl:99-104`.
 - **Q-COADM01C-06**: PGMIDERR-ERR-PARA ends with an extra period on its own line, and the paragraph falls
   through to nothing after RETURN; harmless. Recommendation: ignore. Source: `app/cbl/COADM01C.cbl:283-284`.
+- **Q-COADM01C-07**: After the PGMIDERR "not installed" message the COMMAREA context is 0, so the next key
+  press is ignored and only redraws the menu without the message (ERR-COADM01C-01). The user has to press
+  the key again. COMEN01C does not have this effect: its "not installed" path runs only when INQUIRE fails,
+  before the context is changed. Recommendation: fix (the next request is processed normally).
+  Source: `app/cbl/COADM01C.cbl:144`, `app/cbl/COADM01C.cbl:280-283`, `app/cbl/COADM01C.cbl:91-94`.
 
 ## Test scenarios
 - **TS-COADM01C-01** (covers BR-COADM01C-02, BR-COADM01C-03): Given a COMMAREA from COSGN00C for `ADMIN001`
@@ -226,6 +239,11 @@ None. No file is read or written.
 - **TS-COADM01C-09** (covers Q-COADM01C-01): Given a COMMAREA with CDEMO-USER-TYPE = `U` and context 1, when
   `1` is entered, then control still passes to COUSR00C (documents the missing authorization check; the
   target must reject this with an authorization error).
+- **TS-COADM01C-10** (covers ERR-COADM01C-01, Q-COADM01C-07): Given COTRTLIC is not installed and `5` was
+  entered (TS-COADM01C-04), when `1` is then entered with ENTER, then the menu is redisplayed with no
+  message, an empty option field, and no XCTL; PF3 or PF2 instead of `1` also only redraw the menu (as
+  coded). Target (Q-COADM01C-07, FIX): `1` passes control to COUSR00C, PF3 signs off, and PF2 gives
+  "Invalid key pressed. Please see below...".
 
 ## Open questions
 - Are the Db2 options 5 and 6 expected in every target deployment, or should they be feature-flagged like

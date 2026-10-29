@@ -242,6 +242,22 @@ class UserListTest extends UserScreenTestSupport {
     }
 
     @Test
+    @Covers({"NAV-COUSR00C-05", "C-SHORTREAD"})
+    void clear_and_pa_keys_are_invalid_and_keep_the_server_rows() {
+        JsonNode first = admin.show("COUSR00C");
+        for (String k : new String[] {"CLEAR", "PA1"}) {
+            JsonNode r = admin.post("COUSR00C", k, Map.of("searchUserId", "USER", "sel", sel(4, "U")));
+            assertThat(r.at("/message").asText()).as(k).isEqualTo(CommonMessages.INVALID_KEY);
+            assertThat(r.at("/fields/rows")).as(k).hasSize(first.at("/fields/rows").size());
+            assertThat(userIds(r)).as(k).containsExactlyElementsOf(SAMPLE);
+            assertThat(r.at("/fields/rows/3/sel").asText()).as(k).isEqualTo("U");
+            assertThat(r.at("/fields/searchUserId").asText()).as(k).isEqualTo("USER");
+            assertThat(r.at("/fields/page").asText()).as(k).isEqualTo(first.at("/fields/page").asText());
+            assertThat(r.has("navigate")).as(k).isFalse();
+        }
+    }
+
+    @Test
     @Covers({"BR-COUSR00C-01", "TS-COUSR00C-14", "Q-COUSR00C-10", "C-ROLE"})
     void the_list_requires_an_admin_session() {
         assertThat(new ScreenClient(mvc).showRaw("COUSR00C").getStatus()).isEqualTo(401);
