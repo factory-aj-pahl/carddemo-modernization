@@ -8,7 +8,8 @@ import java.util.regex.Pattern;
 
 /**
  * One authorization request (CCPAURQY, spec/entities.md ENT-AUTH-REQUEST). The fields hold the text as the
- * COBOL UNSTRING leaves it in the receiving fields: cut to the field length, trailing spaces removed.
+ * COBOL UNSTRING leaves it in the receiving fields: cut to the field length, trailing space padding removed.
+ * Every other character, control characters and bytes above 0x7E included, is kept as received.
  *
  * @param amountText the amount field as sent (WS-TRANSACTION-AMT-AN X(13))
  */
@@ -21,13 +22,6 @@ public record AuthRequest(String authDate, String authTime, String cardNum, Stri
     public static final int FIELDS = 18;
     static final int[] LENGTHS = {6, 6, 16, 4, 4, 6, 6, 6, 13, 4, 3, 2, 15, 22, 13, 2, 9, 15};
     private static final Pattern NUMBER = Pattern.compile("[+-]?(\\d+(\\.\\d*)?|\\.\\d+)|(\\d+(\\.\\d*)?|\\.\\d+)[+-]");
-
-    /** A message holding control or non-ASCII characters, which no text request contains. */
-    public static class Unparsable extends Exception {
-        Unparsable(String why) {
-            super(why);
-        }
-    }
 
     public AuthRequest {
         String[] v = {authDate, authTime, cardNum, authType, cardExpiryDate, messageType, messageSource, processingCode,
@@ -58,7 +52,12 @@ public record AuthRequest(String authDate, String authTime, String cardNum, Stri
 
     private static String fit(String s, int len) {
         String v = s == null ? "" : s;
-        return (v.length() > len ? v.substring(0, len) : v).stripTrailing();
+        String cut = v.length() > len ? v.substring(0, len) : v;
+        int end = cut.length();
+        while (end > 0 && cut.charAt(end - 1) == ' ') {
+            end--;
+        }
+        return cut.substring(0, end);
     }
 
     /**
@@ -66,13 +65,7 @@ public record AuthRequest(String authDate, String authTime, String cardNum, Stri
      * clause, so text after the 18th field is ignored, and fields the message does not reach stay as the fresh
      * request area holds them (spaces); such a request is still decided and answered.
      */
-    public static AuthRequest parse(String text) throws Unparsable {
-        for (int i = 0; i < text.length(); i++) {
-            char c = text.charAt(i);
-            if (c < 0x20 || c > 0x7E) {
-                throw new Unparsable("control or non-ASCII character in the message");
-            }
-        }
+    public static AuthRequest parse(String text) {
         List<String> parts = new ArrayList<>(FIELDS);
         int start = 0;
         for (int i = 0; i <= text.length() && parts.size() < FIELDS; i++) {

@@ -146,10 +146,12 @@ queues are bounded. Queue replies keep the legacy text layouts; the REST equival
 
 - An authorization request (COPAUA0C) is split on commas as the COBOL `UNSTRING` does: text after the
   18th field is ignored and fields the message does not reach are blank, and the request is decided and
-  answered (a blank amount is declined `05`/`9000`, Q-COPAUA0C-12). Only a request that cannot be read as
-  text (over the 500-byte buffer, or not printable ASCII) is logged as M003 and dead-lettered at once,
-  as is a request whose transaction fails (Q-COPAUA0C-06); any other failure is redelivered up to the
-  delivery limit.
+  answered (a blank or non-numeric amount is declined `05`/`9000`, Q-COPAUA0C-12). A request of at most
+  500 bytes is read byte for byte (ISO-8859-1, one character per byte), so control characters such as a
+  trailing CRLF or a tab, and bytes above 0x7E, stay in their fields as received and are echoed in the
+  reply; only the space padding of a field is removed. Only a request over the 500-byte buffer (the
+  COBOL MQGET failure, ERR-COPAUA0C-02) is logged as M003 and dead-lettered at once, as is a request
+  whose transaction fails (Q-COPAUA0C-06); any other failure is redelivered up to the delivery limit.
 - `GET /api/inquiry/account/{id}` takes the account ID as the queue does: exactly 11 digits, not all
   zero (C-KEYLEN, never left-padded). Anything else is answered 400 with the queue's invalid-request
   text as `{"message": ...}`; a missing or out-of-scope account is 404 with the not-found text.
