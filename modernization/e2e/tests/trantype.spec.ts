@@ -19,9 +19,35 @@ function legend(page: Page) {
   return page.getByRole('navigation', { name: 'Function keys' }).locator('kbd');
 }
 
+// Seed descriptions of types 01-07 (app/data/ASCII/trantype.txt), shown in rows 1-7 of the unfiltered first page.
+const SEED_DESCRIPTIONS = ['Purchase', 'Payment', 'Credit', 'Authorization', 'Refund', 'Reversal', 'Adjustment'];
+
 test.describe('COTRTLIC transaction type list', () => {
+  // Rows whose description the current test saves. afterEach puts the seed text back even when the test failed,
+  // so no later test, and no rerun without a reseed, sees the change.
+  const restoreRows = new Set<number>();
+
   test.beforeEach(async ({ page }) => {
     await adminOption(page, /Transaction Type List\/Update/, LIST);
+  });
+
+  test.afterEach(async ({ page }) => {
+    if (restoreRows.size === 0) return;
+    const rows = [...restoreRows];
+    restoreRows.clear();
+    await adminOption(page, /Transaction Type List\/Update/, LIST);
+    for (const row of rows) {
+      const original = SEED_DESCRIPTIONS[row - 1];
+      const cell = page.getByTestId(`row${row}`).locator('td').nth(2);
+      if ((await cell.textContent())?.trim() === original) continue;
+      await page.getByLabel(`Select row ${row}`).fill('U');
+      await page.keyboard.press('Enter');
+      await expectInfo(page, 'Update HIGHLIGHTED row. Press F10 to save');
+      await page.getByLabel(`Description row ${row}`).fill(original);
+      await page.keyboard.press('F10');
+      await expectInfo(page, 'HIGHLIGHTED row was updated');
+      await expect(cell).toHaveText(original);
+    }
   });
 
   test('TS-COTRTLIC-01 first entry lists page 1 of the types with focus on the type filter', async ({ page }) => {
@@ -45,6 +71,7 @@ test.describe('COTRTLIC transaction type list', () => {
   });
 
   test('TS-COTRTLIC-10 keyboard only: mark a row with U, change its description, save with F10', async ({ page }) => {
+    restoreRows.add(2);
     await expect(page.getByLabel('Type Filter')).toBeFocused();
     for (let i = 0; i < 4; i++) await page.keyboard.press('Tab');
     await expect(page.getByLabel('Select row 2')).toBeFocused();
@@ -64,6 +91,7 @@ test.describe('COTRTLIC transaction type list', () => {
   });
 
   test('Q-COTRTLIC-19 a row another session changed meanwhile is rejected and shown with the re-read value', async ({ page, browser, baseURL }) => {
+    restoreRows.add(4);
     await page.getByLabel('Select row 4').fill('U');
     await page.keyboard.press('Enter');
     await expectInfo(page, 'Update HIGHLIGHTED row. Press F10 to save');
@@ -110,6 +138,7 @@ test.describe('COTRTLIC transaction type list', () => {
   });
 
   test('Q-COTRTLIC-23 VR-COTRTLIC-07 an F10 that fails the description edit disarms, so the next F10 prompts again before saving', async ({ page }) => {
+    restoreRows.add(3);
     await page.getByLabel('Select row 3').fill('U');
     await page.keyboard.press('Enter');
     await expectInfo(page, 'Update HIGHLIGHTED row. Press F10 to save');
@@ -149,6 +178,7 @@ test.describe('COTRTLIC transaction type list', () => {
     await expectMessage(page, 'No more pages for these search conditions');
     // TS-COTRTLIC-27: a description filter R typed with F8. The filter is case-sensitive and the e2e seed has
     // mixed-case descriptions, so only Refund and Reversal match (01, 03, 04, 05, 06 on the upper-case sample).
+    // The tests that save a description restore the seed text afterwards, so this holds in any order.
     await page.getByLabel('Type Filter').fill('');
     await page.getByLabel('Description Filter').fill('R');
     await page.keyboard.press('F8');
