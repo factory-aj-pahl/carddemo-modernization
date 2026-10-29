@@ -303,7 +303,7 @@ COPAUS1C).
 
 | Q ID | Summary | Category | Decision | Target behavior | Reference patch |
 |:--|:--|:--|:--|:--|:--|
-| Q-COBSWAIT-01 | Non-numeric wait value unchecked | functional-defect | FIX | The wait value must be a positive integer (hundredths of a second); otherwise exit code 12 with the **NEW** line `INVALID WAIT TIME`. | n/a (assembler dependency) |
+| Q-COBSWAIT-01 | Non-numeric wait value unchecked | functional-defect | FIX | The wait value must be an unsigned integer of 1 to 8 digits (hundredths of a second; `00000000` waits zero time and ends with RC 0, TS-COBSWAIT-02); otherwise exit code 12 with the **NEW** line `INVALID WAIT TIME`. | n/a (assembler dependency) |
 | Q-COBSWAIT-02 | "PARM" is read from SYSIN | platform | PLATFORM | The wait value is a job parameter. | n/a |
 | Q-COBSWAIT-03 | MVI save-area flag | platform | PLATFORM | No assembler. | n/a |
 | Q-COBSWAIT-04 | Needs MVSWAIT and STIMER | platform | PLATFORM | A plain sleep. | n/a |

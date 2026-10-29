@@ -1,7 +1,10 @@
 import { type Page, expect, test } from '@playwright/test';
 import { expectProgram, open, signOn } from './support';
 
-/** COTTL01Y titles, transaction and program, and the MM/DD/YY HH:MM:SS clock the POPULATE-HEADER-INFO paragraphs fill. */
+/**
+ * COTTL01Y titles, transaction and program, and the MM/DD/YY HH:MM:SS clock the POPULATE-HEADER-INFO paragraphs fill.
+ * The sign-on map's CICS APPLID and SYSID have no web counterpart; the approved header design omits them.
+ */
 async function expectHeader(page: Page, tranAndProgram: string) {
   await expectProgram(page, tranAndProgram);
   const header = page.locator('header.app-header');
