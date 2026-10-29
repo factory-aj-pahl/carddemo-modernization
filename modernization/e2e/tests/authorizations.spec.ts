@@ -56,9 +56,18 @@ test.describe('COPAUS0C pending authorization list', () => {
     await expectMessage(page, 'Please enter Acct Id...');
     await expect(page.getByLabel('Search Acct Id')).toHaveAttribute('aria-invalid', 'true');
     await expectNoSeriousA11yViolations(page);
+    await search(page, ACCT);
+    await expect.poll(() => txns(page)).toHaveLength(5);
+    await expect(page.getByTestId('name')).toHaveText('Cooper D Mayert');
     await search(page, '7');
     await expectMessage(page, 'Acct Id must be Numeric ...');
     await expect(page.getByLabel('Search Acct Id')).toHaveValue('7');
+    // Q-COPAUS0C-14: nothing of the account shown before remains.
+    await expect(page.getByTestId('name')).toHaveText('—');
+    await expect(page.getByTestId('approved-count')).toHaveText('—');
+    await expect(page.getByTestId('approved-amount')).toHaveText('—');
+    expect(await txns(page)).toEqual([]);
+    await expect(page.locator('main')).not.toContainText('Cooper');
     await search(page, ACCT);
     await expect.poll(() => txns(page)).toHaveLength(5);
     await page.locator('#sel2').fill('X');

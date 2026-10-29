@@ -9,6 +9,7 @@ import com.carddemo.test.ScreenClient;
 import com.carddemo.test.TestApplication;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Map;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -54,21 +55,23 @@ class DisabledOptionsTest {
         sample.load();
         ScreenClient client = new ScreenClient(mvc);
         client.signOn("ADMIN001");
+        Consumer<ScreenClient> notInstalled = c -> assertThat(c.post("COADM01C", "ENTER", Map.of("option", "5")).at("/message")
+            .asText()).isEqualTo("This option is not installed ...");
 
-        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        notInstalled.accept(client);
         JsonNode invalidOption = client.post("COADM01C", "ENTER", Map.of("option", "7"));
         assertThat(invalidOption.at("/message").asText()).isEqualTo("Please enter a valid option number...");
         assertThat(invalidOption.at("/fields/option").asText()).isEqualTo("07");
 
-        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        notInstalled.accept(client);
         JsonNode invalidKey = client.post("COADM01C", "PF2", Map.of("option", ""));
         assertThat(invalidKey.at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
 
-        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        notInstalled.accept(client);
         assertThat(client.post("COADM01C", "ENTER", Map.of("option", "1")).at("/navigate").asText()).isEqualTo("COUSR00C");
 
         client.show("COADM01C");
-        client.post("COADM01C", "ENTER", Map.of("option", "5"));
+        notInstalled.accept(client);
         assertThat(client.post("COADM01C", "PF3", Map.of("option", "")).at("/navigate").asText()).isEqualTo("COSGN00C");
         assertThat(client.showRaw("COADM01C").getStatus()).isEqualTo(401);
     }

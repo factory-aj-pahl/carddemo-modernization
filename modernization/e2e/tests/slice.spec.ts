@@ -95,9 +95,10 @@ test.describe('Menus and roles', () => {
     await expect(page.getByLabel('Please select an option')).toHaveValue('3');
   });
 
-  test('Q-COADM01C-07 TS-COADM01C-10 after "This option is not installed ..." the admin menu processes the next key', async ({ page }) => {
-    // Every option is installed in the e2e deployment, so the answer to option 5 is replaced by the
-    // disabled-option answer (asserted server-side in DisabledOptionsTest); the next key goes to the real API.
+  test('the admin menu sends the next key after a not-installed message', async ({ page }) => {
+    // Every option is installed in the e2e deployment, so the answer to option 5 is replaced in the browser and
+    // the server never enters the not-installed state; only the UI side is shown here. The rule itself
+    // (Q-COADM01C-07, TS-COADM01C-10) is checked against the server in DisabledOptionsTest.
     const NOT_INSTALLED = 'This option is not installed ...';
     await page.route('**/api/screens/COADM01C', async (route) => {
       const body = route.request().postDataJSON() as { key?: string; option?: string } | null;
