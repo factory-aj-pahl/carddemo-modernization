@@ -196,7 +196,11 @@ CARD-RECORD. NORMAL sets the info message `   Displaying requested details` (the
 
 ### Navigation and keys
 - **NAV-COCRDSLC-01**: AID handling. PF13-PF24 act as PF1-PF12. Only ENTER and PF3 are valid;
-  every other AID behaves as ENTER (re-edit and re-read), with no message. Source:
+  every other AID behaves as ENTER (re-edit and re-read), with no message. For CLEAR and PA1-PA3 the
+  terminal sends no field data, so RECEIVE gets MAPFAIL (not tested, ERR-COCRDSLC-04) and both key
+  fields keep their initial storage. The keys are then blank, even when they were protected after entry
+  from the list: the error is `No input received`, no card is read, and CDEMO-ACCT-ID and CDEMO-CARD-NUM
+  become 0 (VR-COCRDSLC-05). Target: C-SHORTREAD (ledger-online.md). Source:
   `app/cbl/COCRDSLC.cbl:284-299`.
 - **NAV-COCRDSLC-02**: PF3 exits:
   - CDEMO-TO-TRANID = CDEMO-FROM-TRANID, or `CM00` if that is blank or LOW-VALUES.
@@ -227,7 +231,8 @@ CARD-RECORD. NORMAL sets the info message `   Displaying requested details` (the
   `UNEXPECTED DATA SCENARIO` (SEND TEXT ERASE FREEKB) and issues RETURN with no TRANSID, ending the
   conversation. ABEND-CODE `0001` is set but not shown. Source: `app/cbl/COCRDSLC.cbl:373-380`, `app/cbl/COCRDSLC.cbl:838-848`.
 - **ERR-COCRDSLC-04**: RECEIVE MAP and SEND MAP responses are captured and ignored. A MAPFAIL
-  leaves the key fields as they were, so they are normally treated as blank. Source:
+  (CLEAR, PA1-PA3) leaves the key fields with their initial storage, so they are treated as blank
+  (NAV-COCRDSLC-01). Source:
   `app/cbl/COCRDSLC.cbl:596-603`, `app/cbl/COCRDSLC.cbl:569-576`.
 
 ## Data effects

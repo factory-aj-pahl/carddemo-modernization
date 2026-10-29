@@ -283,9 +283,12 @@ echo, account, card, status), `1250-SETUP-ARRAY-ATTRIBS` (BR-COCRDLIC-12),
   `app/cbl/COCRDLIC.cbl:1097-1115 (2250-EDIT-ARRAY)`.
 
 ### Navigation and keys
-- **NAV-COCRDLIC-01**: AID handling. PF13-PF24 act as PF1-PF12. Only ENTER, PF3, PF7, and PF8 are
-  valid. Every other AID (CLEAR, PA1, PA2, PF1, PF2, PF4-PF6, PF9-PF12) is processed as ENTER,
-  with no "invalid key" message. Source: `app/cpy/CSSTRPFY.cpy:17-82`, `app/cbl/COCRDLIC.cbl:370-380`.
+- **NAV-COCRDLIC-01**: AID handling. PF13-PF24 act as PF1-PF12. Only ENTER, PF3, PF7, and PF8 are valid.
+  Every other AID (CLEAR, PA1, PA2, PF1, PF2, PF4-PF6, PF9-PF12) is processed as ENTER, with no
+  "invalid key" message. For CLEAR and PA1-PA3 (PA3 is left unmapped by CSSTRPFY and also processed as
+  ENTER) the terminal sends no field data, so the filters and select codes are blank (ERR-COCRDLIC-04)
+  and the current page is re-read unfiltered. Target: C-SHORTREAD (ledger-online.md). Source:
+  `app/cpy/CSSTRPFY.cpy:17-82`, `app/cbl/COCRDLIC.cbl:370-380`.
 - **NAV-COCRDLIC-02**: PF3 on a turn of this program goes to the main menu: XCTL `COMEN01C` with
   CARDDEMO-COMMAREA, after setting FROM-TRANID `CCLI`, FROM-PROGRAM `COCRDLIC`, user type `U`,
   PGM-ENTER, LAST-MAPSET `COCRDLI`, LAST-MAP `CCRDLIA`, and TO-PROGRAM `COMEN01C`. This takes
@@ -324,9 +327,10 @@ echo, account, card, status), `1250-SETUP-ARRAY-ATTRIBS` (BR-COCRDLIC-12),
   A non-NORMAL READPREV inside the loop, including ENDFILE (RESP 20) at the start of the file,
   shows the file-error message with partially filled rows. Source:
   `app/cbl/COCRDLIC.cbl:1304-1318`, `app/cbl/COCRDLIC.cbl:1361-1370 (9100-READ-BACKWARDS)`.
-- **ERR-COCRDLIC-04**: RECEIVE MAP and SEND MAP responses are captured in WS-RESP-CD and ignored.
-  A MAPFAIL (for example after CLEAR) leaves the input fields as received, so the filters and
-  select codes are treated as blank. Source: `app/cbl/COCRDLIC.cbl:962-967`, `app/cbl/COCRDLIC.cbl:938-946`.
+- **ERR-COCRDLIC-04**: RECEIVE MAP and SEND MAP responses are captured in WS-RESP-CD and ignored. A
+  MAPFAIL (CLEAR, PA1-PA3) leaves the input fields with their initial storage, so the filters and select
+  codes are treated as blank (NAV-COCRDLIC-01). Source: `app/cbl/COCRDLIC.cbl:962-967`,
+  `app/cbl/COCRDLIC.cbl:938-946`.
 - **ERR-COCRDLIC-05**: No HANDLE ABEND. Unhandled CICS conditions abend the task with the standard
   CICS abend code. Plain-text debug exits `SEND-PLAIN-TEXT` and `SEND-LONG-TEXT` exist but are
   never performed. Source: `app/cbl/COCRDLIC.cbl:1422-1454`.
@@ -474,8 +478,8 @@ line.
 - **TS-COCRDLIC-16** (NAV-COCRDLIC-02): Given any page, when PF3 is pressed (even with an invalid
   filter on screen), then XCTL to COMEN01C with CDEMO-TO-PROGRAM = `COMEN01C`, CDEMO-FROM-PROGRAM =
   `COCRDLIC`, CDEMO-PGM-CONTEXT = 0, and CDEMO-USER-TYPE = `U`.
-- **TS-COCRDLIC-17** (NAV-COCRDLIC-01): Given page 2, when PF5 (or PF10, CLEAR) is pressed with no
-  selection, then page 2 is refreshed exactly as for ENTER.
+- **TS-COCRDLIC-17** (NAV-COCRDLIC-01): Given page 2 with no filter, when PF5 (or PF10, CLEAR) is
+  pressed with no selection, then page 2 is refreshed exactly as for ENTER.
 - **TS-COCRDLIC-18** (Q-COCRDLIC-03): Given page 2 (first card 1561********1600), when account
   filter `00000000050` (its card is on page 1) is entered with ENTER, then no rows are shown, the
   error is `NO MORE RECORDS TO SHOW`, and `Page 2` remains.

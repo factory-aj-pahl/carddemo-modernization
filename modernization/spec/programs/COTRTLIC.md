@@ -415,8 +415,12 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
 - **NAV-COTRTLIC-04**: PF10 confirms a pending delete or update (BR-COTRTLIC-13, -14, -15). Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:810-868 (0000-MAIN)`.
 - **NAV-COTRTLIC-05**: ENTER (and any unaccepted key, BR-COTRTLIC-16) re-reads the current page from
-  WS-CA-FIRST-TR-CODE (or from the first matching row after a filter change) and processes row actions. Source:
-  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:574-587`, `:794-806`, `:838-850`, `:870-878 (0000-MAIN)`.
+  WS-CA-FIRST-TR-CODE (or from the first matching row after a filter change) and processes row actions.
+  For CLEAR and PA1-PA3 the terminal sends no field data (MAPFAIL, ERR-COTRTLIC-15), so the turn is
+  processed as ENTER with blank filters and blank row fields (selections, type codes, descriptions).
+  Target: C-SHORTREAD (ledger-online.md). Source:
+  `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:574-587`, `:794-806`, `:838-850`,
+  `:870-878 (0000-MAIN)`.
 - **NAV-COTRTLIC-06**: PF13-PF24 behave as PF1-PF12 (CSSTRPFY). Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:538-539 (0000-MAIN)`, `app/cpy/CSSTRPFY.cpy`.
 - **NAV-COTRTLIC-07**: Every turn that does not XCTL ends with RETURN TRANSID `CTLI` and the 2000-byte
@@ -477,8 +481,10 @@ Unnamed literals: `Maintain Transaction Type` (4,28) neutral, `Page ` (4,70), `T
 - **ERR-COTRTLIC-14**: DELETE any other non-zero SQLCODE (including +100 and -911) -> action `'Delete failed with
   message:'`; the flag keeps its value from the COMMAREA (`Y`). Source:
   `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:1926-1935`.
-- **ERR-COTRTLIC-15**: RESP of RECEIVE MAP and SEND MAP is captured but never tested (MAPFAIL and send errors are
-  ignored). Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:931-935`, `:1588-1595`.
+- **ERR-COTRTLIC-15**: RESP of RECEIVE MAP and SEND MAP is captured but never tested (MAPFAIL and send
+  errors are ignored). On MAPFAIL (CLEAR and PA keys) the input fields keep their initial storage and are
+  treated as blank (NAV-COTRTLIC-05). Source: `app/app-transaction-type-db2/cbl/COTRTLIC.cbl:931-935`,
+  `:1588-1595`.
 
 ## Data effects
 - Reads only, except on PF10:

@@ -180,8 +180,11 @@ is an escaped `&`).
 - **NAV-COUSR02C-04**: PF5 -> save and stay on the screen. Source: `app/cbl/COUSR02C.cbl:122-123 (MAIN-PARA)`.
 - **NAV-COUSR02C-05**: PF12 -> XCTL to COADM01C without saving (even when opened from the list).
   Source: `app/cbl/COUSR02C.cbl:124-126 (MAIN-PARA)`.
-- **NAV-COUSR02C-06**: Any other AID -> "Invalid key pressed. Please see below...         " and the screen is
-  re-sent with the typed data (no cursor field is flagged). Source: `app/cbl/COUSR02C.cbl:127-130 (MAIN-PARA)`.
+- **NAV-COUSR02C-06**: Any other AID -> "Invalid key pressed. Please see below...         " and the
+  screen is re-sent with the typed data (no cursor field is flagged). For CLEAR and PA1-PA3 the terminal
+  sends no field data: RECEIVE gets MAPFAIL (not tested), the map keeps its initial storage, and every
+  field is blank on the re-sent screen. Target: C-SHORTREAD (ledger-online.md). Source:
+  `app/cbl/COUSR02C.cbl:127-130 (MAIN-PARA)`.
 - **NAV-COUSR02C-07**: Every redisplay ends with RETURN TRANSID(`CU02`) COMMAREA(CARDDEMO-COMMAREA).
   Source: `app/cbl/COUSR02C.cbl:135-138 (MAIN-PARA)`.
 

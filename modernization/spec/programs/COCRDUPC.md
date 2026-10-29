@@ -390,9 +390,12 @@ Detail fields (states `S` or `E` with a change detected):
   `app/cbl/COCRDUPC.cbl:1467-1474`.
 
 ### Navigation and keys
-- **NAV-COCRDUPC-01**: AID handling. PF13-PF24 act as PF1-PF12. ENTER and PF3 are always valid;
-  PF5 only in state `N`; PF12 only once details are fetched. Every other AID behaves as ENTER,
-  with no message. Source: `app/cpy/CSSTRPFY.cpy:17-82`, `app/cbl/COCRDUPC.cbl:413-424`.
+- **NAV-COCRDUPC-01**: AID handling. PF13-PF24 act as PF1-PF12. ENTER and PF3 are always valid; PF5 only
+  in state `N`; PF12 only once details are fetched. Every other AID behaves as ENTER, with no message.
+  For CLEAR and PA1-PA3 the terminal sends no field data (MAPFAIL, ERR-COCRDUPC-07), so the turn is
+  edited as an ENTER with every input field blank (before a fetch: `No input received`, VR-COCRDUPC-05).
+  Target: C-SHORTREAD (ledger-online.md). Source: `app/cpy/CSSTRPFY.cpy:17-82`,
+  `app/cbl/COCRDUPC.cbl:413-424`.
 - **NAV-COCRDUPC-02**: PF3 in any state exits:
   - CDEMO-TO-TRANID = FROM-TRANID, or `CM00` if blank.
   - CDEMO-TO-PROGRAM = FROM-PROGRAM, or `COMEN01C` if blank.
@@ -440,8 +443,9 @@ Detail fields (states `S` or `E` with a change detected):
 - **ERR-COCRDUPC-06**: An unexpected state in `2000-DECIDE-ACTION` sets ABEND-CODE `0001` and
   ABEND-MSG `UNEXPECTED DATA SCENARIO`, then performs `ABEND-ROUTINE` (abend `9999`). Source:
   `app/cbl/COCRDUPC.cbl:1019-1026`.
-- **ERR-COCRDUPC-07**: RECEIVE MAP and SEND MAP responses are ignored. On MAPFAIL the input fields
-  keep their initial storage contents. Source: `app/cbl/COCRDUPC.cbl:578-584`, `app/cbl/COCRDUPC.cbl:1329-1336`.
+- **ERR-COCRDUPC-07**: RECEIVE MAP and SEND MAP responses are ignored. On MAPFAIL the input fields keep
+  their initial storage contents and are treated as blank (CLEAR and PA keys, NAV-COCRDUPC-01). Source:
+  `app/cbl/COCRDUPC.cbl:578-584`, `app/cbl/COCRDUPC.cbl:1329-1336`.
 
 ## Data effects
 - Only the PF5 turn in state `N` changes data:

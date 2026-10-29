@@ -156,8 +156,10 @@ Unnamed literals: `Tran:`, `Prog:`, `Date:`, `Time:` (blue), `Admin Menu` at row
 - **NAV-COADM01C-01**: ENTER -> PROCESS-ENTER-KEY. Source: `app/cbl/COADM01C.cbl:98-99 (MAIN-PARA)`.
 - **NAV-COADM01C-02**: PF3 -> XCTL to COSGN00C without a COMMAREA (sign-off).
   Source: `app/cbl/COADM01C.cbl:100-102 (MAIN-PARA)`, `app/cbl/COADM01C.cbl:163-170`.
-- **NAV-COADM01C-03**: Any other AID -> "Invalid key pressed. Please see below...         " and the menu is
-  redisplayed. Source: `app/cbl/COADM01C.cbl:103-106 (MAIN-PARA)`.
+- **NAV-COADM01C-03**: Any other AID -> "Invalid key pressed. Please see below...         " and the menu
+  is redisplayed. For CLEAR and PA1-PA3 the terminal sends no field data: RECEIVE gets MAPFAIL (not
+  tested), the map keeps its initial storage, and the option field is blank. Target: C-SHORTREAD
+  (ledger-online.md). Source: `app/cbl/COADM01C.cbl:96-106 (MAIN-PARA)`.
 - **NAV-COADM01C-04**: Options 1-6 -> XCTL to COUSR00C, COUSR01C, COUSR02C, COUSR03C, COTRTLIC, COTRTUPC
   respectively, context 0. Source: `app/cbl/COADM01C.cbl:145-148`, `app/cpy/COADM02Y.cpy:26-53`.
 - **NAV-COADM01C-05**: Every redisplay ends with RETURN TRANSID(`CA00`) COMMAREA(CARDDEMO-COMMAREA).

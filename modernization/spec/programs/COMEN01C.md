@@ -201,9 +201,11 @@ Unnamed literals: `Tran:`, `Prog:`, `Date:`, `Time:` (blue), `Main Menu` at row 
 - **NAV-COMEN01C-03**: Any other AID -> message "Invalid key pressed. Please see below...         " and
   the menu is redisplayed (the option field keeps the value as received, not normalized: COMEN1AO
   redefines COMEN1AI, the field is FSET, and BUILD-MENU-OPTIONS writes only the option lines, so the
-  received OPTIONI is re-sent).
-  Source: `app/cbl/COMEN01C.cbl:92-102 (MAIN-PARA)`, `app/cbl/COMEN01C.cbl:208-220 (SEND-MENU-SCREEN)`,
-  `app/cpy-bms/COMEN01.CPY:139`, `app/bms/COMEN01.bms:145`.
+  received OPTIONI is re-sent). For CLEAR and PA1-PA3 the terminal sends no field data: RECEIVE gets
+  MAPFAIL (not tested), the map keeps its initial storage, and the option field is blank. Target:
+  C-SHORTREAD (ledger-online.md). Source: `app/cbl/COMEN01C.cbl:92-102 (MAIN-PARA)`,
+  `app/cbl/COMEN01C.cbl:208-220 (SEND-MENU-SCREEN)`, `app/cpy-bms/COMEN01.CPY:139`,
+  `app/bms/COMEN01.bms:145`.
 - **NAV-COMEN01C-04**: Valid option -> XCTL to the program listed in the option table (see table above),
   with context 0 so the target treats it as a first entry.
   Source: `app/cbl/COMEN01C.cbl:156-159`, `app/cbl/COMEN01C.cbl:184-187 (PROCESS-ENTER-KEY)`.

@@ -114,7 +114,9 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
 5. **PROCESS-PF7-KEY**: set `TRAN-ID` to `TRNID-FIRST` (or LOW-VALUES if that is blank) and set the
    next-page flag to Y. IF the page number is greater than 1, run PROCESS-PAGE-BACKWARD. Otherwise show
    "You are already at the top of the page..." and send without erase, so the current rows stay.
-6. **PROCESS-PF8-KEY**: set `TRAN-ID` to `TRNID-LAST` (or HIGH-VALUES if that is blank). IF the
+6. **PROCESS-PF8-KEY**: set `TRAN-ID` to `TRNID-LAST` (or HIGH-VALUES if that is blank; a full key of
+   HIGH-VALUES is a CICS special case that positions the browse at the end of the file instead of giving
+   NOTFND, inferred from CICS documentation; see Q-COTRN00C-13). IF the
    next-page flag is Y, run PROCESS-PAGE-FORWARD. Otherwise show
    "You are already at the bottom of the page..." and send without erase.
 7. **PROCESS-PAGE-FORWARD**:
@@ -153,7 +155,8 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
 - **BR-COTRN00C-02**: A page holds 10 transactions. Source: `app/cbl/COTRN00C.cbl:290-303 (PROCESS-PAGE-FORWARD)`.
 - **BR-COTRN00C-03**: First entry and ENTER rebuild page 1, starting at the first record whose
   `TRAN-ID` is greater than or equal to the search ID. With no search ID, the list starts at the
-  beginning of the file. The page number is reset to 0 and then becomes 1.
+  beginning of the file. The page number is reset to 0 and then becomes 1 (it stays 0 when the search ID
+  is not numeric, VR-COTRN00C-02).
   Source: `app/cbl/COTRN00C.cbl:206-225 (PROCESS-ENTER-KEY)`.
 - **BR-COTRN00C-04**: Row content:
   - TRNID = `TRAN-ID`.
@@ -161,7 +164,9 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
     characters 3-4 of the timestamp.
   - TDESC = `TRAN-DESC`, characters 1-26.
   - TAMT = `TRAN-AMT` edited with picture `+99999999.99`. The sign is always shown and leading zeros
-    are kept, so -919.00 shows as `-00000919.00`.
+    are kept, so -919.00 shows as `-00000919.00`. The picture has 8 integer digits and `TRAN-AMT`
+    (`S9(09)V99`) has 9, so an amount of 100,000,000.00 or more loses its leading digit without an
+    error (for example 123456789.00 shows as `+23456789.00`; picture at `app/cbl/COTRN00C.cbl:56`).
 
   Source: `app/cbl/COTRN00C.cbl:381-445 (POPULATE-TRAN-DATA)`.
 - **BR-COTRN00C-05**: The next-page flag is Y only when a full page of 10 rows was read and the
@@ -185,20 +190,27 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
   and context 0, and transfers to COTRN01C. Selection is checked before the search ID. A mark on an
   empty row (TRNID blank) is ignored. Source: `app/cbl/COTRN00C.cbl:148-195 (PROCESS-ENTER-KEY)`.
 - **BR-COTRN00C-10**: `TRNID-FIRST` changes only when row 1 is filled, and `TRNID-LAST` only when row 10
-  is filled. A partial page therefore leaves `TRNID-LAST` at its previous value, which is harmless
-  because the next-page flag is N. Source: `app/cbl/COTRN00C.cbl:391-393, 437-439 (POPULATE-TRAN-DATA)`.
+  is filled. A partial page therefore leaves `TRNID-LAST` at its previous value, which PF8 does not use
+  while the next-page flag is N; after PF7 on page 1 the flag is Y and PF8 continues from the stale value
+  (Q-COTRN00C-13). Source: `app/cbl/COTRN00C.cbl:391-393, 437-439 (POPULATE-TRAN-DATA)`.
 - **BR-COTRN00C-11**: Every send fills the header (titles, `CT00`, `COTRN00C`, `MM/DD/YY`, `HH:MM:SS`).
   Source: `app/cbl/COTRN00C.cbl:567-586 (POPULATE-HEADER-INFO)`.
 
 ### Validation rules
-- **VR-COTRN00C-01**: A non-blank Sel value must be `S` or `s`. Otherwise the message is
+- **VR-COTRN00C-01**: The Sel value of the first marked row (BR-COTRN00C-09), when that row's TRNID is not
+  blank, must be `S` or `s`. Marks on an empty row or below the first marked row give no message. Otherwise the message is
   "Invalid selection. Valid value is S" with the cursor on TRNIDIN. This does not set the error flag:
   the list is rebuilt from the search ID or from the start, and a later paging message can replace
   this one. Source: `app/cbl/COTRN00C.cbl:196-203 (PROCESS-ENTER-KEY)`.
 - **VR-COTRN00C-02**: A non-blank search ID must pass the COBOL NUMERIC test on all 16 positions.
   Trailing blanks fail the test, so 16 digits must be typed. Otherwise the message is
   "Tran ID must be Numeric ..." with the cursor on TRNIDIN. The rows on the screen keep the values
-  that were received (they are FSET fields). Source: `app/cbl/COTRN00C.cbl:206-219 (PROCESS-ENTER-KEY)`.
+  that were received (they are FSET fields). Processing continues: the page number in the COMMAREA is set
+  to 0 (line 224) and is not incremented, because PROCESS-PAGE-FORWARD stops after STARTBR (line 283,
+  Q-COTRN00C-07). `TRNID-FIRST`, `TRNID-LAST`, and the next-page flag are unchanged, and the screen still
+  shows the old page number. A following PF7 therefore gives "You are already at the top of the page...",
+  and a following PF8 (flag Y) shows the page after `TRNID-LAST` as page `00000001`.
+  Source: `app/cbl/COTRN00C.cbl:206-219 (PROCESS-ENTER-KEY)`, `app/cbl/COTRN00C.cbl:224-225`, `app/cbl/COTRN00C.cbl:283`.
 
 ### Navigation and keys
 - **NAV-COTRN00C-01**: IF `EIBCALEN = 0`, XCTL to `COSGN00C`. Source: `app/cbl/COTRN00C.cbl:107-109 (MAIN-PARA)`, `:510-521 (RETURN-TO-PREV-SCREEN)`.
@@ -219,7 +231,10 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
   Source: `app/cbl/COTRN00C.cbl:127-128, 257-274 (PROCESS-PF8-KEY)`.
 - **NAV-COTRN00C-07**: Any other AID shows "Invalid key pressed. Please see below..." (the 50-character
   constant, padded with trailing spaces) with the cursor on TRNIDIN. The screen is sent with erase from
-  the received data. Source: `app/cbl/COTRN00C.cbl:129-133 (MAIN-PARA)`.
+  the received data. For CLEAR and PA1-PA3 nothing is received (MAPFAIL, ignored, ERR-COTRN00C-08), so
+  the rows, page number, and search field are blank on the re-sent screen. The COMMAREA paging state is
+  unchanged. Target: C-SHORTREAD (ledger-online.md). Source: `app/cbl/COTRN00C.cbl:118`,
+  `app/cbl/COTRN00C.cbl:129-133 (MAIN-PARA)`.
 - **NAV-COTRN00C-08**: `S` or `s` on a row transfers by XCTL to `COTRN01C` (BR-COTRN00C-09).
   Source: `app/cbl/COTRN00C.cbl:186-195 (PROCESS-ENTER-KEY)`.
 - **NAV-COTRN00C-09**: Every turn that does not XCTL ends with RETURN TRANSID `CT00` and the 218-byte
@@ -229,7 +244,11 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
 - **ERR-COTRN00C-01**: STARTBR NOTFND (no key greater than or equal to the start key) sets end of file
   and sends the message "You are at the top of the page...". The wording does not match the situation.
   The error flag is not set, so paging continues and reaches ENDBR without an open browse
-  (Q-COTRN00C-02). Source: `app/cbl/COTRN00C.cbl:605-611 (STARTBR-TRANSACT-FILE)`.
+  (Q-COTRN00C-02). On PF8 (stale `TRNID-LAST`, Q-COTRN00C-13) and on PF7 (when `TRNID-FIRST` and every
+  later key were deleted), the skip read at line 286 (READNEXT) or line 340 (READPREV) runs first, with no
+  browse active. It fails (ERR-COTRN00C-04 or ERR-COTRN00C-06), the message becomes
+  "Unable to lookup transaction...", and the ENDBR at line 322 or 371 abends the task (AEIP).
+  Source: `app/cbl/COTRN00C.cbl:605-611 (STARTBR-TRANSACT-FILE)`, `app/cbl/COTRN00C.cbl:283-287`, `app/cbl/COTRN00C.cbl:337-341`.
 - **ERR-COTRN00C-02**: STARTBR with any other non-NORMAL response sets the error flag and sends
   "Unable to lookup transaction...". RESP and RESP2 are written to the log with DISPLAY. No rows are
   built. Source: `app/cbl/COTRN00C.cbl:612-618 (STARTBR-TRANSACT-FILE)`.
@@ -241,11 +260,12 @@ on rows 8-9; "Type 'S' to View Transaction details from the list" (21,13);
   "Unable to lookup transaction...". Source: `app/cbl/COTRN00C.cbl:646-652 (READNEXT-TRANSACT-FILE)`.
 - **ERR-COTRN00C-05**: READPREV ENDFILE sets end of file and sends "You have reached the top of the page...".
   Source: `app/cbl/COTRN00C.cbl:673-679 (READPREV-TRANSACT-FILE)`.
-- **ERR-COTRN00C-06**: READPREV with any other non-NORMAL response sets the error flag and sends
-  "Unable to lookup transaction...". Source: `app/cbl/COTRN00C.cbl:680-686 (READPREV-TRANSACT-FILE)`.
+- **ERR-COTRN00C-06**: READPREV with any other non-NORMAL response (including NOTFND when the PF7 start
+  key no longer exists, Q-COTRN00C-10) sets the error flag and sends "Unable to lookup transaction...". Source: `app/cbl/COTRN00C.cbl:680-686 (READPREV-TRANSACT-FILE)`.
 - **ERR-COTRN00C-07**: ENDBR has no RESP option. Any exception, such as INVREQ when no browse is active,
   abends the task (AEIP). Source: `app/cbl/COTRN00C.cbl:692-696 (ENDBR-TRANSACT-FILE)`.
-- **ERR-COTRN00C-08**: The RESP of RECEIVE MAP is ignored. Source: `app/cbl/COTRN00C.cbl:554-562 (RECEIVE-TRNLST-SCREEN)`.
+- **ERR-COTRN00C-08**: The RESP of RECEIVE MAP is ignored. Consequence for CLEAR and PA keys (MAPFAIL):
+  see NAV-COTRN00C-07. Source: `app/cbl/COTRN00C.cbl:554-562 (RECEIVE-TRNLST-SCREEN)`.
 
 ## Data effects
 None. The program only reads TRANSACT. Browses are always ended with ENDBR within the same task, except
@@ -261,8 +281,12 @@ after a STARTBR error or after a non-numeric search ID, where the browse is left
   return NOTFND. The program shows "You are at the top of the page..." and does not set the error flag.
   PROCESS-PAGE-FORWARD then issues ENDBR with no browse active, which CICS rejects with INVREQ. Because
   ENDBR has no RESP option, the task abends with AEIP. This is inferred from CICS semantics.
-  Recommendation: fix (show an empty list or a "not found" message).
-  Source: `app/cbl/COTRN00C.cbl:281-322, 605-611, 692-696`.
+  Recommendation: fix (show an empty list or a "not found" message). The same NOTFND is reached by PF8
+  when `TRNID-LAST` has no key greater than or equal to it, and by PF7 when `TRNID-FIRST` and every later
+  key were deleted; there the skip read fails first, so the last message is
+  "Unable to lookup transaction..." (ERR-COTRN00C-01). A blank `TRNID-LAST` does not reach it
+  (HIGH-VALUES, Q-COTRN00C-13; inferred from CICS documentation).
+  Source: `app/cbl/COTRN00C.cbl:259-263, 281-322, 605-611, 692-696`.
 - **Q-COTRN00C-03**: Page numbers count from the starting point of the last ENTER, not from the start
   of the file. After a search, page 1 is the first page at the search ID, and PF7 on that page says
   "You are already at the top of the page..." even though earlier records exist.
@@ -270,8 +294,9 @@ after a STARTBR error or after a non-numeric search ID, where the browse is left
 - **Q-COTRN00C-04**: The search ID must be typed as all 16 digits with leading zeros, because the
   NUMERIC test includes trailing blanks: `683580` fails with "Tran ID must be Numeric ...".
   Recommendation: decide (accept a shorter number and left-pad it). Source: `app/cbl/COTRN00C.cbl:209`.
-- **Q-COTRN00C-05**: The end-of-file messages appear even when a full page is shown. Paging back to the
-  first page shows "You have reached the top of the page...", and the last full page shows
+- **Q-COTRN00C-05**: The end-of-file messages appear even when a full page is shown. Paging back to
+  a page that starts at the first record of the file shows "You have reached the top of the page..."
+  (page 1 after a mid-file search start shows no message), and the last full page shows
   "You have reached the bottom of the page...". Recommendation: preserve the information (a "first
   page" and "last page" indicator) but not necessarily the wording. Source: `app/cbl/COTRN00C.cbl:308, 360`.
 - **Q-COTRN00C-06**: An invalid selection character is not an error. Only the first marked row is
@@ -279,7 +304,8 @@ after a STARTBR error or after a non-numeric search ID, where the browse is left
   Source: `app/cbl/COTRN00C.cbl:148-203`.
 - **Q-COTRN00C-07**: For a non-numeric search ID, STARTBR still runs with whatever `TRAN-ID` holds. In a
   new task that is the initial working-storage content. The browse is never ended. If that STARTBR
-  returns NOTFND, the message changes to "You are at the top of the page...".
+  returns NOTFND, the message changes to "You are at the top of the page...". It also leaves the page
+  number at 0 (VR-COTRN00C-02).
   Recommendation: fix (do not browse after a validation error). Source: `app/cbl/COTRN00C.cbl:212-225, 281-283`.
 - **Q-COTRN00C-08**: Every signed-on user, regular or admin, sees all customers' transactions.
   Recommendation: decide (scope by account or card for regular users).
@@ -288,10 +314,13 @@ after a STARTBR error or after a non-numeric search ID, where the browse is left
   end-of-file branch sends before the final send. Only the last send is visible.
   Recommendation: in the target system, return one response. Source: `app/cbl/COTRN00C.cbl:115-116, 326, 611, 645, 679`.
 - **Q-COTRN00C-10**: Paging assumes the boundary record still exists. If the record at `TRNID-FIRST` or
-  `TRNID-LAST` was deleted between turns, GTEQ positioning lands on the next record and the skip-one
-  read discards a record that was never shown. Records added between turns can appear on the next
+  `TRNID-LAST` was deleted between turns, GTEQ positioning on PF8 lands on the next record and the
+  skip-one read discards a record that was never shown. If the record at `TRNID-FIRST` was deleted, the
+  READPREV that follows the STARTBR on PF7 returns NOTFND (CICS READPREV semantics, as in
+  Q-COUSR00C-09), so PF7 shows "Unable to lookup transaction..." (ERR-COTRN00C-06) with the rows that
+  were received. Records added between turns can appear on the next
   page. Recommendation: in the target system, use keyset pagination (`id > last` / `id < first`).
-  Source: `app/cbl/COTRN00C.cbl:285-287, 339-341`.
+  Source: `app/cbl/COTRN00C.cbl:236-240, 285-287, 339-341`.
 - **Q-COTRN00C-11**: If a backward page reaches the start of the file before 10 rows are filled (only
   possible when records were deleted), the top rows stay blank, `TRNID-FIRST` is not updated, and the
   page number is unchanged. Recommendation: fix. Source: `app/cbl/COTRN00C.cbl:351-369`.
@@ -304,8 +333,16 @@ after a STARTBR error or after a non-numeric search ID, where the browse is left
   list with "You have reached the bottom of the page..." and the page number unchanged, instead of
   "You are already at the bottom of the page..." with the rows kept. When page 1 is a partial page,
   `TRNID-LAST` still holds the previous value (BR-COTRN00C-10), so PF8 continues from that older
-  position. Recommendation: fix. Source: `app/cbl/COTRN00C.cbl:242, 245-252 (PROCESS-PF7-KEY)`,
-  `:267-268 (PROCESS-PF8-KEY)`, `:285-293, 316-319 (PROCESS-PAGE-FORWARD)`, `:639-645 (READNEXT-TRANSACT-FILE)`.
+  position. If that previous value is blank (entered from the menu with the 160-byte COMMAREA and fewer
+  than 10 transactions, so row 10 was never filled), PF8 starts at HIGH-VALUES: CICS positions the browse
+  at the end of the file (a full key of HIGH-VALUES does not give NOTFND), the skip READNEXT gets
+  ENDFILE, no row is cleared or read, and the received rows are re-sent with
+  "You have reached the bottom of the page...", next-page flag N, and the page number unchanged (the
+  HIGH-VALUES positioning is inferred from CICS documentation). If it has no key greater than or equal to
+  it, STARTBR returns NOTFND and the turn ends with "Unable to lookup transaction..." and an AEIP abend
+  (ERR-COTRN00C-01). Recommendation: fix. Source: `app/cbl/COTRN00C.cbl:242, 245-252 (PROCESS-PF7-KEY)`,
+  `:259-263`, `:267-268 (PROCESS-PF8-KEY)`, `:285-293, 316-319 (PROCESS-PAGE-FORWARD)`,
+  `:639-645 (READNEXT-TRANSACT-FILE)`.
 
 ## Test scenarios
 Assumption: TRANSACT holds the 300 records of `app/data/ASCII/dailytran.txt`. Sorted by ID, record 1 is

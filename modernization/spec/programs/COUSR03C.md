@@ -139,8 +139,11 @@ hint `(A=Admin, U=User)` (blue), and the key legend `ENTER=Fetch  F3=Back  F4=Cl
   Source: `app/cbl/COUSR03C.cbl:121-122 (MAIN-PARA)`.
 - **NAV-COUSR03C-05**: PF12 -> XCTL to COADM01C (not shown in the key legend).
   Source: `app/cbl/COUSR03C.cbl:123-125 (MAIN-PARA)`.
-- **NAV-COUSR03C-06**: Any other AID -> "Invalid key pressed. Please see below...         " and the screen is
-  re-sent with the received data. Source: `app/cbl/COUSR03C.cbl:126-129 (MAIN-PARA)`.
+- **NAV-COUSR03C-06**: Any other AID -> "Invalid key pressed. Please see below...         " and the
+  screen is re-sent with the received data. For CLEAR and PA1-PA3 the terminal sends no field data:
+  RECEIVE gets MAPFAIL (not tested), the map keeps its initial storage, and every field is blank on the
+  re-sent screen. Target: C-SHORTREAD (ledger-online.md). Source:
+  `app/cbl/COUSR03C.cbl:126-129 (MAIN-PARA)`.
 - **NAV-COUSR03C-07**: Every redisplay ends with RETURN TRANSID(`CU03`) COMMAREA(CARDDEMO-COMMAREA).
   Source: `app/cbl/COUSR03C.cbl:134-137 (MAIN-PARA)`.
 
