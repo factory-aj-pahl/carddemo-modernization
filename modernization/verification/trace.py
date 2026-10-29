@@ -10,7 +10,8 @@ NOT-PORTED (dead code; nothing to test), or a C-/B- convention (which must be co
 
 Evidence:
   - Java tests: @Covers({...}) on a test method or class in backend/*/src/test/java, joined with
-    surefire JUnit XML (backend/*/target/surefire-reports/TEST-*.xml) by class and method;
+    surefire and failsafe JUnit XML (backend/*/target/{surefire,failsafe}-reports/TEST-*.xml) by class
+    and method;
   - name-tagged JUnit XML (Playwright e2e/test-results/junit.xml and any --junit file): IDs in the
     test title;
   - batch parity results (--batch-results results.json from verify_batch.py): a MATCH pair covers
@@ -203,7 +204,11 @@ def main(argv: list[str] | None = None) -> int:
     tests: list[Test] = []
 
     tags = java_tags(MOD)
-    surefire = glob.glob(str(MOD / "backend" / "*" / "target" / "surefire-reports" / "TEST-*.xml"))
+    surefire = [
+        path
+        for reports in ("surefire-reports", "failsafe-reports")
+        for path in glob.glob(str(MOD / "backend" / "*" / "target" / reports / "TEST-*.xml"))
+    ]
     seen_methods: set[tuple[str, str | None]] = set()
     for cls, name, status in junit_cases(surefire):
         method = re.split(r"[\[(]", name, maxsplit=1)[0]
