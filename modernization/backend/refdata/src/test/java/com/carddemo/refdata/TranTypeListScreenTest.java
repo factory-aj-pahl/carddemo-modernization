@@ -294,6 +294,24 @@ class TranTypeListScreenTest {
     }
 
     @Test
+    @Covers({"Q-COTRTLIC-23", "ERR-COTRTLIC-13"})
+    void a_failed_delete_stays_armed_and_f10_retries_it_without_a_new_prompt() {
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 7, "D"));
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("Delete HIGHLIGHTED row ? Press F10 to confirm");
+        r = key("PF10", r);
+        assertThat(r.at("/message").asText()).startsWith("Please delete associated child records first: SQLCODE: -532 ");
+        assertThat(r.at("/fields/info").asText()).doesNotContain("Press F10 to confirm");
+        assertThat(row(r, 7).get("select").asText()).isEqualTo("D");
+        assertThat(description(jdbc, "07")).isEqualTo("ADJUSTMENT");
+        jdbc.update("DELETE FROM transaction_category WHERE type_cd = '07'");
+        r = key("PF10", r);
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo("HIGHLIGHTED row deleted.Hit Enter to continue");
+        assertThat(r.has("message")).isFalse();
+        assertThat(description(jdbc, "07")).isNull();
+        assertThat(types(r)).doesNotContain("07");
+    }
+
+    @Test
     @Covers({"TS-COTRTLIC-12", "Q-COTRTLIC-04"})
     void delete_of_a_type_without_categories_removes_it_and_keeps_the_user() {
         addTypes("08", "TEST A");
