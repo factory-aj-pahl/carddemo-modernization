@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
 import { useScreen } from '../useScreen';
@@ -61,6 +61,19 @@ export function PendingAuthDetail() {
   const f = s.state?.fields;
   const press = useCallback((key: string) => s.send(aid(key), {}), [s]);
   const v = (k: keyof Fields) => f?.[k] ?? '';
+
+  // COPAU01 has no input field, so there is no form for ENTER to submit; as on the 3270, ENTER from the
+  // cursor (the card number) or anywhere else on the screen is the ENTER AID. Buttons and links keep their own.
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key !== 'Enter' || e.defaultPrevented || e.repeat || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (e.target instanceof Element && e.target.closest('button, a, input, select, textarea')) return;
+      e.preventDefault();
+      press('ENTER');
+    };
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, [press]);
 
   return (
     <ScreenFrame program="COPAUS1C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>
