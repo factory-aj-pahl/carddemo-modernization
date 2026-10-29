@@ -297,7 +297,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 
 | Q ID | Summary | Category | Decision | Target behavior | Reference patch |
 |:--|:--|:--|:--|:--|:--|
-| Q-COBIL00C-01 | Payment ID is highest key + 1 with no lock | concurrency | FIX | The same database sequence as Q-COTRN02C-01. Concurrent payments never collide. | n/a |
+| Q-COBIL00C-01 | Payment ID is highest key + 1 with no lock | concurrency | FIX | The same locked shared counter as Q-COTRN02C-01. Concurrent payments never collide. | n/a |
 | Q-COBIL00C-02 | Errors not checked during the payment; balance updated even when the write fails | data-corruption | FIX | The confirmed payment (account lock, card lookup, ID, transaction insert, balance update) is one database transaction. Any failure rolls it all back: the balance and transactions are unchanged, the message is the failing step's existing text (for example `Unable to Add Bill pay Transaction...`), and no success message is shown. | n/a |
 | Q-COBIL00C-03 | One task can SEND the map several times | platform | PLATFORM | C-RENDER. | n/a |
 | Q-COBIL00C-04 | Account number not validated; must be typed as all 11 digits | business-choice | PRESERVE | C-KEYLEN: `1` gives `Account ID NOT found...`. | n/a |
