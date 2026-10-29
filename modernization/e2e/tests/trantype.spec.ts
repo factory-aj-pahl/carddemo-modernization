@@ -127,6 +127,16 @@ test.describe('COTRTLIC transaction type list', () => {
     // The new search is now shown: F8 at its end gives the boundary message.
     await page.keyboard.press('F8');
     await expectMessage(page, 'No more pages for these search conditions');
+    // TS-COTRTLIC-27: a description filter R typed with F8. The filter is case-sensitive and the e2e seed has
+    // mixed-case descriptions, so only Refund and Reversal match (01, 03, 04, 05, 06 on the upper-case sample).
+    await page.getByLabel('Type Filter').fill('');
+    await page.getByLabel('Description Filter').fill('R');
+    await page.keyboard.press('F8');
+    for (const [n, code] of ['05', '06', ''].entries()) {
+      await expect(page.getByTestId(`row${n + 1}`).locator('td').nth(1)).toHaveText(code);
+    }
+    await expect(page.getByTestId('page')).toHaveText('1');
+    await expect(page.getByTestId('message')).toHaveText('');
   });
 
   test('NAV-COTRTLIC-01 F3 returns to the admin menu', async ({ page }) => {

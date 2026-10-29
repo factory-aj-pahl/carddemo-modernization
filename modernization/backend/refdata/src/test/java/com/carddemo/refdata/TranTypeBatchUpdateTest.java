@@ -201,8 +201,7 @@ class TranTypeBatchUpdateTest {
     }
 
     @Test
-    @Covers({"TS-COBTUPDT-11", "BR-COBTUPDT-01", "BR-COBTUPDT-02", "BR-COBTUPDT-03", "BR-COBTUPDT-04", "ERR-COBTUPDT-01",
-        "ERR-COBTUPDT-06", "Q-COBTUPDT-07"})
+    @Covers({"TS-COBTUPDT-11", "BR-COBTUPDT-01", "BR-COBTUPDT-04", "ERR-COBTUPDT-01", "ERR-COBTUPDT-06", "Q-COBTUPDT-07"})
     void records_apply_in_file_order_with_one_result_line_each_and_a_summary() throws IOException {
         BatchUpdateResult r = run("A09TEMP", "U09TEMPORARY", "D09");
         List<String> out = log.captured();

@@ -110,6 +110,30 @@ class CycleBackupTest extends CycleJobTestSupport {
     }
 
     @Test
+    @Covers({"Q-ACCTFILE-02", "B-CYCLE"})
+    void a_backup_on_a_database_with_no_job_runs_lets_the_restored_date_post_again() throws IOException {
+        // The first job ever run on a fresh database gets instance id 0 (V2: BATCH_JOB_SEQ START WITH 0).
+        long saved = jdbc.queryForObject("SELECT CONVERT(bigint, current_value) FROM sys.sequences WHERE name = 'BATCH_JOB_SEQ'",
+            Long.class);
+        jdbc.execute("ALTER SEQUENCE BATCH_JOB_SEQ RESTART WITH 0");
+        try {
+            assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+            assertThat(jdbc.queryForObject("SELECT max_job_instance_id FROM cycle_backup WHERE business_date = '2022-07-01'",
+                Long.class)).isEqualTo(-1L);
+            String[] posttran = posttranOfDay("2022-07-01");
+            assertThat(cli.execute(posttran)).isEqualTo(4);
+            assertThat(jdbc.queryForObject("SELECT MIN(JOB_INSTANCE_ID) FROM BATCH_JOB_INSTANCE", Long.class)).isZero();
+            assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+            assertThat(count("SELECT COUNT(*) FROM BATCH_JOB_INSTANCE")).isZero();
+            assertThat(cli.execute(posttran)).isEqualTo(4);
+        } finally {
+            Long used = jdbc.queryForObject("SELECT MAX(JOB_INSTANCE_ID) FROM BATCH_JOB_INSTANCE", Long.class);
+            long next = Math.max(saved + 1, used == null ? 0 : used + 1);
+            jdbc.execute("ALTER SEQUENCE BATCH_JOB_SEQ RESTART WITH " + next);
+        }
+    }
+
+    @Test
     @Covers({"Q-ACCTFILE-02"})
     void restoring_an_unknown_backup_is_refused() {
         assertThat(cli.execute("RESTORE", "backupId=424242")).isEqualTo(8);

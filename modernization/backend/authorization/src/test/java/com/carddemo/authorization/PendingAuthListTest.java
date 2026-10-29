@@ -20,6 +20,8 @@ class PendingAuthListTest extends AuthScreenTestSupport {
     static final String INVALID_KEY = "Invalid key pressed. Please see below...         ";
     static final String TOP = "You are already at the top of the page...";
     static final String BOTTOM = "You are already at the bottom of the page...";
+    static final List<String> ACCOUNT_FIELDS = List.of("name", "customerId", "address1", "phone", "creditLimit", "cashLimit",
+        "creditBalance", "cashBalance", "approvedAmount", "declinedAmount", "approvedCount", "declinedCount");
 
     JsonNode pages(int presses) {
         JsonNode r = list("ENTER", ACCT7);
@@ -91,7 +93,7 @@ class PendingAuthListTest extends AuthScreenTestSupport {
     }
 
     @Test
-    @Covers({"TS-COPAUS0C-03", "VR-COPAUS0C-02"})
+    @Covers({"TS-COPAUS0C-03", "VR-COPAUS0C-02", "Q-COPAUS0C-14"})
     void an_account_id_must_be_eleven_digits() {
         for (String bad : List.of("7", "0000000000A", "-0000000007", "0000000 007")) {
             JsonNode r = list("ENTER", bad);
@@ -108,8 +110,7 @@ class PendingAuthListTest extends AuthScreenTestSupport {
         JsonNode r = list("ENTER", "7");
         assertThat(r.at("/message").asText()).isEqualTo("Acct Id must be Numeric ...");
         assertThat(r.at("/fields/accountId").asText()).isEqualTo("7");
-        for (String field : List.of("name", "customerId", "address1", "phone", "creditLimit", "cashLimit", "creditBalance",
-            "cashBalance", "approvedAmount", "declinedAmount", "approvedCount", "declinedCount")) {
+        for (String field : ACCOUNT_FIELDS) {
             assertThat(r.at("/fields/" + field).asText()).as(field).isEmpty();
         }
         assertThat(txns(r)).containsOnly("");
@@ -121,7 +122,12 @@ class PendingAuthListTest extends AuthScreenTestSupport {
         pages(1);
         JsonNode blank = list("ENTER", "");
         assertThat(blank.at("/message").asText()).isEqualTo("Please enter Acct Id...");
+        assertThat(blank.at("/fields/accountId").asText()).isEmpty();
+        for (String field : ACCOUNT_FIELDS) {
+            assertThat(blank.at("/fields/" + field).asText()).as(field).isEmpty();
+        }
         assertThat(txns(blank)).containsOnly("");
+        assertThat(blank.toString()).doesNotContain("Cooper");
         assertThat(list("PF8", "").at("/message").asText()).isEqualTo(BOTTOM);
         JsonNode valid = list("ENTER", ACCT7);
         assertThat(txns(valid)).containsExactlyElementsOf(rows(ACCOUNT_7, 1, 5));
