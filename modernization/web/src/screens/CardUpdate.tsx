@@ -71,11 +71,11 @@ export function CardUpdate() {
             <fieldset className="parts">
               <legend>Expiry Date</legend>
               <div className="parts-row">
-                <Field id="expMonth" label="month" value={v.expMonth} onChange={set('expMonth')} maxLength={2} inputMode="numeric" width="80px" placeholder="MM" readOnly={detailsLocked} labelPrefix="Expiry Date" invalid={errors.includes('expMonth')} />
+                <Field id="expMonth" label="month" value={v.expMonth} onChange={set('expMonth')} maxLength={2} inputMode="numeric" width="80px" placeholder="MM" readOnly={detailsLocked} labelPrefix="Expiry Date" labelHidden invalid={errors.includes('expMonth')} />
                 <span aria-hidden="true" className="parts-sep">
                   /
                 </span>
-                <Field id="expYear" label="year" value={v.expYear} onChange={set('expYear')} maxLength={4} inputMode="numeric" width="96px" placeholder="YYYY" readOnly={detailsLocked} labelPrefix="Expiry Date" invalid={errors.includes('expYear')} />
+                <Field id="expYear" label="year" value={v.expYear} onChange={set('expYear')} maxLength={4} inputMode="numeric" width="96px" placeholder="YYYY" readOnly={detailsLocked} labelPrefix="Expiry Date" labelHidden invalid={errors.includes('expYear')} />
               </div>
             </fieldset>
           </div>

@@ -4,8 +4,8 @@ import { type Key, type MessageColor, type ScreenResponse, Unauthorized, screenT
 
 /**
  * Messages the COBOL sends with the cursor on a field although they are not about that field's value:
- * invalid keys, paging boundaries, selection-code errors, menu availability, confirmation prompts, and
- * file errors. The field gets the cursor (focus) but is not marked in error.
+ * invalid keys, paging boundaries, selection-code errors, menu availability, confirmation prompts,
+ * whole-record conditions, and file errors. The field gets the cursor (focus) but is not marked in error.
  */
 const NOT_ABOUT_FIELD = [
   /^Invalid key pressed/,
@@ -16,13 +16,25 @@ const NOT_ABOUT_FIELD = [
   /^Confirm to /,
   /^Please confirm to /,
   /^Unable to /,
+  // COUSR02C: nothing changed, or the record changed since it was read (cursor on First Name).
+  /^Please modify to update/,
+  /^Record changed by some one else/,
+  // A generated transaction ID that is already on file (COTRN02C, COBIL00C).
+  /^Tran ID already exist/,
+  // COPAUS0C: file and database errors, and a missing account or customer record behind a cross-reference
+  // that was found. "not found in XREF file" is about the account typed and stays marked.
+  /System error while/,
+  /not found in (ACCT|CUST) file/,
 ];
 
-/** The server put the cursor on this field with a red message about its value: mark it in error. */
-export function fieldInError(state: ScreenResponse<unknown> | null, id: string): boolean {
+/**
+ * The server put the cursor on this field with a red message about its value: mark it in error.
+ * `notAbout` adds messages that only this screen sends without concerning the cursor field.
+ */
+export function fieldInError(state: ScreenResponse<unknown> | null, id: string, notAbout: readonly RegExp[] = []): boolean {
   if (!state || state.messageColor !== 'RED' || state.focus !== id) return false;
   const text = (state.message ?? '').trim();
-  return !NOT_ABOUT_FIELD.some((re) => re.test(text));
+  return ![...NOT_ABOUT_FIELD, ...notAbout].some((re) => re.test(text));
 }
 
 /** A 3270 protected field: the cursor must not rest there in the browser. */

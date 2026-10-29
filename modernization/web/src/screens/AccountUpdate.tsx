@@ -102,7 +102,10 @@ export function AccountUpdate() {
     );
   };
 
-  /** A field entered in parts (date, SSN, phone): the BMS label once, then one aligned label per part. */
+  /**
+   * A field entered in parts (date, SSN, phone): the BMS label is the one visible label line, so the inputs line up
+   * with single fields in the same row; each part keeps a full accessible name such as "SSN first 3".
+   */
   const parts = (legend: string, items: { name: string; label: string; width: string; placeholder?: string }[], sep: string) => {
     return (
       <fieldset className="parts">
@@ -115,7 +118,7 @@ export function AccountUpdate() {
                   {sep}
                 </span>
               ) : null}
-              {input({ name: it.name, label: it.label, width: it.width, placeholder: it.placeholder, labelPrefix: legend })}
+              {input({ name: it.name, label: it.label, width: it.width, placeholder: it.placeholder, labelPrefix: legend, labelHidden: true })}
             </Fragment>
           ))}
         </div>

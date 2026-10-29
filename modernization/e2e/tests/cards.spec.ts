@@ -227,6 +227,10 @@ test.describe('COCRDUPC credit card update', () => {
     await page.keyboard.press('Enter');
     await expectInfo(page, 'Details of selected card shown above');
     await expect(page.getByLabel('Name on card')).toBeFocused();
+    // The Expiry Date parts line up with the single fields of the same row.
+    const top = async (label: string) => (await page.getByLabel(label).boundingBox())?.y ?? NaN;
+    expect(Math.abs((await top('Expiry Date month')) - (await top('Name on card')))).toBeLessThan(1);
+    expect(Math.abs((await top('Expiry Date year')) - (await top('Card Active Y/N')))).toBeLessThan(1);
     await page.keyboard.press('Control+A');
     await page.keyboard.type('HAYDEN P SMITH');
     await page.keyboard.press('Tab');

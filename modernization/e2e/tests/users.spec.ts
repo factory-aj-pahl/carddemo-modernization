@@ -224,6 +224,9 @@ test.describe('COUSR02C update user', () => {
     await expectNoSeriousA11yViolations(page);
     await page.keyboard.press('F5');
     await expectMessage(page, 'Please modify to update ...');
+    // The message is about the whole record: First Name gets the cursor but is not marked in error.
+    await expect(page.getByLabel('First Name')).toBeFocused();
+    await expect(page.getByLabel('First Name')).not.toHaveAttribute('aria-invalid', 'true');
     await page.keyboard.press('Control+A');
     await page.keyboard.press('Delete');
     await page.keyboard.press('F5');

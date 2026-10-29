@@ -24,6 +24,9 @@ interface Fields {
 
 type Name = keyof Fields;
 
+// F5 (copy last transaction) with no transaction in the user's scope: the lookup ignores the typed account.
+const NOT_ABOUT_FIELD = [/^Transaction ID NOT found/];
+
 const EMPTY: Fields = {
   accountId: '',
   cardNum: '',
@@ -86,7 +89,7 @@ export function TransactionAdd() {
     e.preventDefault();
     press('ENTER');
   };
-  const invalid = (id: string) => fieldInError(s.state, id);
+  const invalid = (id: string) => fieldInError(s.state, id, NOT_ABOUT_FIELD);
 
   return (
     <ScreenFrame program="COTRN02C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>

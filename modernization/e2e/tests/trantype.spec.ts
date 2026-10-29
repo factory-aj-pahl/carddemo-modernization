@@ -126,6 +126,48 @@ test.describe('COTRTUPC transaction type maintenance', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
+  test('TS-COTRTUPC-16 NAV-COTRTUPC-01 ENTER in the delete confirmation is refused and the confirmation is shown again', async ({ page }) => {
+    const turns: string[] = [];
+    page.on('request', (r) => {
+      if (r.method() === 'POST' && r.url().endsWith('/api/screens/COTRTUPC')) turns.push(JSON.parse(r.postData() ?? '{}').key);
+    });
+    await page.keyboard.type('01');
+    await page.keyboard.press('Enter');
+    await expectInfo(page, 'Update transaction type details shown.');
+    const description = await page.getByLabel('Description').inputValue();
+    await page.keyboard.press('F4');
+    await expectInfo(page, 'Delete this record ? Press F4 to confirm');
+    await expect(legend(page)).toHaveText(['F4', 'F12']);
+    await expect(page.getByRole('button', { name: /Process/ })).toHaveCount(0);
+
+    // ENTER is dark in state 9 but still an AID key: from wherever the cursor is, it reaches the program.
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Invalid key pressed');
+    await expectInfo(page, 'Delete this record ? Press F4 to confirm');
+    await expect(legend(page)).toHaveText(['F4', 'F12']);
+    await page.getByLabel('Description').focus();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => turns.filter((k) => k === 'ENTER').length).toBe(3);
+    await expectMessage(page, 'Invalid key pressed');
+    await expectInfo(page, 'Delete this record ? Press F4 to confirm');
+    await expectNoSeriousA11yViolations(page);
+
+    await page.keyboard.press('F12');
+    await expectMessage(page, 'Delete was cancelled');
+    await expect(page.getByLabel('Transaction Type')).toBeFocused();
+    await page.keyboard.type('01');
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Description')).toHaveValue(description);
+  });
+
+  test('ENTER from the page background, outside any field, is the ENTER key', async ({ page }) => {
+    await page.getByLabel('Transaction Type').fill('A1');
+    await page.locator('main').focus();
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Tran Type code must be numeric.');
+    await expect(page.getByLabel('Transaction Type')).toBeFocused();
+  });
+
   test('TS-COTRTUPC-18 F2 on the list opens maintenance and F3 returns to the list', async ({ page }) => {
     await page.keyboard.press('F3');
     await expectProgram(page, 'CA00 · COADM01C');

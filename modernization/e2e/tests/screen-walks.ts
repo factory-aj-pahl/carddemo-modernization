@@ -114,7 +114,10 @@ const COSGN00: ScreenWalk = {
     await expect.poll(() => page.getByTestId('farewell').textContent()).toBe(MSG.THANK_YOU);
     await at('farewell', 'F3 on the sign-on screen: the plain-text farewell (route /signed-off).');
     await page.keyboard.press('Enter');
+    // The farewell page has the same header, so wait for the sign-on route and its cursor before typing.
+    await expect(page).toHaveURL(/\/screens\/COSGN00C$/);
     await expectProgram(page, 'CC00 · COSGN00C');
+    await expect(page.getByLabel('User ID')).toBeFocused();
     await page.keyboard.type('user0001');
     await page.keyboard.press('Tab');
     await page.keyboard.type(DEMO_PASSWORD);

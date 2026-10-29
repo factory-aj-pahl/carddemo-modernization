@@ -151,7 +151,6 @@ a.btn-link{display:inline-flex;align-items:center;text-decoration:none;border-ra
 .parts{border:0;padding:0;margin:0;min-width:0}
 .parts > legend{font-size:13px;font-weight:600;padding:0;margin-bottom:6px}
 .parts-row{display:flex;gap:6px;align-items:flex-end}
-.parts-row .field > label{font-size:12px;font-weight:500;color:var(--muted)}
 .parts-sep{padding-bottom:10px;color:var(--subtle)}
 .amounts{width:100%;border-collapse:collapse;font-size:14.5px}
 .amounts th{text-align:left;font-weight:400;color:var(--muted);font-size:13.5px;padding:7px 0;border-top:1px solid var(--border)}
