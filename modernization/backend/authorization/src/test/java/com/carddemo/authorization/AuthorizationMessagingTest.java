@@ -165,6 +165,10 @@ class AuthorizationMessagingTest {
         for (int i = 0; i < names.length && i < f.length; i++) {
             body.put(names[i], f[i]);
         }
+        // Fields after the 18th travel as extra JSON properties, the REST form of text after the last field.
+        for (int i = names.length; i < f.length; i++) {
+            body.put("field" + (i + 1), f[i]);
+        }
         MockHttpServletResponse res = mvc.perform(post("/api/authorizations").session(adminClient.session()).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(body))).andReturn().getResponse();
         assertThat(res.getStatus()).as(res.getContentAsString()).isEqualTo(200);

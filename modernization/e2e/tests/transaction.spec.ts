@@ -47,6 +47,7 @@ test.describe('COTRN00C transaction list', () => {
     await page.keyboard.press('Enter');
     await expectMessage(page, 'Transaction ID NOT found...');
     await expect(rows(page)).toHaveCount(0);
+    await expect(page.getByTestId('page')).toHaveText('Page 00000001');
     await expect(page.getByLabel('Search Tran ID')).toBeFocused();
     await expect(page.getByLabel('Search Tran ID')).toHaveAttribute('aria-invalid', 'true');
   });
@@ -175,11 +176,12 @@ test.describe('COTRN00C for a user with no transactions in scope', () => {
     await deleteIfPresent(page);
   });
 
-  test('Q-COTRN00C-02 an empty scope gives "Transaction ID NOT found..." without marking the blank search field', async ({ page }) => {
+  test('Q-COTRN00C-08 an empty scope gives "Transaction ID NOT found..." without marking the blank search field', async ({ page }) => {
     const search = page.getByLabel('Search Tran ID');
     await menuOption(page, '6', 'CT00 · COTRN00C');
     await expectMessage(page, 'Transaction ID NOT found...');
     await expect(rows(page)).toHaveCount(0);
+    await expect(page.getByTestId('page')).toHaveText('Page 00000001');
     await expect(search).toBeFocused();
     await expect(search).toHaveValue('');
     await expect(search).not.toHaveAttribute('aria-invalid', 'true');

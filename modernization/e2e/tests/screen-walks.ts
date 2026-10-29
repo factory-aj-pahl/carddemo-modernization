@@ -1044,7 +1044,7 @@ const COTRTLI: ScreenWalk = {
     await expectMessage(page, 'No previous pages to display');
     // The seven sample types fill exactly one page.
     await page.keyboard.press('F8');
-    await expect(msgText(page)).toHaveText(/^No more pages (to display|for these search conditions)$/);
+    await expectMessage(page, 'No more pages for these search conditions');
     await expect(page.getByTestId('page')).toHaveText('1');
     await page.keyboard.press('F5');
     await expectNoInvalidKey(page);
