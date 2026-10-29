@@ -43,7 +43,24 @@ export function ScreenFrame({ program, message, messageColor, onKey, keys, tran,
   const [pressed, setPressed] = useState<string | null>(null);
 
   useEffect(() => {
+    // As on the 3270, ENTER is an AID key from any cursor position, including protected fields, the page
+    // background, and screens or states with no visible ENTER button. Buttons, links, selects and text areas
+    // keep their own Enter; an input in a form that has a submit button submits it natively.
+    const enter = (e: KeyboardEvent) => {
+      if (e.defaultPrevented || e.repeat || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey) return;
+      const target = e.target instanceof Element ? e.target : null;
+      if (target?.closest('button, a, select, textarea')) return;
+      const form = target instanceof HTMLInputElement ? target.form : document.querySelector<HTMLFormElement>('main form');
+      if (target instanceof HTMLInputElement && form?.querySelector('button[type="submit"]')) return;
+      e.preventDefault();
+      if (form) form.requestSubmit();
+      else onKey('ENTER');
+    };
     const down = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        enter(e);
+        return;
+      }
       if (!FKEY.test(e.key) || e.ctrlKey || e.altKey || e.metaKey) return;
       e.preventDefault();
       setPressed(e.key);

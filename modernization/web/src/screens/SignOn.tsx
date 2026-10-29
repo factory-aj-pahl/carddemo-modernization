@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Fields {
   userId: string;
@@ -28,7 +28,7 @@ export function SignOn() {
     e.preventDefault();
     press('ENTER');
   };
-  const invalid = (id: string) => s.state?.messageColor === 'RED' && s.state.focus === id;
+  const invalid = (id: string) => fieldInError(s.state, id);
 
   return (
     <ScreenFrame program="COSGN00C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>

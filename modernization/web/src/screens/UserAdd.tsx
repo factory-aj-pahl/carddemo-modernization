@@ -1,8 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { Field } from '../Field';
+import { AreaField, Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Fields {
   firstName: string;
@@ -34,7 +34,7 @@ export function UserAdd() {
     press('ENTER');
   };
   const set = (k: keyof Fields) => (value: string) => setV((old) => ({ ...old, [k]: value }));
-  const invalid = (id: string) => s.state?.messageColor === 'RED' && s.state.focus === id;
+  const invalid = (id: string) => fieldInError(s.state, id);
 
   return (
     <ScreenFrame program="COUSR01C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>
@@ -56,7 +56,7 @@ export function UserAdd() {
             <Field id="userType" label="User Type" value={v.userType} onChange={set('userType')} maxLength={1} width="auto" hint="(A=Admin, U=User)" upper inputClass="sel" invalid={invalid('userType')} />
           </div>
           <div className="row" style={{ marginTop: 16 }}>
-            <Field id="accounts" label="Linked Accounts" value={v.accounts} onChange={set('accounts')} width="620px" hint="11-digit account numbers separated by commas (regular users only)" invalid={invalid('accounts')} />
+            <AreaField id="accounts" label="Linked Accounts" value={v.accounts} onChange={set('accounts')} width="100%" hint="11-digit account numbers separated by commas (regular users only)" invalid={invalid('accounts')} />
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
             <button className="btn btn-primary" type="submit" disabled={s.busy}>

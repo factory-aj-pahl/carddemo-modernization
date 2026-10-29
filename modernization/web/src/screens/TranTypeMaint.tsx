@@ -60,6 +60,14 @@ export function TranTypeMaint() {
     press('ENTER');
   };
   const abend = f?.abend;
+  const k = f?.keys;
+  // The primary panel button is the step the key bar offers: F5 to save or add, F4 to confirm a delete.
+  const primary = k?.save ? 'F5' : k && !k.enterExit && k.delete ? 'F4' : 'ENTER';
+  const keyButton = (key: string, label: string) => (
+    <button key={key} className={`btn${primary === key ? ' btn-primary' : ''}`} type="button" onClick={() => press(key)} disabled={s.busy}>
+      {label} <kbd>{key}</kbd>
+    </button>
+  );
 
   return (
     <ScreenFrame
@@ -124,9 +132,16 @@ export function TranTypeMaint() {
                 aria-readonly={!f?.descriptionEditable || undefined}
                 invalid={f?.descriptionInvalid}
               />
-              <button className="btn btn-primary" type="submit" disabled={s.busy}>
-                Process <kbd>ENTER</kbd>
-              </button>
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
+              {k?.enterExit ? (
+                <button className={`btn${primary === 'ENTER' ? ' btn-primary' : ''}`} type="submit" disabled={s.busy}>
+                  Process <kbd>ENTER</kbd>
+                </button>
+              ) : null}
+              {k?.delete ? keyButton('F4', 'Delete') : null}
+              {k?.save ? keyButton('F5', 'Save') : null}
+              {k?.cancel ? keyButton('F12', 'Cancel') : null}
             </div>
             {f?.info ? (
               <p className="info-line" style={{ marginTop: 18 }} data-testid="info" data-raw={f.info}>

@@ -22,6 +22,9 @@ test.describe('COTRN00C transaction list', () => {
     await expect(rows(page)).toHaveCount(10);
     await expect(firstRowId(page)).toHaveText(fixtures.userTranId);
     await expect(rows(page).first().locator('td').nth(2)).toHaveText(/^\d\d\/\d\d\/\d\d$/);
+    // TAMT0nn is edited as +99999999.99 and PAGENUM shows 8 digits.
+    await expect(rows(page).first().locator('td').nth(4)).toHaveText(/^[+-]\d{8}\.\d{2}$/);
+    await expect(page.getByTestId('page')).toHaveText('Page 00000001');
     await expect(page.getByLabel('Search Tran ID')).toBeFocused();
     await expect(page.getByTestId('message')).toHaveText('');
     await expectNoSeriousA11yViolations(page);
@@ -36,6 +39,16 @@ test.describe('COTRN00C transaction list', () => {
     await expect(page.getByLabel('Search Tran ID')).toBeFocused();
     await expect(rows(page)).toHaveCount(10);
     await expectNoSeriousA11yViolations(page);
+  });
+
+  test('Q-COTRN00C-02 a typed search ID beyond the last transaction is not found and the field is marked', async ({ page }) => {
+    await open(page, '/screens/COTRN00C', 'CT00 · COTRN00C');
+    await page.getByLabel('Search Tran ID').fill('9999999999999999');
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(rows(page)).toHaveCount(0);
+    await expect(page.getByLabel('Search Tran ID')).toBeFocused();
+    await expect(page.getByLabel('Search Tran ID')).toHaveAttribute('aria-invalid', 'true');
   });
 
   test('TS-COTRN00C-06 NAV-COTRN00C-03 a search ID starts the list at that transaction', async ({ page }) => {
@@ -125,6 +138,68 @@ test.describe('COTRN00C transaction list', () => {
   });
 });
 
+test.describe('COTRN00C for a user with no transactions in scope', () => {
+  // A regular user added through COUSR01C has no linked accounts, so no transaction is in scope.
+  const NO_TRAN_USER = 'E2ENOTX1';
+  const NO_TRAN_PASSWORD = 'Secret12';
+
+  async function deleteIfPresent(page: Page) {
+    await signOn(page, 'ADMIN001');
+    await expectProgram(page, 'CA00 · COADM01C');
+    await open(page, '/screens/COUSR03C', 'CU03 · COUSR03C');
+    await page.getByLabel('Enter User ID').fill(NO_TRAN_USER);
+    await page.keyboard.press('Enter');
+    const prompt = 'Press PF5 key to delete this user ...';
+    await expect.poll(() => page.getByTestId('message').locator('.msg-text').textContent()).toMatch(/^(Press PF5 key to delete this user|User ID NOT found)/);
+    if ((await page.getByTestId('message').locator('.msg-text').textContent()) === prompt) {
+      await page.keyboard.press('F5');
+      await expectMessage(page, `User ${NO_TRAN_USER} has been deleted ...`);
+    }
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await deleteIfPresent(page);
+    await open(page, '/screens/COUSR01C', 'CU01 · COUSR01C');
+    await page.getByLabel('First Name').fill('NO');
+    await page.getByLabel('Last Name').fill('TRANSACTIONS');
+    await page.getByLabel('User ID').fill(NO_TRAN_USER);
+    await page.getByLabel('Password').fill(NO_TRAN_PASSWORD);
+    await page.getByLabel('User Type').fill('U');
+    await page.keyboard.press('Enter');
+    await expectMessage(page, `User ${NO_TRAN_USER} has been added ...`);
+    await signOn(page, NO_TRAN_USER, NO_TRAN_PASSWORD);
+    await expectProgram(page, 'CM00 · COMEN01C');
+  });
+
+  test.afterEach(async ({ page }) => {
+    await deleteIfPresent(page);
+  });
+
+  test('Q-COTRN00C-02 an empty scope gives "Transaction ID NOT found..." without marking the blank search field', async ({ page }) => {
+    const search = page.getByLabel('Search Tran ID');
+    await menuOption(page, '6', 'CT00 · COTRN00C');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(rows(page)).toHaveCount(0);
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('');
+    await expect(search).not.toHaveAttribute('aria-invalid', 'true');
+    await expectNoSeriousA11yViolations(page);
+
+    // ENTER with the search still blank: the same empty page, still not about the field.
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(search).toBeFocused();
+    await expect(search).not.toHaveAttribute('aria-invalid', 'true');
+
+    // A typed ID that finds nothing: the message is about that ID, so the field is marked.
+    await search.fill('0000000000000001');
+    await page.keyboard.press('Enter');
+    await expect(search).toHaveAttribute('aria-invalid', 'true');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(search).toBeFocused();
+  });
+});
+
 test.describe('COTRN01C transaction view', () => {
   test.beforeEach(async ({ page }) => {
     await signOn(page, 'USER0001');
@@ -155,7 +230,7 @@ test.describe('COTRN01C transaction view', () => {
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('tranId')).toHaveText(fixtures.userTranId);
     await expect(page.getByTestId('cardNum')).toHaveText(/^\*{12}\d{4}$/);
-    await expect(page.getByTestId('amount')).not.toHaveText('—');
+    await expect(page.getByTestId('amount')).toHaveText(/^[+-]\d{8}\.\d{2}$/);
     await expect(page.getByTestId('message')).toHaveText('');
     await expectNoSeriousA11yViolations(page);
     await page.getByLabel('Enter Tran ID').fill('9999999999999999');
@@ -288,7 +363,7 @@ test.describe('COTRN02C add transaction', () => {
     await expect(page.getByTestId('tranId')).toHaveText(tranId);
     await expect(page.getByTestId('cardNum')).toHaveText(/^\*{12}\d{4}$/);
     await expect(page.getByTestId('description')).toHaveText('Playwright purchase');
-    await expect(page.getByTestId('amount')).toContainText('12.34');
+    await expect(page.getByTestId('amount')).toHaveText('+00000012.34');
     const details = page.getByTestId('details');
     for (const v of ['POS TERM', '2024-01-15', '2024-01-16', '000000001', 'Playwright Store', 'Seattle', '98101']) {
       await expect(details).toContainText(v);

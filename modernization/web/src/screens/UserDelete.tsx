@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Fields {
   userId: string;
@@ -47,7 +47,7 @@ export function UserDelete() {
         </div>
         <form className="panel" noValidate onSubmit={submit}>
           <div className="search-bar">
-            <Field id="userId" label="Enter User ID" value={userId} onChange={setUserId} maxLength={8} width="230px" upper invalid={s.state?.messageColor === 'RED' && s.state.focus === 'userId'} />
+            <Field id="userId" label="Enter User ID" value={userId} onChange={setUserId} maxLength={8} width="230px" upper invalid={fieldInError(s.state, 'userId')} />
             <button className="btn" type="submit" disabled={s.busy}>
               Fetch <kbd>ENTER</kbd>
             </button>

@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, Fragment, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { type KeyLegend, SCREENS, aid } from '../screens';
@@ -52,6 +52,9 @@ interface InputProps {
   width?: string;
   placeholder?: string;
   upper?: boolean;
+  /** Group label read before the part label. */
+  labelPrefix?: string;
+  labelHidden?: boolean;
 }
 
 /** COACTUPC: update an account and its customer (transaction CAUP). */
@@ -77,7 +80,7 @@ export function AccountUpdate() {
   const errors = new Set(f?.errorFields ?? []);
   const search = mode === 'SEARCH';
 
-  const input = ({ name, label, width, placeholder, upper }: InputProps) => {
+  const input = ({ name, label, width, placeholder, upper, labelPrefix, labelHidden }: InputProps) => {
     const readOnly = !editable.has(name);
     return (
       <Field
@@ -92,30 +95,36 @@ export function AccountUpdate() {
         upper={upper}
         readOnly={readOnly}
         aria-readonly={readOnly ? true : undefined}
-        style={readOnly ? { background: 'var(--surface-2)' } : undefined}
+        labelPrefix={labelPrefix}
+        labelHidden={labelHidden}
         invalid={errors.has(name)}
       />
     );
   };
 
-  /** A field entered in parts (date, SSN, phone): one group label, one labelled input per part. */
-  const parts = (legend: string, items: { name: string; label: string; width: string; placeholder?: string }[], sep: string) => (
-    <fieldset style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-      <legend className="sr-only">{legend}</legend>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-        {items.map((it, i) => (
-          <div key={it.name} style={{ display: 'flex', gap: 6, alignItems: 'flex-end' }}>
-            {i > 0 ? (
-              <span aria-hidden="true" style={{ paddingBottom: 10, color: 'var(--subtle)' }}>
-                {sep}
-              </span>
-            ) : null}
-            {input({ name: it.name, label: i === 0 ? `${legend} ${it.label}` : it.label, width: it.width, placeholder: it.placeholder })}
-          </div>
-        ))}
-      </div>
-    </fieldset>
-  );
+  /**
+   * A field entered in parts (date, SSN, phone): the BMS label is the one visible label line, so the inputs line up
+   * with single fields in the same row; each part keeps a full accessible name such as "SSN first 3".
+   */
+  const parts = (legend: string, items: { name: string; label: string; width: string; placeholder?: string }[], sep: string) => {
+    return (
+      <fieldset className="parts">
+        <legend>{legend}</legend>
+        <div className="parts-row">
+          {items.map((it, i) => (
+            <Fragment key={it.name}>
+              {i > 0 ? (
+                <span aria-hidden="true" className="parts-sep">
+                  {sep}
+                </span>
+              ) : null}
+              {input({ name: it.name, label: it.label, width: it.width, placeholder: it.placeholder, labelPrefix: legend, labelHidden: true })}
+            </Fragment>
+          ))}
+        </div>
+      </fieldset>
+    );
+  };
   const date = (legend: string, prefix: string) =>
     parts(
       legend,
@@ -158,7 +167,8 @@ export function AccountUpdate() {
           <div className="panel compact">
             <div className="search-bar">
               {input({ name: 'accountId', label: 'Account Number', width: '240px', placeholder: '11 digits' })}
-              <button className="btn btn-primary" type="submit" disabled={s.busy}>
+              {/* In the confirm state the step the key bar offers is F5 Save, so Save is the primary button. */}
+              <button className={`btn${f?.saveKey ? '' : ' btn-primary'}`} type="submit" disabled={s.busy}>
                 Process <kbd>ENTER</kbd>
               </button>
               <p className="info-line" style={{ marginBottom: 0 }} data-testid="info">
@@ -166,7 +176,7 @@ export function AccountUpdate() {
               </p>
               <div style={{ marginLeft: 'auto', alignSelf: 'flex-end', display: 'flex', gap: 10 }}>
                 {f?.saveKey ? (
-                  <button className="btn" type="button" onClick={() => press('F5')} disabled={s.busy}>
+                  <button className="btn btn-primary" type="button" onClick={() => press('F5')} disabled={s.busy}>
                     Save <kbd>F5</kbd>
                   </button>
                 ) : null}
@@ -187,8 +197,8 @@ export function AccountUpdate() {
                 {input({ name: 'active', label: 'Active Y/N', width: '110px' })}
                 {input({ name: 'group', label: 'Account Group' })}
                 <div style={{ gridColumn: 'span 2' }}>{date('Opened', 'open')}</div>
-                <div style={{ gridColumn: 'span 2' }}>{date('Expiry Date', 'exp')}</div>
-                <div style={{ gridColumn: 'span 2' }}>{date('Reissue Date', 'ris')}</div>
+                <div style={{ gridColumn: 'span 2' }}>{date('Expiry', 'exp')}</div>
+                <div style={{ gridColumn: 'span 2' }}>{date('Reissue', 'ris')}</div>
                 {input({ name: 'creditLimit', label: 'Credit Limit' })}
                 {input({ name: 'cashCreditLimit', label: 'Cash credit Limit' })}
                 {input({ name: 'currentBalance', label: 'Current Balance' })}
@@ -201,7 +211,7 @@ export function AccountUpdate() {
                 Customer Details
               </h2>
               <div style={grid}>
-                {input({ name: 'customerId', label: 'Customer ID', width: '160px' })}
+                {input({ name: 'customerId', label: 'Customer id', width: '160px' })}
                 {parts(
                   'SSN',
                   [
@@ -211,13 +221,18 @@ export function AccountUpdate() {
                   ],
                   '-',
                 )}
-                {date('Date of Birth', 'dob')}
+                {date('Date of birth', 'dob')}
                 {input({ name: 'fico', label: 'FICO Score', width: '110px' })}
                 {input({ name: 'firstName', label: 'First Name' })}
                 {input({ name: 'middleName', label: 'Middle Name' })}
                 {input({ name: 'lastName', label: 'Last Name' })}
-                {input({ name: 'addr1', label: 'Address Line 1' })}
-                {input({ name: 'addr2', label: 'Address Line 2' })}
+                <fieldset className="parts" style={{ gridColumn: 'span 2' }}>
+                  <legend>Address</legend>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {input({ name: 'addr1', label: 'line 1', labelPrefix: 'Address', labelHidden: true })}
+                    {input({ name: 'addr2', label: 'line 2', labelPrefix: 'Address', labelHidden: true })}
+                  </div>
+                </fieldset>
                 {input({ name: 'city', label: 'City' })}
                 {input({ name: 'state', label: 'State', width: '90px' })}
                 {input({ name: 'zip', label: 'Zip', width: '110px' })}

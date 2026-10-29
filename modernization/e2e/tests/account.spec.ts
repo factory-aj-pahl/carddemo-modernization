@@ -112,6 +112,10 @@ test.describe('COACTUPC account update', () => {
     await expect(page.getByTestId('info')).toHaveText('Update account details presented above.');
     await expect(page.getByLabel('SSN first 3')).toHaveValue('***');
     await expect(page.getByLabel('Account Number')).toHaveAttribute('readonly', '');
+    // Fields entered in parts line up with the single fields of the same row.
+    const top = async (label: string) => (await page.getByLabel(label, { exact: true }).boundingBox())?.y ?? NaN;
+    expect(Math.abs((await top('SSN first 3')) - (await top('Customer id')))).toBeLessThan(1);
+    expect(Math.abs((await top('Date of birth year')) - (await top('FICO Score')))).toBeLessThan(1);
     await expectNoSeriousA11yViolations(page);
 
     await page.keyboard.press('Enter');

@@ -1,9 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
-import { money } from '../format';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Fields {
   tranIdIn: string;
@@ -50,7 +49,7 @@ export function TransactionView() {
     e.preventDefault();
     press('ENTER');
   };
-  const invalid = s.state?.messageColor === 'RED' && s.state.focus === 'tranIdIn';
+  const invalid = fieldInError(s.state, 'tranIdIn');
 
   return (
     <ScreenFrame program="COTRN01C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>
@@ -80,7 +79,7 @@ export function TransactionView() {
             <Kv label="Category CD" value={f?.catCd} mono />
             <Kv label="Source" value={f?.source} span />
             <Kv label="Description" value={f?.description} span testId="description" />
-            <Kv label="Amount" value={f?.amount ? money(f.amount) : ''} mono span testId="amount" />
+            <Kv label="Amount" value={f?.amount} mono span testId="amount" />
             <Kv label="Orig Date" value={f?.origDate} mono />
             <Kv label="Proc Date" value={f?.procDate} mono />
             <Kv label="Merchant ID" value={f?.merchantId} mono />

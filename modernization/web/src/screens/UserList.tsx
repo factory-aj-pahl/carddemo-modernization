@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Row {
   sel: string;
@@ -45,8 +45,7 @@ export function UserList() {
     s.send('ENTER', { searchUserId: search, sel: codes });
   };
   const setCode = (i: number, v: string) => setSel((old) => old.map((c, j) => (j === i ? v.toUpperCase() : c)));
-  const red = s.state?.messageColor === 'RED';
-  const page = f?.pageNum?.replace(/^0+(?=\d)/, '') ?? '';
+  const page = f?.pageNum ?? '';
 
   return (
     <ScreenFrame program="COUSR00C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>
@@ -55,7 +54,7 @@ export function UserList() {
           <div className="page-head">
             <div>
               <h1>List Users</h1>
-              <p className="lede">Type U to update or D to delete a user, then press ENTER.</p>
+              <p className="lede">Security users, 10 per page in User ID order.</p>
             </div>
             <div className="page-no" data-testid="page">
               Page <strong>{page}</strong>
@@ -63,7 +62,7 @@ export function UserList() {
           </div>
           <div className="panel compact">
             <div className="search-bar">
-              <Field id="searchUserId" label="Search User ID" value={search} onChange={setSearch} maxLength={8} width="230px" placeholder="Optional" upper invalid={red && s.state?.focus === 'searchUserId'} />
+              <Field id="searchUserId" label="Search User ID" value={search} onChange={setSearch} maxLength={8} width="230px" placeholder="Optional" upper invalid={fieldInError(s.state, 'searchUserId')} />
               <button className="btn" type="submit" disabled={s.busy}>
                 Continue <kbd>ENTER</kbd>
               </button>
@@ -132,7 +131,7 @@ export function UserList() {
               </tbody>
             </table>
             <div className="list-foot">
-              <span className="hint">U = update, D = delete</span>
+              <span className="info-line">Type &apos;U&apos; to Update or &apos;D&apos; to Delete a User from the list</span>
               <span className="hint">F7 previous page · F8 next page</span>
             </div>
           </div>

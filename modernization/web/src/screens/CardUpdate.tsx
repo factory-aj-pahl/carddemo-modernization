@@ -68,14 +68,23 @@ export function CardUpdate() {
           <div className="row">
             <Field id="name" label="Name on card" value={v.name} onChange={set('name')} maxLength={50} width="420px" readOnly={detailsLocked} invalid={errors.includes('name')} />
             <Field id="status" label="Card Active Y/N" value={v.status} onChange={set('status')} maxLength={1} width="auto" inputClass="sel" readOnly={detailsLocked} invalid={errors.includes('status')} />
-            <Field id="expMonth" label="Expiry Month" value={v.expMonth} onChange={set('expMonth')} maxLength={2} inputMode="numeric" width="110px" placeholder="MM" readOnly={detailsLocked} invalid={errors.includes('expMonth')} />
-            <Field id="expYear" label="Expiry Year" value={v.expYear} onChange={set('expYear')} maxLength={4} inputMode="numeric" width="120px" placeholder="YYYY" readOnly={detailsLocked} invalid={errors.includes('expYear')} />
+            <fieldset className="parts">
+              <legend>Expiry Date</legend>
+              <div className="parts-row">
+                <Field id="expMonth" label="month" value={v.expMonth} onChange={set('expMonth')} maxLength={2} inputMode="numeric" width="80px" placeholder="MM" readOnly={detailsLocked} labelPrefix="Expiry Date" labelHidden invalid={errors.includes('expMonth')} />
+                <span aria-hidden="true" className="parts-sep">
+                  /
+                </span>
+                <Field id="expYear" label="year" value={v.expYear} onChange={set('expYear')} maxLength={4} inputMode="numeric" width="96px" placeholder="YYYY" readOnly={detailsLocked} labelPrefix="Expiry Date" labelHidden invalid={errors.includes('expYear')} />
+              </div>
+            </fieldset>
           </div>
           <p className="info-line" style={{ margin: '22px 0 0' }} data-testid="info">
             {f?.info ?? ''}
           </p>
           <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-            <button className="btn btn-primary" type="submit" disabled={s.busy}>
+            {/* In the confirm state the step the key bar offers is F5 Save, so Save is the primary button. */}
+            <button className={`btn${f?.confirmKeys ? '' : ' btn-primary'}`} type="submit" disabled={s.busy}>
               Process <kbd>ENTER</kbd>
             </button>
             {f?.confirmKeys ? (

@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Run {
   runId: string;
@@ -40,6 +40,14 @@ const TYPES = [
 
 const STATE_LABEL: Record<string, string> = { queued: 'Queued', running: 'Running', success: 'Completed', failed: 'Failed' };
 
+/** A run's ISO date (YYYY-MM-DD) in the MM/DD/YYYY form the request form uses. */
+function usDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso;
+}
+
+const nowrap = { whiteSpace: 'nowrap' } as const;
+
 /** CORPT00C: request a transaction report (transaction CR00) and follow its runs. */
 export function TransactionReports() {
   const s = useScreen<Fields>('CORPT00C');
@@ -59,7 +67,7 @@ export function TransactionReports() {
     e.preventDefault();
     press('ENTER');
   };
-  const invalid = (id: string) => s.state?.messageColor === 'RED' && s.state.focus === id;
+  const invalid = (id: string) => fieldInError(s.state, id);
   const refresh = () => {
     fetch('/api/reports', { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
       .then((r) => (r.ok ? (r.json() as Promise<Run[]>) : Promise.reject(new Error(String(r.status)))))
@@ -133,8 +141,17 @@ export function TransactionReports() {
             </button>
           </div>
           <div className="list-wrap" style={{ marginTop: 12 }}>
-            <table className="list" data-testid="runs">
+            <table className="list fixed" data-testid="runs">
               <caption className="sr-only">Recent transaction report runs</caption>
+              <colgroup>
+                <col style={{ width: 200 }} />
+                <col style={{ width: 90 }} />
+                <col style={{ width: 190 }} />
+                <col style={{ width: 100 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 120 }} />
+                <col style={{ width: 110 }} />
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col">Run ID</th>
@@ -156,10 +173,12 @@ export function TransactionReports() {
                 ) : (
                   runs.map((r) => (
                     <tr key={r.runId} data-testid="run">
-                      <td className="mono">{r.runId}</td>
+                      <td className="mono" style={{ fontSize: 12, overflowWrap: 'anywhere' }}>
+                        {r.runId}
+                      </td>
                       <td>{r.reportType}</td>
-                      <td className="mono">
-                        {r.startDate} to {r.endDate}
+                      <td className="mono" data-testid="run-range">
+                        <span style={nowrap}>{usDate(r.startDate)}</span> to <span style={nowrap}>{usDate(r.endDate)}</span>
                       </td>
                       <td className="mono">{r.userId}</td>
                       <td className="mono">{r.requestedAt}</td>

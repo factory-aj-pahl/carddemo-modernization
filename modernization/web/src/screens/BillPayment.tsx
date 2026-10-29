@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Receipt {
   tranId: string;
@@ -20,6 +20,7 @@ interface Fields {
 
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
 
+/** D-RECEIPT: the receipt panel has no BMS counterpart and shows amounts as currency (the prototype's format). */
 function money(text: string): string {
   const n = Number(text.trim());
   return Number.isFinite(n) ? usd.format(n) : text;
@@ -46,7 +47,7 @@ export function BillPayment() {
     e.preventDefault();
     press('ENTER');
   };
-  const invalid = (id: string) => s.state?.messageColor === 'RED' && s.state.focus === id;
+  const invalid = (id: string) => fieldInError(s.state, id);
   const balance = f?.currentBalance ?? '';
   const receipt = f?.receipt;
 
@@ -68,8 +69,8 @@ export function BillPayment() {
             Your current balance is
           </p>
           <div className="balance" aria-labelledby="bal-l">
-            <span className={`amt${balance ? '' : ' none'}`} data-testid="balance" data-raw={balance}>
-              {balance ? money(balance) : '—'}
+            <span className={`amt${balance ? '' : ' none'}`} data-testid="balance" data-raw={balance} style={{ whiteSpace: 'pre' }}>
+              {balance || '—'}
             </span>
             <span className="hint">{balance ? 'Shown when you pressed ENTER' : 'Enter an account and press ENTER to see the balance'}</span>
           </div>

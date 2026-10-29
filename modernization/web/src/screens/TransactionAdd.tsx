@@ -3,7 +3,7 @@ import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { keepTyped } from '../format';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Fields {
   accountId: string;
@@ -23,6 +23,9 @@ interface Fields {
 }
 
 type Name = keyof Fields;
+
+// F5 (copy last transaction) with no transaction in the user's scope: the lookup ignores the typed account.
+const NOT_ABOUT_FIELD = [/^Transaction ID NOT found/];
 
 const EMPTY: Fields = {
   accountId: '',
@@ -48,6 +51,8 @@ interface Spec {
   span?: number;
   numeric?: boolean;
   placeholder?: string;
+  /** BMS format literal shown next to the field. */
+  hint?: string;
 }
 
 const DATA: Spec[] = [
@@ -55,9 +60,9 @@ const DATA: Spec[] = [
   { name: 'catCd', label: 'Category CD', max: 4, numeric: true, placeholder: '4 digits' },
   { name: 'source', label: 'Source', max: 10, span: 2 },
   { name: 'description', label: 'Description', max: 60, span: 4 },
-  { name: 'amount', label: 'Amount', max: 12, placeholder: '-99999999.99', span: 2 },
-  { name: 'origDate', label: 'Orig Date', max: 10, placeholder: 'YYYY-MM-DD' },
-  { name: 'procDate', label: 'Proc Date', max: 10, placeholder: 'YYYY-MM-DD' },
+  { name: 'amount', label: 'Amount', max: 12, hint: '(-99999999.99)', span: 2 },
+  { name: 'origDate', label: 'Orig Date', max: 10, hint: '(YYYY-MM-DD)' },
+  { name: 'procDate', label: 'Proc Date', max: 10, hint: '(YYYY-MM-DD)' },
   { name: 'merchantId', label: 'Merchant ID', max: 9, numeric: true, placeholder: '9 digits' },
   { name: 'merchantName', label: 'Merchant Name', max: 30, span: 3 },
   { name: 'merchantCity', label: 'Merchant City', max: 25, span: 2 },
@@ -84,7 +89,7 @@ export function TransactionAdd() {
     e.preventDefault();
     press('ENTER');
   };
-  const invalid = (id: string) => s.state?.messageColor === 'RED' && s.state.focus === id;
+  const invalid = (id: string) => fieldInError(s.state, id, NOT_ABOUT_FIELD);
 
   return (
     <ScreenFrame program="COTRN02C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>
@@ -115,6 +120,7 @@ export function TransactionAdd() {
                   maxLength={d.max}
                   inputMode={d.numeric ? 'numeric' : undefined}
                   placeholder={d.placeholder}
+                  hint={d.hint}
                   invalid={invalid(d.name)}
                 />
               </div>
@@ -122,7 +128,7 @@ export function TransactionAdd() {
           </div>
           <hr className="divider" />
           <div className="row" style={{ alignItems: 'flex-end' }}>
-            <Field id="confirm" label="You are about to add this transaction. Please confirm:" value={form.confirm} onChange={set('confirm')} maxLength={1} width="auto" hint="(Y/N)" upper inputClass="sel" invalid={invalid('confirm')} />
+            <Field id="confirm" label="You are about to add this transaction. Please confirm :" value={form.confirm} onChange={set('confirm')} maxLength={1} width="auto" hint="(Y/N)" upper inputClass="sel" invalid={invalid('confirm')} />
           </div>
           <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
             <button className="btn btn-primary" type="submit" disabled={s.busy}>
