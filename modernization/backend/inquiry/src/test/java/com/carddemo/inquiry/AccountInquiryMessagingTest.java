@@ -237,7 +237,26 @@ class AccountInquiryMessagingTest {
         assertThat(restBody(admin(), "00000000001", 200)).isEqualTo("{\"accountId\":\"00000000001\",\"activeStatus\":\"Y\",\"currentBalance\":194.00,"
             + "\"creditLimit\":2020.00,\"cashCreditLimit\":1020.00,\"openDate\":\"2014-11-20\",\"expirationDate\":\"2025-05-20\","
             + "\"reissueDate\":\"2025-05-20\",\"currentCycleCredit\":0.00,\"currentCycleDebit\":0.00,\"groupId\":\"A000000000\"}");
-        assertThat(rest(admin(), "1", 200).at("/accountId").asText()).isEqualTo("00000000001");
+    }
+
+    @Test
+    @Covers({"Q-COACCT01-01", "Q-COACCT01-04", "Q-COACCT01-06", "C-KEYLEN"})
+    void rest_takes_only_the_11_digit_account_id_and_answers_anything_else_as_the_queue_does() throws Exception {
+        String replyTo = tempQueue();
+        send(ascii("INQA7"), replyTo);
+        String queueShort = body(reply(replyTo)).stripTrailing();
+        assertThat(queueShort).isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 7          FUNCTION : INQA");
+        ScreenClient admin = admin();
+        assertThat(rest(admin, "7", 400).at("/message").asText()).isEqualTo(queueShort);
+        assertThat(rest(admin, "0000000007", 400).at("/message").asText())
+            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 0000000007 FUNCTION : INQA");
+        assertThat(rest(admin, "000000000007", 400).at("/message").asText())
+            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 000000000007FUNCTION : INQA");
+        assertThat(rest(admin, "ABCDEFGHIJK", 400).at("/message").asText())
+            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : ABCDEFGHIJKFUNCTION : INQA");
+        assertThat(rest(admin, "0000000000A", 400).at("/message").asText())
+            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 0000000000AFUNCTION : INQA");
+        assertThat(rest(admin, "00000000007", 200).at("/accountId").asText()).isEqualTo("00000000007");
     }
 
     @Test
@@ -250,9 +269,9 @@ class AccountInquiryMessagingTest {
             String text = body(reply(replyTo));
             assertThat(text.substring(52, 64)).isEqualTo("00000000567P");
             assertThat(text.substring(219, 231)).isEqualTo("12345678901B");
-            JsonNode r = rest(admin(), "3", 200);
+            JsonNode r = rest(admin(), "00000000003", 200);
             assertThat(r.at("/currentBalance").decimalValue()).isEqualByComparingTo("-56.77");
-            assertThat(restBody(admin(), "3", 200)).contains("\"currentBalance\":-56.77,").contains("\"currentCycleDebit\":1234567890.12,");
+            assertThat(restBody(admin(), "00000000003", 200)).contains("\"currentBalance\":-56.77,").contains("\"currentCycleDebit\":1234567890.12,");
         } finally {
             loaded = false;
         }
@@ -280,7 +299,7 @@ class AccountInquiryMessagingTest {
         assertReplyText(reply(replyTo), "INVALID REQUEST PARAMETERS ACCT ID : 00000000000FUNCTION : INQA");
         assertThat(rest(admin(), "00000000000", 400).at("/message").asText())
             .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 00000000000FUNCTION : INQA");
-        assertThat(rest(admin(), "ABC", 400).at("/message").asText()).isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : ABCFUNCTION : INQA");
+        assertThat(rest(admin(), "ABC", 400).at("/message").asText()).isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : ABC        FUNCTION : INQA");
         assertThat(rest(admin(), "123456789012", 400).at("/message").asText())
             .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 123456789012FUNCTION : INQA");
     }
@@ -335,7 +354,7 @@ class AccountInquiryMessagingTest {
         assertThat(ok.getMessageProperties().getCorrelationId()).isEqualTo(next);
         assertReplyText(ok, ACCT1);
         assertThat(rabbit.receive(queues.deadLetter(), 1_000)).as("the failed request was acknowledged, not dead-lettered").isNull();
-        assertThat(rest(admin(), "77", 503).at("/message").asText()).isEqualTo("ERROR WHILE READING ACCTF");
+        assertThat(rest(admin(), "00000000077", 503).at("/message").asText()).isEqualTo("ERROR WHILE READING ACCTF");
 
         // Q-COACCT01-16: a second error builds a new record; nothing of the first remains.
         String id2 = send(ascii("INQA00000000077"), null);
@@ -472,7 +491,7 @@ class AccountInquiryMessagingTest {
         long other = jdbc.queryForObject("SELECT MIN(account_id) FROM user_account WHERE user_id <> ?", Long.class, owner);
         ScreenClient user = new ScreenClient(mvc);
         user.signOn(owner);
-        assertThat(rest(user, "1", 200).at("/currentBalance").decimalValue()).isEqualByComparingTo("194.00");
+        assertThat(rest(user, "00000000001", 200).at("/currentBalance").decimalValue()).isEqualByComparingTo("194.00");
         String otherKey = String.format("%011d", other);
         assertThat(rest(user, otherKey, 404).at("/message").asText()).isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : " + otherKey);
         assertThat(rest(admin(), otherKey, 200).at("/accountId").asText()).isEqualTo(otherKey);

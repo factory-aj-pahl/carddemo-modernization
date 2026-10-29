@@ -161,7 +161,8 @@ class AuthorizationMessagingTest {
             "processingCode", "transactionAmt", "merchantCategoryCode", "acqrCountryCode", "posEntryMode", "merchantId",
             "merchantName", "merchantCity", "merchantState", "merchantZip", "transactionId"};
         Map<String, Object> body = new LinkedHashMap<>();
-        for (int i = 0; i < names.length; i++) {
+        // A request with fewer fields leaves the remaining JSON properties out.
+        for (int i = 0; i < names.length && i < f.length; i++) {
             body.put(names[i], f[i]);
         }
         MockHttpServletResponse res = mvc.perform(post("/api/authorizations").session(adminClient.session()).with(csrf())
@@ -539,30 +540,115 @@ class AuthorizationMessagingTest {
     }
 
     @Test
+    @Covers({"BR-COPAUA0C-03", "Q-COPAUA0C-12"})
+    void requests_with_more_or_fewer_than_18_fields_are_decided_and_answered_like_the_unstring() throws Exception {
+        String seventeen = AuthFixtures.EXAMPLE.replace(",TXN000000000001", "");
+        String nineteen = AuthFixtures.EXAMPLE + ",EXTRA";
+        String four = "231026,143015," + AuthFixtures.CARD_7 + ",0100";
+        assertThat(seventeen.split(",", -1)).hasSize(17);
+        assertThat(nineteen.split(",", -1)).hasSize(19);
+        for (Transport t : Transport.values()) {
+            reset();
+            int details = count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = 7");
+
+            // The missing 18th field (transaction id) stays spaces; the request is approved as usual.
+            assertThat(authorize(t, seventeen)).as(t + " 17 fields")
+                .isEqualTo("4859452612877065,               ,143015,00,0000,        100.00,");
+            assertThat(newestDetail(7)).containsEntry("transaction_id", "").containsEntry("merchant_zip", "19801")
+                .containsEntry("auth_resp_code", "00");
+
+            // Text after the 18th field is ignored.
+            assertThat(authorize(t, nineteen)).as(t + " 19 fields")
+                .isEqualTo("4859452612877065,TXN000000000001,143015,00,0000,        100.00,");
+            assertThat(newestDetail(7)).containsEntry("transaction_id", "TXN000000000001").containsEntry("merchant_zip", "19801");
+            assertThat(count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = 7")).isEqualTo(details + 2);
+            assertThat(summary(7).get("approved_count")).isEqualTo(52);
+
+            // No amount: the blank amount is not a positive number, so Q-COPAUA0C-12 declines it without a record.
+            assertThat(authorize(t, four)).as(t + " 4 fields")
+                .isEqualTo("4859452612877065,               ,143015,05,9000,          0.00,");
+            assertThat(count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = 7")).isEqualTo(details + 2);
+            assertThat(summary(7).get("declined_count")).isEqualTo(0);
+            assertThat(errorLog()).as(t + " no error records").isEmpty();
+        }
+        assertThat(rabbit.receive(queues.deadLetter(), 1_000)).as("nothing dead-lettered").isNull();
+    }
+
+    /** One raw request over the queue; the reply decoded one character per byte. */
+    String authorizeBytes(byte[] request) {
+        String replyTo = tempQueue();
+        String id = "B-" + UUID.randomUUID();
+        publish(request, id, replyTo);
+        Message m = receive(replyTo);
+        assertThat(m.getMessageProperties().getCorrelationId()).isEqualTo(id);
+        assertThat(rabbit.receive(replyTo, 300)).as("exactly one reply").isNull();
+        return new String(m.getBody(), StandardCharsets.ISO_8859_1);
+    }
+
+    static byte[] latin1(String s) {
+        return s.getBytes(StandardCharsets.ISO_8859_1);
+    }
+
+    @Test
+    @Covers({"BR-COPAUA0C-03", "Q-COPAUA0C-12", "ERR-COPAUA0C-04"})
+    void control_characters_and_bytes_above_ascii_are_taken_as_received_and_answered() {
+        reset();
+        String approved = "4859452612877065,TXN000000000001,143015,00,0000,        100.00,";
+
+        // A trailing CRLF stays in the last field; with a short transaction id it is echoed in the reply.
+        String shortId = AuthFixtures.EXAMPLE.replace("TXN000000000001", "TXN1") + "\r\n";
+        assertThat(authorizeBytes(latin1(shortId))).isEqualTo("4859452612877065,TXN1\r\n         ,143015,00,0000,        100.00,");
+        assertThat(newestDetail(7)).containsEntry("transaction_id", "TXN1\r\n");
+        // With the full 15-character id the CRLF falls past the field length and is cut.
+        assertThat(authorizeBytes(latin1(AuthFixtures.EXAMPLE + "\r\n"))).isEqualTo(approved);
+        assertThat(newestDetail(7)).containsEntry("transaction_id", "TXN000000000001");
+
+        // A tab inside a field is part of the field.
+        assertThat(authorizeBytes(latin1(AuthFixtures.EXAMPLE.replace("Amazon.com", "Amazon\tcom")))).isEqualTo(approved);
+        assertThat(newestDetail(7)).containsEntry("merchant_name", "Amazon\tcom");
+
+        // Byte 0xE9 is kept and echoed byte for byte.
+        String e9 = AuthFixtures.EXAMPLE.replace("TXN000000000001", "TXN\u00e9EXPLORE0001");
+        byte[] e9Bytes = latin1(e9);
+        assertThat(e9Bytes).contains((byte) 0xE9);
+        String reply = authorizeBytes(e9Bytes);
+        assertThat(reply).isEqualTo("4859452612877065,TXN\u00e9EXPLORE0001,143015,00,0000,        100.00,");
+        assertThat(latin1(reply)).contains((byte) 0xE9);
+        assertThat(newestDetail(7)).containsEntry("transaction_id", "TXN\u00e9EXPLORE0001");
+        assertThat(summary(7).get("approved_count")).isEqualTo(54);
+
+        // A non-numeric amount with such a byte is declined 05/9000; an unknown card number with one gets the
+        // normal not-found decline and its A001 warning.
+        int details = count("SELECT COUNT(*) FROM pending_auth_detail");
+        assertThat(authorizeBytes(latin1(AuthFixtures.request(AuthFixtures.CARD_7, "10\u00e9"))))
+            .isEqualTo("4859452612877065,TXN000000000001,143015,05,9000,          0.00,");
+        assertThat(authorizeBytes(latin1(AuthFixtures.request("485945261287706\u00e9", "10.00"))))
+            .isEqualTo("485945261287706\u00e9,TXN000000000001,143015,05,3100,          0.00,");
+        assertThat(count("SELECT COUNT(*) FROM pending_auth_detail")).isEqualTo(details);
+
+        assertThat(errorLog()).singleElement().satisfies(e -> assertThat(e).containsEntry("location", "A001")
+            .containsEntry("message", "CARD NOT FOUND IN XREF"));
+        assertThat(rabbit.receive(queues.deadLetter(), 1_000)).as("nothing dead-lettered").isNull();
+    }
+
+    @Test
     @Covers({"ERR-COPAUA0C-02", "Q-COPAUA0C-16"})
-    void oversized_and_unparsable_requests_are_dead_lettered_and_the_next_request_is_answered() {
+    void an_oversized_request_is_logged_and_dead_lettered_and_the_next_request_is_answered() {
         reset();
         String replyTo = tempQueue();
-        List<String> ids = new ArrayList<>();
         byte[] oversized = (AuthFixtures.EXAMPLE + " ".repeat(400)).getBytes(StandardCharsets.US_ASCII);
-        byte[][] bad = {oversized, "231026,143015,4859452612877065".getBytes(StandardCharsets.US_ASCII),
-            {(byte) 0xC1, (byte) 0xFF, 0x00, 0x01}};
-        for (byte[] b : bad) {
-            String id = "P-" + UUID.randomUUID();
-            ids.add(id);
-            publish(b, id, replyTo);
-        }
+        assertThat(oversized.length).isGreaterThan(500);
+        String bad = "P-" + UUID.randomUUID();
+        publish(oversized, bad, replyTo);
         String good = "G-" + UUID.randomUUID();
         publish(AuthFixtures.EXAMPLE.getBytes(StandardCharsets.US_ASCII), good, replyTo);
         Message reply = receive(replyTo);
         assertThat(reply.getMessageProperties().getCorrelationId()).isEqualTo(good);
-        List<String> dead = new ArrayList<>();
-        for (int i = 0; i < bad.length; i++) {
-            dead.add(receive(queues.deadLetter()).getMessageProperties().getMessageId());
-        }
-        assertThat(dead).containsExactlyInAnyOrderElementsOf(ids);
-        assertThat(errorLog()).hasSize(3).allSatisfy(e -> assertThat(e).containsEntry("location", "M003")
-            .containsEntry("subsystem", "M").containsEntry("err_level", "C").containsEntry("message", "FAILED TO READ REQUEST MQ"));
+        assertThat(rabbit.receive(replyTo, 300)).as("no reply to the oversized request").isNull();
+        assertThat(receive(queues.deadLetter()).getMessageProperties().getMessageId()).isEqualTo(bad);
+        assertThat(errorLog()).singleElement().satisfies(e -> assertThat(e).containsEntry("location", "M003")
+            .containsEntry("subsystem", "M").containsEntry("err_level", "C").containsEntry("code2", "2080")
+            .containsEntry("message", "FAILED TO READ REQUEST MQ"));
     }
 
     @Test

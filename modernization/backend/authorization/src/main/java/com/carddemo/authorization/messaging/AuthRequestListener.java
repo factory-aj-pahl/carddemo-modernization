@@ -8,9 +8,7 @@ import com.carddemo.authorization.internal.AuthRequest;
 import com.carddemo.authorization.internal.AuthorizationEngine;
 import com.carddemo.authorization.internal.AuthorizationEngine.AuthorizationFailure;
 import com.carddemo.common.mask.Masking;
-import java.nio.ByteBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CodingErrorAction;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.springframework.amqp.AmqpException;
@@ -24,14 +22,18 @@ import org.springframework.stereotype.Component;
 
 /**
  * COPAUA0C as a long-lived RabbitMQ consumer (Q-COPAUA0C-15). Per message: parse, decide and commit, then publish
- * the reply, then acknowledge (Q-COPAUA0C-06). Messages over the 500-byte request buffer or that are not 18
- * comma-separated text fields are logged (M003) and dead-lettered; so are requests whose transaction fails.
+ * the reply, then acknowledge (Q-COPAUA0C-06). Any number of comma-separated fields is accepted, as the COBOL
+ * UNSTRING does (BR-COPAUA0C-03), and every byte is taken as received. Only a message over the 500-byte request
+ * buffer cannot be read (the MQGET failure, M003); it is logged and dead-lettered, as is a request whose transaction
+ * fails.
  */
 @Component
 class AuthRequestListener {
 
     /** W01-GET-BUFFER is 500 bytes. */
     static final int MAX_REQUEST_BYTES = 500;
+    /** One character per byte, so any byte sequence decodes and the reply echoes the request's bytes. */
+    static final Charset BYTES = StandardCharsets.ISO_8859_1;
 
     private final RabbitTemplate rabbit;
     private final AuthorizationEngine engine;
@@ -54,18 +56,7 @@ class AuthRequestListener {
             errors.log("M003", Level.CRITICAL, Subsystem.MQ, "2", "2080", "FAILED TO READ REQUEST MQ", "");
             throw new AmqpRejectAndDontRequeueException("request of " + body.length + " bytes exceeds " + MAX_REQUEST_BYTES);
         }
-        AuthRequest rq;
-        try {
-            String text = StandardCharsets.US_ASCII.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(body)).toString();
-            rq = AuthRequest.parse(text);
-        } catch (CharacterCodingException e) {
-            errors.log("M003", Level.CRITICAL, Subsystem.MQ, "PARSE", "NOT TEXT", "FAILED TO READ REQUEST MQ", "");
-            throw new AmqpRejectAndDontRequeueException("request is not ASCII text");
-        } catch (AuthRequest.Unparsable e) {
-            errors.log("M003", Level.CRITICAL, Subsystem.MQ, "PARSE", e.fields() + " FIELDS", "FAILED TO READ REQUEST MQ", "");
-            throw new AmqpRejectAndDontRequeueException(e.getMessage());
-        }
+        AuthRequest rq = AuthRequest.parse(new String(body, BYTES));
         AuthReply reply;
         try {
             reply = engine.authorize(rq);
@@ -77,7 +68,7 @@ class AuthRequestListener {
             if (!ReplyQueueCheck.exists(rabbit, replyTo)) {
                 throw new AmqpException("reply queue " + replyTo + " does not exist");
             }
-            rabbit.send("", replyTo, new Message(reply.text().getBytes(StandardCharsets.US_ASCII), replyProperties(in)));
+            rabbit.send("", replyTo, new Message(reply.text().getBytes(BYTES), replyProperties(in)));
         } catch (AmqpException e) {
             // ERR-COPAUA0C-08. The authorization is already committed, so the request is acknowledged, not redelivered.
             errors.log("M004", Level.CRITICAL, Subsystem.MQ, "2", "", "FAILED TO PUT ON REPLY MQ", Masking.card(rq.cardNum()));
@@ -94,7 +85,7 @@ class AuthRequestListener {
     static MessageProperties replyProperties(MessageProperties request) {
         MessageProperties out = new MessageProperties();
         out.setContentType(MessageProperties.CONTENT_TYPE_TEXT_PLAIN);
-        out.setContentEncoding(StandardCharsets.US_ASCII.name());
+        out.setContentEncoding(BYTES.name());
         out.setMessageId(UUID.randomUUID().toString());
         out.setType("reply");
         out.setDeliveryMode(MessageDeliveryMode.NON_PERSISTENT);
