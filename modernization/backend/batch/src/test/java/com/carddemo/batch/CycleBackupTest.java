@@ -106,6 +106,21 @@ class CycleBackupTest extends CycleJobTestSupport {
         return count("SELECT COUNT(*) FROM card_transaction WHERE tran_id LIKE '9%'");
     }
 
+    /** What a POSTTRAN of the day leaves behind, without run ids and timestamps that differ between runs. */
+    Map<String, Object> postingOutcome(String[] posttran) throws IOException {
+        Path rejects = Path.of(posttran[3].substring("rejectsFile=".length()));
+        return Map.of(
+            "accounts", jdbc.queryForList("SELECT account_id, current_balance, curr_cycle_credit, curr_cycle_debit FROM account"
+                + " ORDER BY account_id"),
+            "categories", jdbc.queryForList("SELECT account_id, type_cd, cat_cd, balance FROM tran_cat_balance"
+                + " ORDER BY account_id, type_cd, cat_cd"),
+            "transactions", jdbc.queryForList("SELECT tran_id, type_cd, cat_cd, amount, card_num FROM card_transaction"
+                + " WHERE tran_id LIKE '9%' ORDER BY tran_id"),
+            "rejects", jdbc.queryForList("SELECT business_date, record_text, reason_code, reason_desc FROM posting_reject"
+                + " ORDER BY reject_id"),
+            "rejectsFile", lines(rejects));
+    }
+
     @Test
     @Covers({"Q-ACCTFILE-02", "B-CYCLE", "B-UOW"})
     void backup_after_an_abended_posting_is_refused_so_restore_by_date_returns_to_the_state_before_posting() throws IOException {
@@ -127,10 +142,20 @@ class CycleBackupTest extends CycleJobTestSupport {
         // Restart with the corrected file continues from the last commit (B-UOW) and completes.
         assertThat(cli.execute(posttran)).isEqualTo(4);
         assertThat(postedOfDay()).isEqualTo(262);
+        assertThat(count("SELECT COUNT(*) FROM posting_reject")).isEqualTo(38);
+        Map<String, Object> restarted = postingOutcome(posttran);
 
         assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
         assertThat(state()).isEqualTo(before);
         assertThat(postedOfDay()).isZero();
+
+        // The restart neither re-applied the committed records nor lost any: a clean run from the same state matches it.
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        Files.delete(Path.of(posttran[3].substring("rejectsFile=".length())));
+        assertThat(cli.execute(posttran)).isEqualTo(4);
+        assertThat(postingOutcome(posttran)).isEqualTo(restarted);
+        assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+        assertThat(state()).isEqualTo(before);
     }
 
     @Test

@@ -550,6 +550,103 @@ class TranTypeListScreenTest {
         }
     }
 
+    private static final String PROMPT_DELETE = "Delete HIGHLIGHTED row ? Press F10 to confirm";
+    private static final String DELETED = "HIGHLIGHTED row deleted.Hit Enter to continue";
+
+    /** Type 06 without categories, so that a confirmed delete of it succeeds; the delete prompt shown for row 6. */
+    private JsonNode deletePromptForRow6() {
+        deleteType("06");
+        jdbc.update("INSERT INTO transaction_type (type_cd, description) VALUES ('06', 'REVERAL')");
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 6, "D"));
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo(PROMPT_DELETE);
+        return r;
+    }
+
+    @Test
+    @Covers({"Q-COTRTLIC-23", "VR-COTRTLIC-04"})
+    void f10_with_a_second_action_selected_disarms_so_the_next_f10_prompts_again_before_deleting() {
+        JsonNode r = deletePromptForRow6();
+        r = client.post(P, "PF10", select(listInput(r), 7, "D"));
+        assertThat(r.at("/message").asText()).isEqualTo("Please select only 1 action");
+        assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+        assertThat(row(r, 6).get("selectInvalid").asBoolean()).isTrue();
+        assertThat(row(r, 7).get("selectInvalid").asBoolean()).isTrue();
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        assertThat(description(jdbc, "07")).isEqualTo("ADJUSTMENT");
+        // No prompt was shown on that turn, so this F10 with only the original D is ENTER: prompted, not deleted.
+        r = client.post(P, "PF10", select(listInput(r), 7, ""));
+        assertThat(r.has("message")).isFalse();
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo(PROMPT_DELETE);
+        assertThat(row(r, 6).get("highlighted").asBoolean()).isTrue();
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        r = key("PF10", r);
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo(DELETED);
+        assertThat(description(jdbc, "06")).isNull();
+        assertThat(description(jdbc, "07")).isEqualTo("ADJUSTMENT");
+    }
+
+    @Test
+    @Covers({"Q-COTRTLIC-23", "VR-COTRTLIC-03", "VR-COTRTLIC-08"})
+    void f10_with_an_invalid_action_code_disarms_so_the_next_f10_prompts_again_before_deleting() {
+        JsonNode r = deletePromptForRow6();
+        // VR-COTRTLIC-08: an invalid code on another row is a second action, so VR-04 replaces the VR-03 message.
+        r = client.post(P, "PF10", select(listInput(r), 4, "X"));
+        assertThat(r.at("/message").asText()).isEqualTo("Please select only 1 action");
+        assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+        assertThat(row(r, 4).get("selectInvalid").asBoolean()).isTrue();
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        assertThat(description(jdbc, "04")).isEqualTo("AUTHORIZATION");
+        r = client.post(P, "PF10", select(listInput(r), 4, ""));
+        assertThat(r.has("message")).isFalse();
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo(PROMPT_DELETE);
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        // The prompted row's code changed to an invalid one: VR-03, nothing deleted, and the D typed again is prompted.
+        r = client.post(P, "PF10", select(listInput(r), 6, "X"));
+        assertThat(r.at("/message").asText()).isEqualTo("Action code selected is invalid");
+        assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+        assertThat(row(r, 6).get("selectInvalid").asBoolean()).isTrue();
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        r = client.post(P, "PF10", select(listInput(r), 6, "D"));
+        assertThat(r.has("message")).isFalse();
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo(PROMPT_DELETE);
+        assertThat(row(r, 6).get("highlighted").asBoolean()).isTrue();
+        assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        r = key("PF10", r);
+        assertThat(r.at("/fields/info").asText().strip()).isEqualTo(DELETED);
+        assertThat(description(jdbc, "06")).isNull();
+    }
+
+    @Test
+    @Covers({"Q-COTRTLIC-23", "VR-COTRTLIC-01", "VR-COTRTLIC-02"})
+    void f10_with_a_type_filter_in_error_after_a_delete_prompt_deletes_nothing_and_leaves_nothing_pending() {
+        String[][] failures = {
+            {"AB", "TYPE CODE FILTER,IF SUPPLIED MUST BE A 2 DIGIT NUMBER"},
+            {"99", "No Records found for these filter conditions"},
+        };
+        for (String[] failure : failures) {
+            JsonNode r = deletePromptForRow6();
+            Map<String, Object> in = listInput(r);
+            in.put("typeFilter", failure[0]);
+            r = client.post(P, "PF10", in);
+            assertThat(r.at("/message").asText()).isEqualTo(failure[1]);
+            assertThat(r.at("/fields/typeFilterInvalid").asBoolean()).isTrue();
+            assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+            // The filter typed back is a filter change: the selections are cleared and nothing is pending.
+            in = listInput(r);
+            in.put("typeFilter", "");
+            r = client.post(P, "PF10", in);
+            assertThat(r.has("message")).isFalse();
+            assertThat(types(r)).isEqualTo(SEED);
+            assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+            assertNothingPending(r);
+            assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+            r = key("PF10", r);
+            assertThat(r.at("/fields/info").asText()).isEqualTo(INFO_ACTIONS);
+            assertNothingPending(r);
+            assertThat(description(jdbc, "06")).isEqualTo("REVERAL");
+        }
+    }
+
     @Test
     @Covers({"TS-COTRTLIC-26", "BR-COTRTLIC-08", "Q-COTRTLIC-24"})
     void pf7_with_a_filter_change_shows_page_one_of_the_new_search() {
