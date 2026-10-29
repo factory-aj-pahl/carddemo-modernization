@@ -22,8 +22,10 @@ a second run in a month). Normally that is the first business day of the month; 
 INTCALC did not complete, the next business date run in the month charges the interest. On every other date
 INTCALC is skipped, so no run hits INTCALC's exit 8.
 
-The backup (Q-TRANBKP-01) must succeed before posting; RESTORE businessDate=<date> rolls the cycle back. Interest rows
-go straight into the transaction table, so there is no COMBTRAN step.
+The backup (Q-TRANBKP-01) must succeed before posting. BACKUP is refused (exit 8, the run fails with nothing changed)
+when POSTTRAN has already completed for the date, so a repeated trigger takes no backup of the posted state; RESTORE
+businessDate=<date> restores the latest backup for the date, which rolls the cycle back. Interest rows go straight
+into the transaction table, so there is no COMBTRAN step.
 
 Inputs:  $CARDDEMO_INBOX/<business date>/dailytran.txt
 Outputs: $CARDDEMO_OUTBOX/<business date>/dalyrejs.txt, STATEMNT.txt (text statements),
