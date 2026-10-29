@@ -213,6 +213,8 @@ Inputs are the UNLDPADB outputs of the sample database (21 roots, 202 child reco
 - **TS-PAUDBLOD-01** (BR-01 to BR-05): Given an empty DBPAUTP0, when LOADPADB runs, then 21 'ROOT
   INSERT SUCCESS    ' lines, 202 'GU CALL TO ROOT SEG SUCCESS' and 202 'CHILD SEGMENT INSERTED
   SUCCESS' lines are displayed, account 7 has 50 details in their original key order, and RC is 0.
+  (INFILE2 as produced by PAUDBUNL under GnuCOBOL, where every child carries its parent key; see
+  Q-PAUDBUNL-12.)
 - **TS-PAUDBLOD-02** (BR-03, BR-07, Q-05): Given the database already holds the same data, when LOADPADB
   runs again, then 21 'ROOT SEGMENT ALREADY IN DB' and 202 'CHILD SEGMENT ALREADY IN DB' lines are
   displayed, nothing changes, and RC is 0.

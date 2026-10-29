@@ -9,7 +9,7 @@
 | BMS map | none |
 | Copybooks | IMSFUNCS (DL/I function codes), CIPAUSMY (PAUTSUM0 layout), CIPAUDTY (PAUTDTL1 layout), PAUTBPCB (DB PCB mask), PASFLPCB (GSAM PCB mask for summaries), PADFLPCB (GSAM PCB mask for details) |
 | Calls / XCTL targets | CBLTDLI: GN (root), GNP (child) on the DB PCB; ISRT on each GSAM PCB |
-| Data stores | IMS DBPAUTP0 via PSB DLIGSAMP, DB PCB PROCOPT=GOTP (read only). GSAM PASFLDBD (DD PASFILOP) Write, 100-byte fixed records. GSAM PADFLDBD (DD PADFILOP) Write, 200-byte fixed records. |
+| Data stores | IMS DBPAUTP0 via PSB DLIGSAMP, DB PCB PROCOPT=GOTP (read only; see PSB note). GSAM PASFLDBD (DD PASFILOP) Write, 100-byte fixed records. GSAM PADFLDBD (DD PADFILOP) Write, 200-byte fixed records. |
 
 ## Purpose
 DBUNLDGS is a variant of PAUDBUNL that writes the unload through IMS GSAM databases instead of COBOL
@@ -26,7 +26,9 @@ the record order. The database itself is not changed.
   - Both datasets must already exist; no job in the repository creates them.
 - PSB DLIGSAMP (`app/app-authorization-ims-db2-mq/ims/DLIGSAMP.PSB:18-23`), `CMPAT=NO` (no I/O PCB in
   a DLI region), three PCBs in this order:
-  1. DB PCB PAUTBPCB on DBPAUTP0, PROCOPT=GOTP (read only without locking), KEYLEN=14, segments
+  1. DB PCB PAUTBPCB on DBPAUTP0, PROCOPT=GOTP (get only, read without locking, T = on an invalid pointer the call is
+     retried and then returns status GG instead of abending, which falls under ERR-DBUNLDGS-01/-02; P = path
+     calls allowed), KEYLEN=14, segments
      PAUTSUM0 and PAUTDTL1.
   2. GSAM PCB on PASFLDBD, PROCOPT=LS (load, that is sequential output).
   3. GSAM PCB on PADFLDBD, PROCOPT=LS.

@@ -125,7 +125,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COUSR03C-03 | Delete errors say "Unable to Update User..."; unknown ID on PF5 ends with that text | cosmetic | PRESERVE | Delete failures still show `Unable to Update User...` verbatim. An unknown ID on PF5 is now handled as a fetch (Q-COUSR03C-01) and shows `User ID NOT found...`. A user deleted by someone else between fetch and PF5 shows `User ID NOT found...` (ERR-COUSR03C-04). | n/a |
 | Q-COUSR03C-04 | PF12 returns to the admin menu but is not in the key legend | cosmetic | PRESERVE | F12 goes to the Admin Menu, F3 goes back to the caller, and the legend is unchanged (F12 not listed). | n/a |
 | Q-COUSR03C-05 | Several SENDs per turn | platform | PLATFORM | C-RENDER. | n/a |
-| Q-COUSR03C-06 | Errors after a failed read put the cursor on protected First Name | platform | PLATFORM | After a read or delete error, focus goes to User ID, the only editable field. | n/a |
+| Q-COUSR03C-06 | Errors after a failed read put the cursor on protected First Name | platform | PLATFORM | After a read or delete error, and after an invalid key, focus goes to User ID, the only editable field. | n/a |
 | Q-COUSR03C-07 | No user-type check of the caller; no audit trail of deletions | security | FIX (D-FIX-SEC, D-SEC-EXTRAS) | ADMIN required (C-ROLE). Every deletion writes an audit record (C-AUDIT), and the deleted user's active sessions are ended. | n/a |
 | Q-COUSR03C-08 | Unused WS-USR-MODIFIED copied from COUSR02C | dead-code | NOT-PORTED | No counterpart. | n/a |
 
