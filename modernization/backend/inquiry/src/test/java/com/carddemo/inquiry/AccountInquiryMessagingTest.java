@@ -251,7 +251,7 @@ class AccountInquiryMessagingTest {
         assertThat(rest(admin, "0000000007", 400).at("/message").asText())
             .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 0000000007 FUNCTION : INQA");
         assertThat(rest(admin, "000000000007", 400).at("/message").asText())
-            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 000000000007FUNCTION : INQA");
+            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 00000000000FUNCTION : INQA");
         assertThat(rest(admin, "ABCDEFGHIJK", 400).at("/message").asText())
             .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : ABCDEFGHIJKFUNCTION : INQA");
         assertThat(rest(admin, "0000000000A", 400).at("/message").asText())
@@ -301,7 +301,20 @@ class AccountInquiryMessagingTest {
             .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 00000000000FUNCTION : INQA");
         assertThat(rest(admin(), "ABC", 400).at("/message").asText()).isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : ABC        FUNCTION : INQA");
         assertThat(rest(admin(), "123456789012", 400).at("/message").asText())
-            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 123456789012FUNCTION : INQA");
+            .isEqualTo("INVALID REQUEST PARAMETERS ACCT ID : 12345678901FUNCTION : INQA");
+    }
+
+    @Test
+    @Covers({"Q-COACCT01-04", "C-KEYLEN"})
+    void rest_invalid_request_text_is_the_queue_reply_for_the_same_id() throws Exception {
+        String replyTo = tempQueue();
+        ScreenClient admin = admin();
+        for (String id : List.of("7", "000000000007", "ABCDEFGHIJK", "ABC", "00000000000")) {
+            send(ascii("INQA" + id), replyTo);
+            String queue = body(reply(replyTo)).stripTrailing();
+            assertThat(queue).as("queue reply for " + id).startsWith("INVALID REQUEST PARAMETERS ACCT ID : ").endsWith("FUNCTION : INQA");
+            assertThat(rest(admin, id, 400).at("/message").asText()).as("REST message for " + id).isEqualTo(queue);
+        }
     }
 
     @Test

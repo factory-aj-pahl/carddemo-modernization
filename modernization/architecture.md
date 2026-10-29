@@ -154,7 +154,9 @@ queues are bounded. Queue replies keep the legacy text layouts; the REST equival
   whose transaction fails (Q-COPAUA0C-06); any other failure is redelivered up to the delivery limit.
 - `GET /api/inquiry/account/{id}` takes the account ID as the queue does: exactly 11 digits, not all
   zero (C-KEYLEN, never left-padded). Anything else is answered 400 with the queue's invalid-request
-  text as `{"message": ...}`; a missing or out-of-scope account is 404 with the not-found text.
+  text as `{"message": ...}`, showing the key as the queue would for `INQA` followed by the ID (a
+  short ID space-padded, a longer one cut to 11 characters); a missing or out-of-scope account is
+  404 with the not-found text.
 
 ## 4. Data
 

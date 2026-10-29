@@ -88,13 +88,14 @@ public class AccountInquiryService {
 
     /**
      * REST: {@code id} must be the 11-digit key, as on the queue (Q-COACCT01-01, -04, -06; C-KEYLEN): a shorter or
-     * non-numeric ID is never left-padded and gets the invalid-request answer, with the key shown space-padded as
-     * the queue shows the bytes it received. An account outside the user's scope is answered exactly like a
-     * missing one (C-SCOPE).
+     * non-numeric ID is never left-padded and gets the invalid-request answer. The key is shown as the queue
+     * shows bytes 5-15 of {@code INQA}+id: a short ID space-padded, a longer one cut to its first 11 characters
+     * (it is still rejected). An account outside the user's scope is answered exactly like a missing one
+     * (C-SCOPE).
      */
     public Outcome answer(CurrentUser user, String id) {
-        String key = id.length() < 11 ? id + " ".repeat(11 - id.length()) : id;
-        if (!positive(key)) {
+        String key = id.length() < 11 ? id + " ".repeat(11 - id.length()) : id.substring(0, 11);
+        if (id.length() != 11 || !positive(key)) {
             return new Invalid(key, FUNCTION);
         }
         long accountId = Long.parseLong(key);
