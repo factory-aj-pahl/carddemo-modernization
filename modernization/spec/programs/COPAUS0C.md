@@ -481,8 +481,8 @@ authorizations totalling 74.79, credit balance 74.79 and 50 details. Account 2 h
 ## Open questions
 - Should ACCSTAT show ACCT-ACTIVE-STATUS, and should the Amount column show the requested amount
   for declines?
-- Is opening on account 00000000000 from the menu acceptable, or should zeros be treated as "no
-  account"?
+- Is opening on the CDEMO-ACCT-ID left in the COMMAREA (zeros when none was chosen) acceptable, or
+  should zeros be treated as "no account"?
 - The menu option is restricted to user type 'U' in COMEN02Y; is that intentional for an
   operations screen?
 

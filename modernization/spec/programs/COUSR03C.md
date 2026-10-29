@@ -8,7 +8,7 @@
 | Transaction ID / Job | CU03 (`app/csd/CARDDEMO.CSD:479-488`, program definition `app/csd/CARDDEMO.CSD:299-305`) |
 | BMS map | mapset `COUSR03` / map `COUSR3A` (`app/bms/COUSR03.bms`, symbolic map `app/cpy-bms/COUSR03.CPY`) |
 | Copybooks | `COCOM01Y` (CARDDEMO-COMMAREA, extended in-line with CDEMO-CU03-INFO), `COUSR03` (symbolic map), `COTTL01Y`, `CSDAT01Y`, `CSMSG01Y`, `CSUSR01Y` (SEC-USER-DATA), `DFHAID`, `DFHBMSCA` |
-| Calls / XCTL targets | XCTL to CDEMO-FROM-PROGRAM (PF3: `COUSR00C` or `COADM01C`), XCTL `COADM01C` (PF12), XCTL `COSGN00C` (no COMMAREA) |
+| Calls / XCTL targets | XCTL to CDEMO-FROM-PROGRAM (PF3: `COUSR00C` or `COADM01C`), XCTL `COADM01C` (PF12), XCTL `COSGN00C` when EIBCALEN = 0, passing the 194-byte working-storage COMMAREA (Q-COSGN00C-10) |
 | Data stores | CICS file `USRSEC` (KSDS, 80-byte SEC-USER-DATA, key SEC-USR-ID 8 bytes): Read for update by key, Delete |
 
 ## Purpose

@@ -549,7 +549,7 @@ remaining quirks are triaged in their own files.
 | 69 | Q-COTRN00C-01 | Return from detail with PF5 skips the first record | functional-defect | fix |
 | 70 | Q-COCRDLIC-06 | One-digit page number shows page 10 as 0 | functional-defect | fix |
 | 71 | Q-COPAUS0C-02 | Paging past page 20 overwrites COMMAREA fields | functional-defect | fix |
-| 72 | Q-ENT-32 | Only the first card of an account is visible through the account AIX (see Q-COBIL00C-11) | functional-defect | decide |
+| 72 | Q-ENT-32 | Accounts with several cards fail the online xref lookup (DUPKEY); batch uses the first card (see Q-COBIL00C-11) | functional-defect | decide |
 | 73 | Q-CORPT00C-02 | Two-digit report year accepted as year 0022 | functional-defect | fix |
 | 74 | Q-CSUTLDTC-05 | Callers accept CEEDAYS range error 2513 as valid | functional-defect | decide |
 | 75 | Q-ENT-29 | Active-status and indicator fields never enforced | functional-defect | decide |

@@ -8,7 +8,7 @@
 | Transaction ID / Job | CB00 (`app/csd/CARDDEMO.CSD:337-340`) |
 | BMS map | mapset `COBIL00` / map `COBIL0A` (`app/bms/COBIL00.bms`, symbolic map `app/cpy-bms/COBIL00.CPY`) |
 | Copybooks | COCOM01Y (plus the program-local extension `CDEMO-CB00-INFO`), COBIL00, COTTL01Y, CSDAT01Y, CSMSG01Y, CVACT01Y, CVACT03Y, CVTRA05Y, DFHAID, DFHBMSCA |
-| Calls / XCTL targets | XCTL `COSGN00C` (no COMMAREA); XCTL `CDEMO-FROM-PROGRAM`, or `COMEN01C` when that is blank (PF3). No CALLs. |
+| Calls / XCTL targets | XCTL `COSGN00C` when EIBCALEN = 0, passing the 218-byte working-storage COMMAREA (Q-COSGN00C-10); XCTL `CDEMO-FROM-PROGRAM`, or `COMEN01C` when that is blank (PF3). No CALLs. |
 | Data stores | `ACCTDAT` (ENT-ACCOUNT): Read with UPDATE, then Rewrite, key `ACCT-ID`. `CXACAIX` (alternate-index path over the card cross-reference, ENT-CARD-XREF): Read, key `XREF-ACCT-ID`. `TRANSACT` (ENT-TRANSACTION): Browse (STARTBR, READPREV, ENDBR) and Write, key `TRAN-ID`. |
 
 ## Purpose

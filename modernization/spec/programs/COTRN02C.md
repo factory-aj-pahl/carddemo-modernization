@@ -8,7 +8,7 @@
 | Transaction ID / Job | CT02 (`app/csd/CARDDEMO.CSD:439-440`) |
 | BMS map | mapset `COTRN02` / map `COTRN2A` (`app/bms/COTRN02.bms`, symbolic map `app/cpy-bms/COTRN02.CPY`) |
 | Copybooks | COCOM01Y (plus the program-local extension `CDEMO-CT02-INFO`), COTRN02, COTTL01Y, CSDAT01Y, CSMSG01Y, CVTRA05Y, CVACT01Y (unused), CVACT03Y, DFHAID, DFHBMSCA |
-| Calls / XCTL targets | `CALL 'CSUTLDTC'` (date validation, twice per validation pass); XCTL to `CDEMO-FROM-PROGRAM` on PF3, or `COMEN01C` when it is blank; XCTL `COSGN00C` (no COMMAREA) |
+| Calls / XCTL targets | `CALL 'CSUTLDTC'` (date validation, twice per validation pass); XCTL to `CDEMO-FROM-PROGRAM` on PF3, or `COMEN01C` when it is blank; XCTL `COSGN00C` when EIBCALEN = 0, passing the 218-byte working-storage COMMAREA (Q-COSGN00C-10) |
 | Data stores | `TRANSACT` (ENT-TRANSACTION): STARTBR, READPREV, ENDBR, WRITE, key `TRAN-ID`. `CXACAIX` (path over the account alternate index of CARDXREF): READ by `XREF-ACCT-ID`. `CCXREF` (CARDXREF): READ by `XREF-CARD-NUM`. `ACCTDAT` is named in working storage but never accessed. |
 
 ## Purpose
