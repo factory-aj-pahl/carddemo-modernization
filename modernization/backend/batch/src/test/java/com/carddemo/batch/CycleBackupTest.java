@@ -58,6 +58,29 @@ class CycleBackupTest extends CycleJobTestSupport {
     }
 
     @Test
+    @Covers({"Q-ACCTFILE-02", "B-CYCLE"})
+    void restore_by_date_after_a_repeated_trigger_returns_to_the_state_before_the_first_posting() throws IOException {
+        List<Map<String, Object>> before = state();
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        Path daily = dir.resolve("daily.txt");
+        Files.write(daily, DailyRecords.sample().stream().map(r -> "9" + r.substring(1)).toList(), StandardCharsets.ISO_8859_1);
+        String[] posttran = {"POSTTRAN", "businessDate=2022-07-01", "dailyFile=" + daily, "rejectsFile=" + dir.resolve("rej.txt")};
+        assertThat(cli.execute(posttran)).isEqualTo(4);
+        List<Map<String, Object>> posted = state();
+        assertThat(posted).isNotEqualTo(before);
+
+        // The daily cycle triggered again for the same date: BACKUP snapshots the posted state, POSTTRAN refuses.
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        assertThat(cli.execute(posttran)).isEqualTo(8);
+        assertThat(state()).isEqualTo(posted);
+        assertThat(count("SELECT COUNT(*) FROM cycle_backup WHERE business_date = '2022-07-01'")).isEqualTo(2);
+
+        assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+        assertThat(state()).isEqualTo(before);
+        assertThat(cli.execute(posttran)).isEqualTo(4);
+    }
+
+    @Test
     @Covers({"Q-ACCTFILE-02"})
     void restoring_an_unknown_backup_is_refused() {
         assertThat(cli.execute("RESTORE", "backupId=424242")).isEqualTo(8);

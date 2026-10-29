@@ -30,7 +30,11 @@ public class CycleBackupService {
     public record Snapshot(long backupId, LocalDate businessDate, int accounts, int transactions, int categoryBalances) {
     }
 
-    /** One SERIALIZABLE transaction, so no posting or online change can fall between the copied tables. */
+    /**
+     * One SERIALIZABLE transaction, so no posting or online change can fall between the copied tables. With no
+     * job instance yet the high-water mark is -1, not 0: BATCH_JOB_SEQ starts at 0 (V2), so the first job ever
+     * run has instance id 0 and must still count as "after the backup".
+     */
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Snapshot backup(LocalDate businessDate) {
         long id = jdbc.sql("""
@@ -39,7 +43,7 @@ public class CycleBackupService {
                 OUTPUT INSERTED.backup_id
                 SELECT ?, ?, COALESCE((SELECT MAX(reject_id) FROM posting_reject), 0),
                     COALESCE((SELECT MAX(statement_run_id) FROM statement_run), 0),
-                    COALESCE((SELECT MAX(JOB_INSTANCE_ID) FROM BATCH_JOB_INSTANCE), 0), 0, 0, 0
+                    COALESCE((SELECT MAX(JOB_INSTANCE_ID) FROM BATCH_JOB_INSTANCE), -1), 0, 0, 0
                 """)
             .params(businessDate, LocalDateTime.now(clock)).query(Long.class).single();
         int accounts = jdbc.sql("""
@@ -66,9 +70,13 @@ public class CycleBackupService {
         return new Snapshot(id, businessDate, accounts, transactions, categories);
     }
 
-    /** The newest backup taken for a business date. */
-    public Optional<Long> latestFor(LocalDate businessDate) {
-        return jdbc.sql("SELECT MAX(backup_id) FROM cycle_backup WHERE business_date = ?").param(businessDate)
+    /**
+     * The first backup taken for a business date, which is the one taken before that date was first posted. A
+     * repeated trigger of the cycle for an already-posted date takes a later backup of the posted state before
+     * POSTTRAN refuses; restoring by date must not pick that one.
+     */
+    public Optional<Long> earliestFor(LocalDate businessDate) {
+        return jdbc.sql("SELECT MIN(backup_id) FROM cycle_backup WHERE business_date = ?").param(businessDate)
             .query(Long.class).optional();
     }
 
