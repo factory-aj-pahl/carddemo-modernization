@@ -142,13 +142,21 @@ class UserDeleteTest extends UserScreenTestSupport {
     }
 
     @Test
-    @Covers({"NAV-COUSR03C-06", "TS-COUSR03C-11", "NAV-COUSR03C-07", "NAV-COUSR03C-01"})
+    @Covers({"NAV-COUSR03C-06", "TS-COUSR03C-11", "NAV-COUSR03C-07", "NAV-COUSR03C-01", "Q-COUSR03C-06", "C-SHORTREAD"})
     void other_keys_are_invalid_and_keep_the_screen() {
         admin.show("COUSR03C");
         JsonNode fetched = admin.post("COUSR03C", "ENTER", Map.of("userId", "USER0001"));
         JsonNode r = admin.post("COUSR03C", "PF8", Map.of("userId", "USER0001"));
         assertThat(r.at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
         assertThat(r.at("/fields/firstName").asText()).isEqualTo(fetched.at("/fields/firstName").asText());
+        assertThat(r.at("/focus").asText()).isEqualTo("userId");
+        for (String shortRead : new String[] {"CLEAR", "PA1"}) {
+            JsonNode s = admin.post("COUSR03C", shortRead, Map.of("userId", "USER0001"));
+            assertThat(s.at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
+            assertThat(s.at("/fields/userId").asText()).isEqualTo("USER0001");
+            assertThat(s.at("/fields/firstName").asText()).isEqualTo(fetched.at("/fields/firstName").asText());
+            assertThat(s.at("/focus").asText()).isEqualTo("userId");
+        }
         assertThat(exists("USER0001")).isTrue();
     }
 

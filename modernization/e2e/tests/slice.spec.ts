@@ -95,6 +95,45 @@ test.describe('Menus and roles', () => {
     await expect(page.getByLabel('Please select an option')).toHaveValue('3');
   });
 
+  test('Q-COADM01C-07 TS-COADM01C-10 after "This option is not installed ..." the admin menu processes the next key', async ({ page }) => {
+    // Every option is installed in the e2e deployment, so the answer to option 5 is replaced by the
+    // disabled-option answer (asserted server-side in DisabledOptionsTest); the next key goes to the real API.
+    const NOT_INSTALLED = 'This option is not installed ...';
+    await page.route('**/api/screens/COADM01C', async (route) => {
+      const body = route.request().postDataJSON() as { key?: string; option?: string } | null;
+      if (route.request().method() !== 'POST' || body?.key !== 'ENTER' || body.option?.trim() !== '5') return route.continue();
+      const shown = await (await page.request.get('/api/screens/COADM01C')).json();
+      await route.fulfill({ json: { ...shown, fields: { ...shown.fields, option: '05' }, message: NOT_INSTALLED, messageColor: 'GREEN' } });
+    });
+    const notInstalled = async () => {
+      await page.getByLabel('Please select an option').fill('5');
+      await page.keyboard.press('Enter');
+      await expectMessage(page, NOT_INSTALLED);
+    };
+    await signOn(page, 'ADMIN001');
+    await expectProgram(page, 'CA00 · COADM01C');
+
+    await notInstalled();
+    await page.getByLabel('Please select an option').fill('7');
+    await page.keyboard.press('Enter');
+    await expectMessage(page, MSG.BAD_OPTION);
+
+    await notInstalled();
+    await page.keyboard.press('F2');
+    await expectMessage(page, MSG.INVALID_KEY);
+
+    await notInstalled();
+    await page.getByLabel('Please select an option').fill('1');
+    await page.keyboard.press('Enter');
+    await expectProgram(page, 'CU00 · COUSR00C');
+
+    await page.goto('/screens/COADM01C');
+    await expectProgram(page, 'CA00 · COADM01C');
+    await notInstalled();
+    await page.keyboard.press('F3');
+    await expectProgram(page, 'CC00 · COSGN00C');
+  });
+
   test('NAV-COMEN01C F3 from the main menu returns to sign-on and ends the session', async ({ page }) => {
     await signOn(page, 'USER0001');
     await expectProgram(page, 'CM00 · COMEN01C');

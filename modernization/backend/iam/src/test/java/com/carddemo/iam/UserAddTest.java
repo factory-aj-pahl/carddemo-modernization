@@ -176,7 +176,7 @@ class UserAddTest extends UserScreenTestSupport {
     }
 
     @Test
-    @Covers({"NAV-COUSR01C-04", "TS-COUSR01C-13", "Q-COUSR01C-05"})
+    @Covers({"NAV-COUSR01C-04", "TS-COUSR01C-13", "Q-COUSR01C-05", "C-SHORTREAD"})
     void pf12_returns_to_the_admin_menu_and_other_keys_are_invalid() {
         JsonNode exit = admin.post("COUSR01C", "PF12", form("TEST", "USER", "TEST0001", "PASSWORD", "U"));
         assertThat(exit.at("/navigate").asText()).isEqualTo("COADM01C");
@@ -186,6 +186,13 @@ class UserAddTest extends UserScreenTestSupport {
         assertThat(r.at("/focus").asText()).isEqualTo("firstName");
         assertThat(r.at("/fields/lastName").asText()).isEqualTo("USER");
         assertThat(r.at("/fields").has("password")).isFalse();
+        for (String shortRead : new String[] {"CLEAR", "PA2"}) {
+            JsonNode s = admin.post("COUSR01C", shortRead, form("TEST", "USER", "TEST0001", "PASSWORD", "U"));
+            assertThat(s.at("/message").asText()).isEqualTo(CommonMessages.INVALID_KEY);
+            assertThat(s.at("/focus").asText()).isEqualTo("firstName");
+            assertThat(s.at("/fields/lastName").asText()).isEqualTo("USER");
+        }
+        assertThat(exists("TEST0001")).isFalse();
     }
 
     @Test
