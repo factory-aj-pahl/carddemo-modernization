@@ -170,10 +170,12 @@ queues are bounded. Queue replies keep the legacy text layouts; the REST equival
   under a row lock on a shared counter held until the writing transaction ends, which fixes the
   race (Q-COTRN02C-01, Q-COBIL00C-01).
 - GDG backups (TRANBKP) become snapshot tables written by the BACKUP step of the DAG before
-  posting, so a bad run can be rolled back. `RESTORE businessDate=<date>` restores the first
-  backup taken for that date, so a repeated trigger of the cycle, whose BACKUP snapshots the
-  already-posted state, does not change what a date rollback restores; `RESTORE backupId=<n>`
-  restores one specific backup.
+  posting, so a bad run can be rolled back. BACKUP for a date whose POSTTRAN has completed (and
+  was not undone by a restore) is refused with exit 8, so a repeated trigger of the cycle stops
+  at BACKUP and no backup of a posted state exists. `RESTORE businessDate=<date>` therefore
+  restores the latest backup for the date, the state just before its most recent posting, and
+  keeps online changes made before that backup; `RESTORE backupId=<n>` restores one specific
+  backup.
 
 ## 5. Batch and scheduling
 

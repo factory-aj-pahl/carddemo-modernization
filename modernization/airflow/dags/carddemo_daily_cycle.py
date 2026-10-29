@@ -4,8 +4,9 @@ the run's logical date.
 BACKUP -> POSTTRAN -> month_start -> [INTCALC, first business day of the month only] -> CREASTMT
 
 Business days are Monday to Friday minus the dates in CARDDEMO_HOLIDAYS (none by default). The
-backup (Q-TRANBKP-01) must succeed before posting; RESTORE businessDate=<date> rolls the cycle back to
-the first backup taken for that date (a repeated trigger's later backup holds the posted state).
+backup (Q-TRANBKP-01) must succeed before posting. BACKUP is refused (exit 8, the run fails with nothing
+changed) when POSTTRAN has already completed for the date, so a repeated trigger takes no backup of the
+posted state; RESTORE businessDate=<date> restores the latest backup for the date, which rolls the cycle back.
 Interest rows go straight into the transaction table, so there is no COMBTRAN step.
 
 Inputs:  $CARDDEMO_INBOX/<business date>/dailytran.txt

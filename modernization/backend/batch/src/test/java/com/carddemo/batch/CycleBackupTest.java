@@ -7,6 +7,7 @@ import com.carddemo.test.DailyRecords;
 import com.carddemo.test.SampleData;
 import com.carddemo.test.TestDatabaseConfig;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -57,27 +58,55 @@ class CycleBackupTest extends CycleJobTestSupport {
         assertThat(log.captured()).noneMatch(l -> l.contains("ALREADY"));
     }
 
+    String[] posttranOfDay(String date) throws IOException {
+        Path daily = dir.resolve("daily-" + date + ".txt");
+        Files.write(daily, DailyRecords.sample().stream().map(r -> "9" + r.substring(1)).toList(), StandardCharsets.ISO_8859_1);
+        return new String[] {"POSTTRAN", "businessDate=" + date, "dailyFile=" + daily, "rejectsFile=" + dir.resolve("rej-" + date + ".txt")};
+    }
+
     @Test
-    @Covers({"Q-ACCTFILE-02", "B-CYCLE"})
-    void restore_by_date_after_a_repeated_trigger_returns_to_the_state_before_the_first_posting() throws IOException {
+    @Covers({"Q-ACCTFILE-02", "Q-TRANBKP-01", "B-CYCLE"})
+    void a_repeated_trigger_is_refused_at_backup_and_restore_by_date_returns_to_the_state_before_posting() throws IOException {
         List<Map<String, Object>> before = state();
         assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
-        Path daily = dir.resolve("daily.txt");
-        Files.write(daily, DailyRecords.sample().stream().map(r -> "9" + r.substring(1)).toList(), StandardCharsets.ISO_8859_1);
-        String[] posttran = {"POSTTRAN", "businessDate=2022-07-01", "dailyFile=" + daily, "rejectsFile=" + dir.resolve("rej.txt")};
+        String[] posttran = posttranOfDay("2022-07-01");
         assertThat(cli.execute(posttran)).isEqualTo(4);
         List<Map<String, Object>> posted = state();
         assertThat(posted).isNotEqualTo(before);
 
-        // The daily cycle triggered again for the same date: BACKUP snapshots the posted state, POSTTRAN refuses.
-        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
-        assertThat(cli.execute(posttran)).isEqualTo(8);
+        // The daily cycle triggered again for the same date stops at BACKUP; no backup of the posted state exists.
+        log.startCapture();
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isEqualTo(8);
+        assertThat(log.captured()).containsExactly("BACKUP REFUSED: POSTING ALREADY COMPLETED FOR 2022-07-01");
         assertThat(state()).isEqualTo(posted);
-        assertThat(count("SELECT COUNT(*) FROM cycle_backup WHERE business_date = '2022-07-01'")).isEqualTo(2);
+        assertThat(count("SELECT COUNT(*) FROM cycle_backup WHERE business_date = '2022-07-01'")).isEqualTo(1);
 
         assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
         assertThat(state()).isEqualTo(before);
         assertThat(cli.execute(posttran)).isEqualTo(4);
+    }
+
+    @Test
+    @Covers({"Q-ACCTFILE-02", "B-CYCLE"})
+    void a_second_restore_by_date_keeps_online_changes_made_after_the_first_restore() throws IOException {
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        String[] posttran = posttranOfDay("2022-07-01");
+        assertThat(cli.execute(posttran)).isEqualTo(4);
+        assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+
+        long account = jdbc.queryForObject("SELECT MIN(account_id) FROM account", Long.class);
+        BigDecimal balance = jdbc.queryForObject("SELECT current_balance FROM account WHERE account_id = ?", BigDecimal.class, account);
+        jdbc.update("UPDATE account SET current_balance = current_balance - 10.00 WHERE account_id = ?", account);
+        List<Map<String, Object>> afterOnline = state();
+
+        assertThat(cli.execute("BACKUP", "businessDate=2022-07-01")).isZero();
+        assertThat(cli.execute(posttran)).isEqualTo(4);
+        assertThat(state()).isNotEqualTo(afterOnline);
+        assertThat(cli.execute("RESTORE", "businessDate=2022-07-01")).isZero();
+
+        assertThat(state()).isEqualTo(afterOnline);
+        assertThat(jdbc.queryForObject("SELECT current_balance FROM account WHERE account_id = ?", BigDecimal.class, account))
+            .isEqualByComparingTo(balance.subtract(new BigDecimal("10.00")));
     }
 
     @Test
