@@ -24,7 +24,7 @@ class DisabledOptionsTest {
     SampleData sample;
 
     @Test
-    @Covers({"Q-COMEN01C-05", "Q-COMEN01C-08", "BR-COMEN01C-06", "TS-COMEN01C-06"})
+    @Covers({"Q-COMEN01C-05", "Q-COMEN01C-08", "BR-COMEN01C-06", "TS-COMEN01C-06", "ERR-COMEN01C-01"})
     void disabled_main_menu_option_names_the_option_in_red() {
         sample.load();
         ScreenClient client = new ScreenClient(mvc);
@@ -36,7 +36,7 @@ class DisabledOptionsTest {
     }
 
     @Test
-    @Covers({"Q-COADM01C-03", "Q-COADM01C-04", "ERR-COADM01C-01", "TS-COADM01C-04"})
+    @Covers({"Q-COADM01C-03", "Q-COADM01C-04", "ERR-COADM01C-01", "TS-COADM01C-04", "BR-COADM01C-06"})
     void disabled_admin_option_is_green_without_name() {
         sample.load();
         ScreenClient client = new ScreenClient(mvc);

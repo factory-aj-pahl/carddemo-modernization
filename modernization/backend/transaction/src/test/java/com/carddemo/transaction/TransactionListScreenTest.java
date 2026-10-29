@@ -225,7 +225,7 @@ class TransactionListScreenTest extends TransactionScreenTestBase {
     }
 
     @Test
-    @Covers({"TS-COTRN00C-10", "Q-COTRN00C-02", "ERR-COTRN00C-01"})
+    @Covers({"TS-COTRN00C-10", "Q-COTRN00C-02", "ERR-COTRN00C-01", "ERR-COTRN00C-07"})
     void search_beyond_the_last_id_shows_an_empty_page_one() {
         client.signOn(ADMIN);
         client.show("COTRN00C");

@@ -12,6 +12,8 @@ public final class ExitCodes {
     public static final int INVALID_DATE = 12;
     /** COBTUPDT: the input could not be read or a SQL error stopped the run, which was rolled back (Q-COBTUPDT-01, -04). */
     public static final int STOPPED = 12;
+    /** WAITSTEP: the wait value is not 1 to 8 decimal digits (Q-COBSWAIT-01). */
+    public static final int INVALID_WAIT = 12;
     /** Unknown command or missing parameter. */
     public static final int USAGE = 16;
     /** RETURN-CODE 16 set by an IMS module program's 9999-ABEND paragraph (CBPAUP0C, PAUDBUNL, PAUDBLOD, DBUNLDGS). */
