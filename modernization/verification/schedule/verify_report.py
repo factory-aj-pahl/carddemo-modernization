@@ -93,6 +93,11 @@ def ensure_history(business_date: str, log: list[str]) -> None:
     inbox.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(daily, inbox / "dailytran.txt")
     token = airflow_token()
+    # A fresh Airflow home creates every DAG paused; a manual run of a paused DAG stays queued forever.
+    status, body = http("PATCH", "/api/v2/dags/carddemo_daily_cycle", {"is_paused": False}, token)
+    if status // 100 != 2:
+        raise RuntimeError(f"daily cycle unpause answered {status}: {body}")
+    log.append("carddemo_daily_cycle unpaused for the verification run")
     run_id = f"verify_report_{business_date}_{int(time.time())}"
     status, body = http("POST", "/api/v2/dags/carddemo_daily_cycle/dagRuns", {
         "dag_run_id": run_id, "logical_date": None, "conf": {"business_date": business_date}}, token)

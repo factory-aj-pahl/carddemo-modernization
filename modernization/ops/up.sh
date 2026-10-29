@@ -39,8 +39,11 @@ fi
 if pid_alive "$CARDDEMO_RUN/web.pid"; then
     echo "web already running (pid $(cat "$CARDDEMO_RUN/web.pid"))"
 else
-    (cd "$CARDDEMO_MODERNIZATION/web" && CARDDEMO_API_URL="http://127.0.0.1:$CARDDEMO_API_PORT" \
-        setsid nohup ./node_modules/.bin/vite preview >"$CARDDEMO_RUN/web.log" 2>&1 </dev/null &
+    # The cd must not be part of the backgrounded list, or $! names a wrapper subshell instead of the
+    # setsid group leader that down.sh signals.
+    (cd "$CARDDEMO_MODERNIZATION/web" || exit 1
+        CARDDEMO_API_URL="http://127.0.0.1:$CARDDEMO_API_PORT" \
+            setsid nohup ./node_modules/.bin/vite preview >"$CARDDEMO_RUN/web.log" 2>&1 </dev/null &
         echo $! >"$CARDDEMO_RUN/web.pid")
     echo "web started (pid $(cat "$CARDDEMO_RUN/web.pid"), log $CARDDEMO_RUN/web.log)"
 fi
