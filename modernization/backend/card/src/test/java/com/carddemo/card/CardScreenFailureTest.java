@@ -40,7 +40,7 @@ class CardScreenFailureTest extends CardScreenTestSupport {
     }
 
     @Test
-    @Covers({"ERR-COCRDLIC-01", "ERR-COCRDLIC-02"})
+    @Covers({"ERR-COCRDLIC-01", "ERR-COCRDLIC-02", "Q-COCRDLIC-19"})
     void a_failed_browse_shows_the_file_error_with_no_rows() {
         doThrow(DOWN).when(repo).forward(any(), any(), anyBoolean(), anyInt());
         JsonNode first = admin.show("COCRDLIC");

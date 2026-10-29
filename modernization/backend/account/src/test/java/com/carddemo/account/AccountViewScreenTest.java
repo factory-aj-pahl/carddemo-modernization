@@ -167,6 +167,19 @@ class AccountViewScreenTest extends AccountScreenTestBase {
             .isEqualTo("COMEN01C");
         assertThat(client.post("COACTVWC", "PF15", Map.of("accountId", "00000000001")).at("/navigate").asText())
             .as("PF15 folds to PF3").isEqualTo("COMEN01C");
+        assertThat(client.show("COADM01C").has("fields")).as("the ADMIN role survives entry and PF3").isTrue();
+    }
+
+    @Test
+    @Covers({"BR-COACTVWC-01", "Q-ENT-32", "DF-6"})
+    void an_account_with_several_cards_is_shown_through_its_lowest_card() {
+        jdbc.update("INSERT INTO card_xref (card_num, customer_id, account_id) VALUES ('0000000000000001', 2, 1)");
+        client.signOn(ADMIN);
+        JsonNode r = view("00000000001");
+        assertThat(r.has("message")).as("no DUPKEY file error").isFalse();
+        assertThat(r.at("/fields/accountInError").asBoolean()).isFalse();
+        assertThat(f(r, "creditLimit")).isEqualTo("+      2,020.00");
+        assertThat(f(r, "customerId")).as("customer of the lowest card").isEqualTo("000000002");
     }
 
     @Test

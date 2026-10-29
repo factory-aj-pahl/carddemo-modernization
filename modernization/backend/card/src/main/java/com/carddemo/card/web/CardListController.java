@@ -177,13 +177,15 @@ public class CardListController {
             } else if (key == Key.PF7) {
                 r = backward(st, f.account(), f.card());
                 message = r.message();
-            } else if (key == Key.PF8 && st.nextPage()) {
-                r = forward(st, f.account(), f.card(), st.lastKey(), false, st.page() + 1);
+            } else if (key == Key.PF8 && st.nextPage()
+                && !(r = forward(st, f.account(), f.card(), st.lastKey(), false, st.page() + 1)).state().rows().isEmpty()) {
                 message = r.message();
                 if (!r.state().nextPage()) {
                     r = new Read(withFlag(r.state(), true), r.message());
                 }
             } else {
+                // Also reached when the cards of the announced next page were deleted since the last turn
+                // (Q-COCRDLIC-19): PF8 then answers as on the last page instead of showing an empty page.
                 r = forward(st, f.account(), f.card(), st.firstKey(), true, st.page());
                 message = r.message();
                 if (key == Key.PF8 && !r.state().nextPage()) {

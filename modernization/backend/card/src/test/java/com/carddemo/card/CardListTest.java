@@ -412,4 +412,40 @@ class CardListTest extends CardScreenTestSupport {
         assertThat(cards(r)).containsExactlyElementsOf(maskedAll(all.subList(0, 7)));
         assertThat(r.has("message")).isFalse();
     }
+
+    @Test
+    @Covers({"Q-COCRDLIC-19", "ERR-COCRDLIC-02"})
+    void an_empty_card_file_gives_no_records_found_instead_of_ending_the_task() {
+        jdbc.update("DELETE FROM card");
+        JsonNode r = admin.show("COCRDLIC");
+        assertThat(r.at("/fields/pageNum").asText()).isEqualTo("1");
+        assertThat(cards(r)).containsOnly("");
+        assertThat(r.at("/message").asText()).isEqualTo(NO_RECORDS_FOUND);
+        assertThat(r.at("/fields/info").asText()).isEmpty();
+        JsonNode enter = list("ENTER");
+        assertThat(enter.at("/message").asText()).isEqualTo(NO_RECORDS_FOUND);
+        assertThat(cards(enter)).containsOnly("");
+        JsonNode pf8 = list("PF8");
+        assertThat(pf8.at("/message").asText()).isEqualTo(NO_RECORDS_FOUND);
+        assertThat(pf8.at("/fields/pageNum").asText()).isEqualTo("1");
+    }
+
+    @Test
+    @Covers({"Q-COCRDLIC-19", "ERR-COCRDLIC-02"})
+    void a_browse_start_above_the_last_card_gives_the_end_of_list_messages() {
+        List<String> all = allCards(null);
+        toPage(7);
+        jdbc.update("DELETE FROM card WHERE card_num = ?", all.get(49));
+        JsonNode pf8 = list("PF8");
+        assertThat(pf8.at("/fields/pageNum").asText()).isEqualTo("7");
+        assertThat(cards(pf8)).containsExactlyElementsOf(maskedAll(all.subList(42, 49)));
+        assertThat(pf8.at("/message").asText()).isEqualTo(NO_MORE_RECORDS);
+        assertThat(pf8.at("/fields/info").asText()).isEqualTo(INFO);
+        assertThat(list("PF8").at("/message").asText()).isEqualTo("NO MORE PAGES TO DISPLAY");
+        jdbc.update("DELETE FROM card WHERE card_num >= ?", all.get(42));
+        JsonNode enter = list("ENTER");
+        assertThat(enter.at("/fields/pageNum").asText()).isEqualTo("7");
+        assertThat(cards(enter)).containsOnly("");
+        assertThat(enter.at("/message").asText()).isEqualTo(NO_MORE_RECORDS);
+    }
 }
