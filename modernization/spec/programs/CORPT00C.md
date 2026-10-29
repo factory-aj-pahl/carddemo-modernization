@@ -8,7 +8,7 @@
 | Transaction ID / Job | CR00 (`app/csd/CARDDEMO.CSD:409-410`); submits job `TRNRPT00`, which runs procedure `TRANREPT` (`app/proc/TRANREPT.prc`) |
 | BMS map | mapset `CORPT00` / map `CORPT0A` (`app/bms/CORPT00.bms`, symbolic map `app/cpy-bms/CORPT00.CPY`) |
 | Copybooks | COCOM01Y, CORPT00, COTTL01Y, CSDAT01Y, CSMSG01Y, CVTRA05Y (unused), DFHAID, DFHBMSCA |
-| Calls / XCTL targets | `CALL 'CSUTLDTC'` (custom dates only, twice); XCTL `COMEN01C` (PF3); XCTL `COSGN00C` (no COMMAREA) |
+| Calls / XCTL targets | `CALL 'CSUTLDTC'` (custom dates only, twice); XCTL `COMEN01C` (PF3); XCTL `COSGN00C` when EIBCALEN = 0, passing the 160-byte working-storage COMMAREA (Q-COSGN00C-10) |
 | Data stores | Transient data queue `JOBS`: WRITEQ TD, 80-byte records. The CSD defines it as extrapartition, output, DDNAME `INREADER` (the JES internal reader) (`app/csd/CARDDEMO.CSD:499-504`). `TRANSACT` is named in working storage but never accessed. |
 
 ## Purpose
@@ -249,8 +249,9 @@ No rule checks that the start date is on or before the end date (Q-CORPT00C-03).
 - **NAV-CORPT00C-05**: Any other AID (there is no PF4 here) shows
   "Invalid key pressed. Please see below..." with the cursor on MONTHLY; the entered values are sent
   back. For CLEAR and PA1-PA3 the terminal sends no field data: RECEIVE gets MAPFAIL (not tested), the
-  map keeps its initial storage, and every field is blank on the re-sent screen. Target: C-SHORTREAD
-  (ledger-online.md). Source: `app/cbl/CORPT00C.cbl:190-194 (MAIN-PARA)`.
+  map keeps its initial storage, so the input fields are blank on the re-sent screen; the header fields and the
+  `Invalid key pressed` message are filled and the cursor is on MONTHLY. Target: C-SHORTREAD
+  (ledger-online.md). Source: `app/cbl/CORPT00C.cbl:190-194 (MAIN-PARA)`, `:556-560 (SEND-TRNRPT-SCREEN)`.
 - **NAV-CORPT00C-06**: Before every XCTL the program sets FROM-TRANID `CR00`, FROM-PROGRAM `CORPT00C`,
   and context 0. Source: `app/cbl/CORPT00C.cbl:540-551 (RETURN-TO-PREV-SCREEN)`.
 - **NAV-CORPT00C-07**: Every turn that does not XCTL ends with RETURN TRANSID `CR00` and the 160-byte

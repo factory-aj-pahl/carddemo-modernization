@@ -219,7 +219,8 @@ never true, Q-COACTUPC-20); `9400-GETCUSTDATA-BYCUST` with CDEMO-CUST-ID; (same 
   Group 88-levels: ACUP-CHANGES-MADE = E, N, C, L, F; ACUP-CHANGES-FAILED = L, F. Source:
   `app/cbl/COACTUPC.cbl:654-668`.
 - **BR-COACTUPC-02**: Fetch. With a valid account number: READ CXACAIX (gives CDEMO-CUST-ID and
-  CDEMO-CARD-NUM), stop on failure; READ ACCTDAT by account; READ CUSTDAT by CDEMO-CUST-ID; then
+  CDEMO-CARD-NUM), stop on failure (an account with more than one card fails with DUPKEY,
+  ERR-COACTUPC-02); READ ACCTDAT by account; READ CUSTDAT by CDEMO-CUST-ID; then
   store the snapshot. The state becomes S only when the customer was found. Otherwise it stays
   "not fetched" and the search screen is redisplayed with the error. Source:
   `app/cbl/COACTUPC.cbl:2568-2580 (2000-DECIDE-ACTION)`, `:3608-3649 (9000-READ-ACCT)`,
@@ -576,7 +577,8 @@ a failing step skips the rest of its own paragraph only.
   Source: `app/cbl/COACTUPC.cbl:3650-3698`.
 - **ERR-COACTUPC-02**: Cross-reference READ other RESP: `File Error: READ     on CXACAIX   returned
   RESP nnnnnnnnn ,RESP2 nnnnnnnnn ` (WS-FILE-ERROR-MESSAGE layout as in COACTVWC), filter not OK.
-  Source: `app/cbl/COACTUPC.cbl:3686-3696`, `:388-408`.
+  This includes DUPKEY (RESP 15) for an account with more than one card; the target uses the lowest
+  card number (Q-ENT-32, DF-6). Source: `app/cbl/COACTUPC.cbl:3686-3696`, `:388-408`.
 - **ERR-COACTUPC-03**: Account READ NOTFND: input error, filter not OK, message `Account:` + key +
   ` not found in` + ` Acct Master file.Resp:` + RESP + ` Reas:` + RESP2. Processing continues to
   the customer read and the snapshot (Q-COACTUPC-20). Source: `app/cbl/COACTUPC.cbl:3701-3748`.
