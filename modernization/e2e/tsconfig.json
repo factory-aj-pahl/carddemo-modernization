@@ -12,6 +12,10 @@
   },
   "include": [
     "tests",
-    "playwright.config.ts"
+    "smoke",
+    "verification",
+    "playwright.config.ts",
+    "playwright.smoke.config.ts",
+    "playwright.report.config.ts"
   ]
 }
