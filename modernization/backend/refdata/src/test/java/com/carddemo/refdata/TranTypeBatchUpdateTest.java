@@ -201,11 +201,15 @@ class TranTypeBatchUpdateTest {
     }
 
     @Test
-    @Covers({"TS-COBTUPDT-11", "BR-COBTUPDT-01", "ERR-COBTUPDT-06", "Q-COBTUPDT-07"})
+    @Covers({"TS-COBTUPDT-11", "BR-COBTUPDT-01", "BR-COBTUPDT-02", "BR-COBTUPDT-03", "BR-COBTUPDT-04", "ERR-COBTUPDT-01",
+        "ERR-COBTUPDT-06", "Q-COBTUPDT-07"})
     void records_apply_in_file_order_with_one_result_line_each_and_a_summary() throws IOException {
         BatchUpdateResult r = run("A09TEMP", "U09TEMPORARY", "D09");
         List<String> out = log.captured();
-        assertThat(out).containsSubsequence("RECORD INSERTED SUCCESSFULLY", "RECORD UPDATED SUCCESSFULLY", "RECORD DELETED SUCCESSFULLY");
+        assertThat(out.subList(0, 10)).containsExactly("OPEN FILE OK",
+            "PROCESSING   " + rec("A09TEMP"), "ADDING RECORD", "RECORD INSERTED SUCCESSFULLY",
+            "PROCESSING   " + rec("U09TEMPORARY"), "UPDATING RECORD", "RECORD UPDATED SUCCESSFULLY",
+            "PROCESSING   " + rec("D09"), "DELETING RECORD", "RECORD DELETED SUCCESSFULLY");
         assertThat(out).hasSize(1 + 3 * 3 + 5);
         assertThat(description(jdbc, "09")).isNull();
         assertThat(r).isEqualTo(new BatchUpdateResult(3, 1, 1, 1, 0, false));

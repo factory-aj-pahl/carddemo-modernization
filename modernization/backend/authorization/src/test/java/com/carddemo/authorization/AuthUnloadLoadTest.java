@@ -188,6 +188,34 @@ class AuthUnloadLoadTest {
     }
 
     @Test
+    @Covers({"Q-PAUDBUNL-12", "BR-PAUDBUNL-03"})
+    void every_child_carries_its_own_parent_key_not_only_the_first_of_each_root() throws IOException {
+        Path child = dir.resolve("child");
+        assertThat(jobs.unload(dir.resolve("root"), child).returnCode()).isZero();
+        List<byte[]> children = records(child, CHILD);
+        List<long[]> runs = new ArrayList<>();
+        for (byte[] c : children) {
+            long key = account(c);
+            PendingAuthSegments.Detail d = PendingAuthSegments.decodeDetail(c, 6, key, null);
+            assertThat(count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = ? AND auth_ts = ? AND card_num = ?",
+                key, java.sql.Timestamp.valueOf(d.authTs()), d.cardNum())).as("detail stored under key %d", key).isEqualTo(1);
+            if (runs.isEmpty() || runs.get(runs.size() - 1)[0] != key) {
+                runs.add(new long[] {key, 0});
+            }
+            runs.get(runs.size() - 1)[1]++;
+        }
+        List<long[]> expected = new ArrayList<>();
+        for (long a : ACCOUNTS) {
+            int n = count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = ?", a);
+            if (n > 0) {
+                expected.add(new long[] {a, n});
+            }
+        }
+        assertThat(runs).usingElementComparator(Arrays::compare).containsExactlyElementsOf(expected);
+        assertThat(runs).anyMatch(r -> r[1] >= 2);
+    }
+
+    @Test
     @Covers({"TS-PAUDBUNL-03", "TS-DBUNLDGS-06", "BR-PAUDBUNL-05", "BR-DBUNLDGS-05"})
     void root_without_children_is_written_and_still_shows_the_ge_line() throws IOException {
         jdbc.update("INSERT INTO pending_auth_summary (account_id, customer_id, auth_status, account_status, credit_limit, cash_limit, "

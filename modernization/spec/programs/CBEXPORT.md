@@ -89,7 +89,12 @@ validates nothing and changes no source data.
   end: `CBEXPORT: Export completed`, `CBEXPORT: Customers Exported: `, `CBEXPORT: Accounts Exported: `,
   `CBEXPORT: XRefs Exported: `, `CBEXPORT: Transactions Exported: `, `CBEXPORT: Cards Exported: `,
   `CBEXPORT: Total Records Exported: ` + count. A count is incremented only after a successful write.
-  Source: `app/cbl/CBEXPORT.cbl:257-258`, `app/cbl/CBEXPORT.cbl:312-313`, `app/cbl/CBEXPORT.cbl:557-576 (6000-FINALIZE)`.
+  Source: `app/cbl/CBEXPORT.cbl:257-258, 312-313 (2000-EXPORT-CUSTOMERS, 2200-CREATE-CUSTOMER-EXP-REC)`,
+  `app/cbl/CBEXPORT.cbl:326-327, 375-376 (3000-EXPORT-ACCOUNTS, 3200-CREATE-ACCOUNT-EXP-REC)`,
+  `app/cbl/CBEXPORT.cbl:390-391, 430-431 (4000-EXPORT-XREFS, 4200-CREATE-XREF-EXPORT-RECORD)`,
+  `app/cbl/CBEXPORT.cbl:445-446, 495-496 (5000-EXPORT-TRANSACTIONS, 5200-CREATE-TRAN-EXP-REC)`,
+  `app/cbl/CBEXPORT.cbl:510-511, 553-554 (5500-EXPORT-CARDS, 5700-CREATE-CARD-EXPORT-RECORD)`,
+  `app/cbl/CBEXPORT.cbl:557-576 (6000-FINALIZE)`.
 
 ### Validation rules
 None. Source records are re-encoded without any check.
