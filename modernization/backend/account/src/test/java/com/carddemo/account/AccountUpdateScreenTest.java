@@ -681,6 +681,7 @@ class AccountUpdateScreenTest extends AccountScreenTestBase {
         assertThat(turn("PF15", Map.of()).at("/navigate").asText()).isEqualTo("COMEN01C");
         assertThat(customer(24).get("zip")).isEqualTo("15414");
         assertThat(mode(turn("ENTER", Map.of("accountId", "")))).as("a new conversation after exit").isEqualTo("SEARCH");
+        assertThat(client.show("COADM01C").has("fields")).as("the ADMIN role survives entry and PF3").isTrue();
     }
 
     @Test

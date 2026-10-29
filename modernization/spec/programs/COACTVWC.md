@@ -24,8 +24,8 @@ from main menu option 1 "Account View" (`app/cpy/COMEN02Y.cpy:28`).
 
 | Entry | How detected | Effect |
 |:--|:--|:--|
-| Main menu option 1 (`COMEN01C` XCTL with PGM-CONTEXT 0) | `CDEMO-FROM-PROGRAM` = `COMEN01C` and not PGM-REENTER | CARDDEMO-COMMAREA and the program extension are re-initialized (Q-COACTVWC-03); empty search screen |
-| Transaction CAVW typed with no COMMAREA | EIBCALEN = 0 | Same as menu entry |
+| Main menu option 1 (`COMEN01C` XCTL with PGM-CONTEXT 0) | EIBCALEN = 160 and `CDEMO-PGM-ENTER` | COMMAREA copied from DFHCOMMAREA (the `COMEN01C` test reads working storage before the copy and is never true, Q-COACTVWC-03); PGM-CONTEXT 0, so the empty search screen is sent |
+| Transaction CAVW typed with no COMMAREA | EIBCALEN = 0 | CARDDEMO-COMMAREA and the program extension initialized; empty search screen |
 | Own pseudo-conversational turn | `CDEMO-PGM-REENTER` (set just before every SEND MAP) | Map received, account number edited, records read, screen redisplayed |
 | Any other caller with PGM-CONTEXT 0 | `CDEMO-PGM-ENTER` | Empty search screen. CDEMO-ACCT-ID passed in is not used to pre-fill or read. |
 
@@ -140,7 +140,10 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
    WS-COMMAREA. Clear the return message.
 2. IF EIBCALEN = 0, or CDEMO-FROM-PROGRAM = `COMEN01C` and not PGM-REENTER: INITIALIZE
    CARDDEMO-COMMAREA and WS-THIS-PROGCOMMAREA (PGM-CONTEXT becomes 0 = ENTER). OTHERWISE copy both
-   from DFHCOMMAREA (NAV-COACTVWC-06).
+   from DFHCOMMAREA (NAV-COACTVWC-06). The second operand tests the working-storage copy of
+   CARDDEMO-COMMAREA before it is loaded from DFHCOMMAREA, so on a new task it is never true
+   (inferred from CICS storage semantics: COCOM01Y has no VALUE clauses). In practice only
+   EIBCALEN = 0 initializes; menu entry copies the COMMAREA like any other caller.
 3. `YYYY-STORE-PFKEY` maps EIBAID to the CCARD-AID flags (PF13-PF24 act as PF1-PF12). IF the AID is
    neither ENTER nor PF3, treat it as ENTER (NAV-COACTVWC-01).
 4. EVALUATE:
@@ -198,8 +201,12 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
   3. Customer master (`CUSTDAT`) by the customer id from step 1.
 
   A cross-reference failure stops the chain. An account-master failure does not (Q-COACTVWC-01).
-  If the account has several cards, the cross-reference path returns the first record for the
-  account and that card number goes to CDEMO-CARD-NUM. Source:
+  If the account has several cards, the READ on the non-unique alternate index returns DUPKEY
+  (RESP 15), which takes the file-error branch (ERR-COACTVWC-02): the account is shown in error,
+  nothing is displayed, and CDEMO-CUST-ID / CDEMO-CARD-NUM are not set. The sample data has one
+  card per account (`app/jcl/XREFFILE.jcl:72-75`, Q-ENT-32). Expected in the target system
+  (Q-ENT-32, DF-6): the account is shown and the card passed on is the account's lowest card
+  number. Source:
   `app/cbl/COACTVWC.cbl:687-718 (9000-READ-ACCT)`, `:723-770 (9200-GETCARDXREF-BYACCT)`,
   `:774-820 (9300-GETACCTDATA-BYACCT)`, `:825-869 (9400-GETCUSTDATA-BYCUST)`.
 - **BR-COACTVWC-02**: Account fields displayed (when the account or the customer was found):
@@ -283,8 +290,9 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
     CDEMO-LAST-MAPSET = `COACTVW`, CDEMO-LAST-MAP = `CACTVWA`.
   - XCTL PROGRAM(CDEMO-TO-PROGRAM) COMMAREA(CARDDEMO-COMMAREA).
 
-  Because menu entry clears FROM-PROGRAM, PF3 always returns to COMEN01C in practice. PF3 is
-  honored on the first turn too (before any map is received). Source:
+  From the menu path FROM-PROGRAM is `COMEN01C` (set by the menu and never changed by this
+  program), and on the direct CAVW path it is blank, so PF3 returns to COMEN01C in both cases. PF3
+  is honored on the first turn too (before any map is received). Source:
   `app/cbl/COACTVWC.cbl:324-352 (0000-MAIN)`.
 - **NAV-COACTVWC-03**: PGM-ENTER (menu entry, direct CAVW, or PF3 return from elsewhere with
   context 0): send the empty search screen with info `Enter or update id of account to display`
@@ -295,8 +303,12 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
   COMMAREA. Source: `app/cbl/COACTVWC.cbl:394-407 (COMMON-RETURN)`.
 - **NAV-COACTVWC-06**: COMMAREA initialization. When EIBCALEN = 0, or the caller is COMEN01C and
   context is not REENTER, the whole CARDDEMO-COMMAREA and the extension are INITIALIZEd
-  (Q-COACTVWC-03); otherwise both are restored from DFHCOMMAREA. Source:
-  `app/cbl/COACTVWC.cbl:282-293`.
+  (Q-COACTVWC-03); otherwise both are restored from DFHCOMMAREA. The second operand tests the
+  working-storage copy of CARDDEMO-COMMAREA before it is loaded from DFHCOMMAREA, so on a new task
+  it is never true (inferred: no VALUE clauses in COCOM01Y, so the copy holds the initial image).
+  In practice only EIBCALEN = 0 initializes; menu entry copies the COMMAREA like any other caller,
+  so CDEMO-USER-ID, CDEMO-USER-TYPE, and the customer, account, and card context survive. Source:
+  `app/cbl/COACTVWC.cbl:211`, `app/cbl/COACTVWC.cbl:282-293`, `app/cbl/COMEN01C.cbl:178-187`.
 
 ### Error handling
 - **ERR-COACTVWC-01**: Cross-reference READ NOTFND: input error, filter "not OK" (ACCTSID red), and
@@ -310,7 +322,8 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
 - **ERR-COACTVWC-02**: Cross-reference READ other RESP: input error, filter "not OK", message
   `File Error: READ     on CXACAIX   returned RESP nnnnnnnnn ,RESP2 nnnnnnnnn ` (layout
   `WS-FILE-ERROR-MESSAGE`: `File Error: ` + operation X(8) + ` on ` + file X(9) + ` returned RESP `
-  + RESP X(10) + `,RESP2 ` + RESP2 X(10), cut to 75 characters). No further reads. Source:
+  + RESP X(10) + `,RESP2 ` + RESP2 X(10), cut to 75 characters). No further reads. This includes
+  DUPKEY (RESP 15) for an account with more than one card (BR-COACTVWC-01). Source:
   `app/cbl/COACTVWC.cbl:86-105`, `:759-768`.
 - **ERR-COACTVWC-03**: Account master READ NOTFND: input error, filter "not OK" (ACCTSID red), and
   (if no message yet) message `Account:` + key + ` not found in` + ` Acct Master file.Resp:` + RESP +
@@ -361,10 +374,12 @@ SYNCPOINT is issued. COMMAREA effects: CDEMO-ACCT-ID, CDEMO-CUST-ID, CDEMO-CARD-
   `Account number must be a non zero 11 digit number` (twice), the three `Did not find ...` texts,
   `Error reading account card xref File`, and `Looks Good.... so far`. Recommendation: decide (keep
   the observable `No input received`). Source: `app/cbl/COACTVWC.cbl:117-138`, `:640-642`.
-- **Q-COACTVWC-03**: Entry from the menu INITIALIZEs the whole CARDDEMO-COMMAREA. This erases
-  CDEMO-USER-ID and CDEMO-USER-TYPE, and PF3 then forces user type `U`. An administrator who views
-  an account returns to the menu as a regular user with no user id. Recommendation: fix (keep
-  session identity). Source: `app/cbl/COACTVWC.cbl:282-286`, `:344`.
+- **Q-COACTVWC-03**: The program intends to INITIALIZE CARDDEMO-COMMAREA on menu entry, but the
+  test reads working storage before the COMMAREA is copied (NAV-COACTVWC-06), so only a direct
+  start with no COMMAREA initializes it. The user id therefore survives menu entry. PF3 forces
+  user type `U`, so an administrator who views an account returns to the menu as a regular user.
+  Recommendation: fix (keep session identity). Source: `app/cbl/COACTVWC.cbl:282-286`, `:344`.
+  (Corrected after review: an earlier version said menu entry erases the user id.)
 - **Q-COACTVWC-04**: The info message `Displaying details of given Account` is defined but never
   set. After a successful display the info line still says
   `Enter or update id of account to display`. Recommendation: decide. Source:
@@ -400,7 +415,7 @@ SSNs and government ids are masked. The full values are in `app/data/ASCII/custd
 - **TS-COACTVWC-01** (NAV-COACTVWC-03, NAV-COACTVWC-06, BR-COACTVWC-06): Given main menu option 1,
   when the program starts, then the screen shows an empty, editable account number with the
   cursor on it, no details, info `Enter or update id of account to display`, and a blank error
-  line. CDEMO-USER-ID is now blank (Q-COACTVWC-03).
+  line. CDEMO-USER-ID is unchanged (NAV-COACTVWC-06).
 - **TS-COACTVWC-02** (BR-COACTVWC-01, -02, -03): Given the search screen, when `00000000001` is
   entered, then the screen shows:
   - Active `Y`; Opened `2014-11-20`; Expiry `2025-05-20`; Reissue `2025-05-20`.
@@ -455,7 +470,8 @@ SSNs and government ids are masked. The full values are in `app/data/ASCII/custd
 - Should a regular user be allowed to view any account and its customer's SSN, or only accounts
   linked to their own user id (Q-COACTVWC-09)? No authorization check exists.
 - When an account has more than one card, which card should be passed on in CDEMO-CARD-NUM? The
-  source takes whatever the alternate index returns first.
+  source fails with a file error (DUPKEY, BR-COACTVWC-01). The target uses the lowest card number
+  (Q-ENT-32, DF-6).
 - How does the production terminal population handle VALIDN=MUSTFILL (Q-COACTVWC-06)? This decides
   whether short account numbers ever reach the program.
 - Should the view pre-fill and display CDEMO-ACCT-ID when called by another program with an

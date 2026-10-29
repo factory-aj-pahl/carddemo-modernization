@@ -135,7 +135,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 |:--|:--|:--|:--|:--|:--|
 | Q-COACTVWC-01 | Account missing from ACCTDAT does not stop processing; unread account data is shown | functional-defect | FIX | When the account master read fails, processing stops. The customer is not read, no account or customer fields are shown, the account number is shown in error style, and for not-found the message is `Account:00000000077 not found in Acct Master file.Resp:000000013  Reas:0000` (ERR-COACTVWC-03 text with the entered number). TS-COACTVWC-08 changes accordingly. | n/a |
 | Q-COACTVWC-02 | "Account number not provided" is always overwritten; several messages are unused | dead-code | NOT-PORTED | The observable behavior is kept: a blank account number gives `No input received`. The overwritten and unused texts are not ported. | n/a |
-| Q-COACTVWC-03 | Menu entry INITIALIZEs the COMMAREA, erasing user id and type; PF3 forces type `U` | functional-defect | FIX | C-SESSION: user ID and role survive entry and PF3. No visible change for a USER. | n/a |
+| Q-COACTVWC-03 | PF3 forces user type `U`; direct start without COMMAREA clears the session fields | functional-defect | FIX | C-SESSION: user ID and role survive entry and PF3. No visible change for a USER. | n/a |
 | Q-COACTVWC-04 | Info message "Displaying details of given Account" is defined but never set | functional-defect | FIX | After a successful display, the info line is `Displaying details of given Account`. On entry and after any error it stays `Enter or update id of account to display`. | n/a |
 | Q-COACTVWC-05 | Not-found messages expose raw RESP/RESP2 numbers and are cut at 75 characters | cosmetic | PRESERVE | The not-found messages are reproduced verbatim, including the fixed NOTFND codes and the 75-character cut: `Account:00000000099 not found in Cross ref file.  Resp:000000013  Reas:0000`, `Account:<11 digits> not found in Acct Master file.Resp:000000013  Reas:0000`, and `CustId:<9 digits> not found in customer master.Resp: 000000013  REAS:0000000`. The cross-reference text is also the out-of-scope answer (C-SCOPE). | n/a |
 | Q-COACTVWC-06 | MUSTFILL is enforced only by some terminals; message has a double space | platform | PLATFORM | The field accepts at most 11 digits. The server accepts only exactly 11 digits that are not all zero; anything else (including `1`) gives `Account Filter must  be a non-zero 11 digit number` (double space kept). C-KEYLEN. | n/a |
@@ -168,7 +168,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COACTUPC-18 | F5 saves the values received on the F5 turn without re-validating | security | FIX | F5 saves the values the server validated and kept at the confirmation turn (state N). Values submitted with F5 are ignored. | n/a |
 | Q-COACTUPC-19 | After a save attempt the next key shows an empty search screen; typed account is ignored | business-choice | PRESERVE | After states C, L, or F, the next ENTER or F12 shows the empty search screen with info `Enter or update id of account to update`. On the result screen the account number is read-only, because any typed value would be ignored. | n/a |
 | Q-COACTUPC-20 | "Not found" flags are never set; unread account or customer data is used | functional-defect | FIX | Account not found: processing stops, there is no customer read and no snapshot, the state stays "not fetched", and the message is `Account:<11 digits> not found in Acct Master file.Resp:000000013  Reas:0000`. Customer not found: no snapshot, no details shown, the state stays "not fetched", and the message is `CustId:<9 digits> not found in customer master.Resp: 000000013  REAS:0000000`. | n/a |
-| Q-COACTUPC-21 | Menu entry INITIALIZEs the COMMAREA; PF3 forces type `U` | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
+| Q-COACTUPC-21 | PF3 forces user type `U`; direct start without COMMAREA clears the session fields | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
 | Q-COACTUPC-22 | Unused paragraphs, unreachable WHENs, unused messages | dead-code | NOT-PORTED | No counterpart. | n/a |
 | Q-COACTUPC-23 | Comments around the EFT and primary-flag snippets are swapped | dead-code | NOT-PORTED | No counterpart. | n/a |
 | Q-COACTUPC-24 | Account number must be typed as all 11 digits | business-choice | PRESERVE | C-KEYLEN: `24` or `0000000024` gives `Account Number if supplied must be a 11 digit Non-Zero Number`. | n/a |
@@ -193,7 +193,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COCRDLIC-07 | Filtered PF7 hitting the file start reports a file error | functional-defect | FIX | When a backward page reaches the first matching card before 7 rows are collected, the target shows page 1 (the first up to 7 matching cards from the start) with page number 1 and no file-error message. | n/a |
 | Q-COCRDLIC-08 | Selected-row index 0 reads the byte before the array | platform | PLATFORM | No row selected means no selection; behavior unchanged. | n/a |
 | Q-COCRDLIC-09 | Stray `I` moves an attribute byte into subscript I | dead-code | NOT-PORTED | No visible effect; nothing ported. | n/a |
-| Q-COCRDLIC-10 | Row 1 has different protection, marking, and cursor handling | platform | PLATFORM | All 7 rows behave the same. In error, a blank selected row shows `*`, and focus goes to the first row in error. | n/a |
+| Q-COCRDLIC-10 | Row 1 has different protection, marking, and cursor handling | platform | PLATFORM | All 7 rows behave the same; focus goes to the first row in error. | n/a |
 | Q-COCRDLIC-11 | User type forced to `U` on every transfer; COMMAREA re-initialized on PF3 return | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
 | Q-COCRDLIC-12 | Lowercase `s` and `u` are rejected | business-choice | PRESERVE | `s` or `u` gives `INVALID ACTION CODE`. | n/a |
 | Q-COCRDLIC-13 | Filters and page position are lost after view or update | business-choice | PRESERVE | Returning from view or update shows page 1 with blank filters. | n/a |
@@ -202,6 +202,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COCRDLIC-16 | Full 16-digit card numbers on the list | security | FIX | Card numbers are shown masked (C-MASK). A selection is resolved by row number on the server, which maps it to the full card number in the session. The full number is never sent to the client. | n/a |
 | Q-COCRDLIC-17 | "NO MORE RECORDS TO SHOW" appears in the red error line | cosmetic | PRESERVE | Shown in the error line and error style whenever the COBOL shows it. | n/a |
 | Q-COCRDLIC-18 | Stopper fields CRDSTP2-7 overlap the zero-length stopper | platform | PLATFORM | No counterpart. | n/a |
+| Q-COCRDLIC-19 | A failed STARTBR (empty file, start key above the last card, file unavailable) abends the task at ENDBR; no screen is sent | functional-defect | FIX | No abend: every turn ends with the list screen. When the browse finds no card from its start key (empty card table, or every card from the start key on is gone), the list shows no rows with `NO RECORDS FOUND FOR THIS SEARCH CONDITION.` on page 1 and `NO MORE RECORDS TO SHOW` on later pages, as after an ENDFILE in 9000-READ-FORWARD. PF8 whose announced next page no longer has a card answers as PF8 on the last page (Q-COCRDLIC-04). A database error shows the file-error text `File Error: READ     on CARDDAT   returned RESP 000000017 ,RESP2 000000000 ` (ERR-COCRDLIC-02) with no rows. | n/a |
 
 ## COCRDSLC
 
@@ -209,7 +210,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 |:--|:--|:--|:--|:--|:--|
 | Q-COCRDSLC-01 | Entered account is not checked against the card's account | functional-defect | FIX | The card is shown only when its stored account id equals the entered (or passed) account and is in scope (C-SCOPE). Otherwise the message is `Did not find cards for this search condition`, both keys are in error style, and no details are shown. | n/a |
 | Q-COCRDSLC-02 | Invalid (non-numeric) keys are redisplayed empty | cosmetic | PRESERVE | A key that fails the numeric edit is redisplayed empty, in error style, with focus on it. | n/a |
-| Q-COCRDSLC-03 | Menu entry INITIALIZEs the COMMAREA; PF3 sets type `U` | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
+| Q-COCRDSLC-03 | PF3 forces user type `U`; direct start without COMMAREA clears the session fields | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
 | Q-COCRDSLC-04 | "IF SUPPLIED" wording for mandatory keys; unused messages | cosmetic | PRESERVE | Observable texts are verbatim: `ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER`, `CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER`, `Account number not provided`, `Card number not provided`, `No input received`. Unused texts are not ported. | n/a |
 | Q-COCRDSLC-05 | LIT-CCLISTMAP names this program's own map; unused | dead-code | NOT-PORTED | No counterpart. | n/a |
 | Q-COCRDSLC-06 | Copies 12 bytes beyond the 160-byte COMMAREA | platform | PLATFORM | No counterpart (C-SESSION). | n/a |
@@ -232,7 +233,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COCRDUPC-07 | Change detection ignores case | business-choice | PRESERVE | A case-only name change gives `No change detected with respect to values fetched.`. | n/a |
 | Q-COCRDUPC-08 | PF12 on the menu path edits the discarded input first | functional-defect | FIX | F12 never edits the discarded input. It re-reads the card and shows the stored values in state S with info `Details of selected card shown above` and no error message. | n/a |
 | Q-COCRDUPC-09 | List entry sets state S even when the fetch fails | functional-defect | FIX | If the card is not found on list entry, the state stays "not fetched": error `Did not find cards for this search condition`, no details, details not editable, and no save possible. The keys are shown read-only (card masked), and F3 returns to the list. | n/a |
-| Q-COCRDUPC-10 | Menu entry INITIALIZEs the COMMAREA; exit forces type `U` | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
+| Q-COCRDUPC-10 | Exit forces user type `U`; direct start without COMMAREA clears the session fields | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
 | Q-COCRDUPC-11 | Copies 329 bytes beyond the 160-byte COMMAREA, including the state byte | platform | PLATFORM | The screen state is always reset on entry; no stale state can send the user back to the list. | n/a |
 | Q-COCRDUPC-12 | Key fields cannot be changed after a fetch | business-choice | PRESERVE | To edit another card the user exits with F3 or completes the save cycle. | n/a |
 | Q-COCRDUPC-13 | After a save attempt the next key shows an empty search screen; conflict discards edits | business-choice | PRESERVE | As in BR-COCRDUPC-09 and BR-COCRDUPC-06: the menu path shows an empty search screen after a save attempt, and a conflict shows the current stored values with the user's edits discarded. | n/a |
@@ -447,6 +448,7 @@ Cards:
 - Q-COCRDLIC-04: PF8 never shows an empty page.
 - Q-COCRDLIC-06: page numbers above 9 display correctly.
 - Q-COCRDLIC-07: filtered PF7 reaching the start shows page 1 instead of a file error.
+- Q-COCRDLIC-19: an empty card file or a browse start above the last card shows the list with `NO RECORDS FOUND FOR THIS SEARCH CONDITION.` or `NO MORE RECORDS TO SHOW`, and a database error shows the file-error text, instead of an abend.
 - Q-COCRDLIC-16: card numbers shown as `************1234`.
 - Q-COCRDSLC-01: the card is shown only when it belongs to the entered account; otherwise `Did not find cards for this search condition`.
 - Q-COCRDSLC-11: card number masked after a read.
