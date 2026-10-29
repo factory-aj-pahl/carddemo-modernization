@@ -19,6 +19,10 @@ import com.carddemo.migration.SampleDataLoader;
 import com.carddemo.migration.TableExporter;
 import com.carddemo.refdata.api.TranTypeBatchUpdate;
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -72,6 +76,9 @@ import org.springframework.stereotype.Component;
  * <li>{@code export DIR [files=a.txt,b.txt] [ims=NAME]}: write tables back in their legacy layouts ({@code DB2LTTYP.ctl}
  * and {@code DB2LTCAT.ctl} are written as the Db2 seed SQL); {@code ims} writes the pending-authorization tables as an
  * IMS unload file named NAME (only that file unless {@code files} is given)</li>
+ * <li>{@code WAITSTEP wait=NNNNNNNN}: pause for that many hundredths of a second (COBSWAIT); exit 12 with
+ * {@code INVALID WAIT TIME} when the value is not 1 to 8 digits</li>
+ * <li>{@code PRTCATBL reportFile=PATH}: category balance listing (JOB-PRTCATBL)</li>
  * <li>{@code reset}: drop and re-create the schema (only with {@code --spring.flyway.clean-disabled=false})</li>
  * </ul>
  */
@@ -81,6 +88,15 @@ public class BatchCommandLine {
     static final DateTimeFormatter BUSINESS_DATE = DateTimeFormatter.ofPattern("uuuu-MM-dd").withResolverStyle(ResolverStyle.STRICT);
     static final String INVALID_DATE = "INVALID OR MISSING BUSINESS DATE";
     static final String INVALID_RANGE = "INVALID OR MISSING REPORT DATE RANGE";
+    static final String INVALID_WAIT = "INVALID WAIT TIME";
+    static final int CATBAL_LINE = 40;
+
+    /** Suspends the step; replaceable so tests need not sleep for the full interval. */
+    interface Pause {
+        void centiseconds(long n) throws InterruptedException;
+    }
+
+    Pause pause = n -> Thread.sleep(n * 10);
 
     private final JobLauncher launcher;
     private final Map<String, Job> jobs;
@@ -140,6 +156,8 @@ public class BatchCommandLine {
                 case "load" -> load(params);
                 case "loaddb2" -> loadDb2(params);
                 case "export" -> export(params);
+                case "WAITSTEP" -> waitstep(params);
+                case "PRTCATBL" -> prtcatbl(params);
                 case "reset" -> reset();
                 default -> usage("unknown command " + words.get(0));
             };
@@ -161,6 +179,7 @@ public class BatchCommandLine {
             + " | COBTUPDT inputFile=PATH"
             + " | CBPAUP0C [sysin=EE,CCCCC,DDDDD,F] | PAUDBUNL|PAUDBLOD|DBUNLDGS rootFile=PATH childFile=PATH"
             + " | load DIR [usrsec=FILE] [ims=FILE] | loaddb2 [types=FILE] [categories=FILE] | export DIR [files=NAMES] [ims=NAME]"
+            + " | WAITSTEP wait=NNNNNNNN | PRTCATBL reportFile=PATH"
             + " | reset");
         return ExitCodes.USAGE;
     }
@@ -488,6 +507,46 @@ public class BatchCommandLine {
             System.out.println("EXPORTED " + name + " " + exporter.export(layout, Path.of(dir, name)));
         }
         return ExitCodes.OK;
+    }
+
+    /** Q-COBSWAIT-01: the interval must be 1 to 8 decimal digits (at most 99,999,999 hundredths of a second). */
+    private int waitstep(Map<String, String> params) {
+        String v = params.getOrDefault("wait", "");
+        if (!v.matches("[0-9]{1,8}")) {
+            log.display(INVALID_WAIT);
+            return ExitCodes.INVALID_WAIT;
+        }
+        try {
+            pause.centiseconds(Long.parseLong(v));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return abend();
+        }
+        return ExitCodes.OK;
+    }
+
+    /**
+     * JOB-PRTCATBL: account (11), type (2), category (4), and the balance edited as 9 digits, a period, and 2 digits,
+     * blank-separated and sorted by key. Q-PRTCATBL-02: a negative balance gets a trailing {@code -}. Q-PRTCATBL-01:
+     * each line keeps the first 40 bytes.
+     */
+    private int prtcatbl(Map<String, String> params) throws IOException {
+        Map<String, Path> p = paths(params, "reportFile");
+        if (p == null) {
+            return usage("PRTCATBL needs reportFile");
+        }
+        List<String> lines = jdbc.query("SELECT account_id, type_cd, cat_cd, balance FROM tran_cat_balance"
+                + " ORDER BY account_id, type_cd, cat_cd",
+            (rs, i) -> catbalLine(rs.getLong(1), rs.getString(2), rs.getInt(3), rs.getBigDecimal(4)));
+        Files.write(p.get("reportFile"), lines, StandardCharsets.ISO_8859_1);
+        return ExitCodes.OK;
+    }
+
+    static String catbalLine(long account, String type, int category, BigDecimal balance) {
+        String digits = balance.abs().setScale(2, RoundingMode.UNNECESSARY).toPlainString();
+        String edited = "0".repeat(Math.max(0, 12 - digits.length())) + digits + (balance.signum() < 0 ? "-" : "");
+        String line = String.format("%011d %-2s %04d %s", account, type, category, edited);
+        return String.format("%-" + CATBAL_LINE + "s", line).substring(0, CATBAL_LINE);
     }
 
     private int reset() {

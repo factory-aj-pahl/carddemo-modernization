@@ -440,7 +440,7 @@ class TransactionAddScreenTest extends TransactionScreenTestBase {
     }
 
     @Test
-    @Covers({"Q-COTRN02C-13", "ERR-COTRN02C-03", "ERR-COTRN02C-05"})
+    @Covers({"Q-COTRN02C-13", "ERR-COTRN02C-03", "ERR-COTRN02C-05", "ERR-COTRN02C-06"})
     void first_transaction_on_an_empty_table_gets_id_1() {
         jdbc.update("DELETE FROM card_transaction");
         client.signOn(ownerOf(1));

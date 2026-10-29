@@ -37,3 +37,7 @@ C-/B- convention (covered by passing tests). Columns: owed ID, resolving ledger 
 | ERR-COPAUA0C-01 | Q-COPAUA0C-15 | MQOPEN of the request queue per task has no counterpart: a long-lived RabbitMQ listener consumes the request queue; a broker that is down is a container restart, not an M001 record. |
 | ERR-COPAUA0C-11 | Q-COPAUA0C-15 | MQCLOSE at the end of a task has no counterpart for the long-lived listener, so there is no M005 warning. |
 | TS-PAUDBLOD-09 | Q-PAUDBLOD-01 | The DLITCBL entry that binds only the I/O PCB has no counterpart: the load writes the tables directly, so the first root insert cannot fail for that reason. |
+| BR-COMEN01C-07 | Q-COMEN01C-04 | NOT-PORTED: no `DUMMY` program names and no "coming soon" message in the target menu. |
+| ERR-COMEN01C-02 | Q-COMEN01C-05 | PLATFORM: option availability is a feature flag, so selecting an option never abends; a disabled option shows `This option <name> is not installed...` (`DisabledOptionsTest`). |
+| ERR-COADM01C-02 | Q-COADM01C-04 | PLATFORM: availability is a per-option feature flag (`DisabledOptionsTest`); sign-off is not an option, so it never shows the not-installed message. |
+| ERR-COSGN00C-04 | Q-COMEN01C-05 | PLATFORM: the menus are screens of the same application, not separately loaded programs; there is no PGMIDERR, and only the optional menu options carry availability flags (`DisabledOptionsTest`). |

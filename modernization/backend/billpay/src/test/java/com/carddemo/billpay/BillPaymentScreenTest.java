@@ -369,7 +369,7 @@ class BillPaymentScreenTest {
     }
 
     @Test
-    @Covers({"Q-COBIL00C-12", "BR-COBIL00C-03"})
+    @Covers({"Q-COBIL00C-12", "BR-COBIL00C-03", "ERR-COBIL00C-07"})
     void first_payment_on_an_empty_transaction_table_gets_id_1() {
         jdbc.update("DELETE FROM card_transaction");
         client.signOn(ownerOf(1));
