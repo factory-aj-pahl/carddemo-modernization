@@ -148,7 +148,7 @@ Not applicable (batch).
 - **Q-CBACT04C-03**: The cross-reference is read by the alternate key (account ID) declared without `WITH DUPLICATES`,
   but the AIX is defined `NONUNIQUEKEY` (`app/jcl/XREFFILE.jcl:72-75`). If an account has more than one card, the read
   returns status `02` (or the open/read fails, depending on the runtime), which the program treats as an error and
-  abends. Only the first card in AIX order is used as the interest transaction's card. Recommendation: fix (an account
+  abends, so no interest is calculated for that account or any account after it. Recommendation: fix (an account
   with several cards must be supported; decide which card number to stamp). Source: `app/cbl/CBACT04C.cbl:34-39`, `app/cbl/CBACT04C.cbl:393-413`.
 - **Q-CBACT04C-04**: The DISCGRP open-failure message says `ERROR OPENING DALY REJECTS FILE` (copy-paste from CBTRN02C).
   Recommendation: fix. Source: `app/cbl/CBACT04C.cbl:281`.
