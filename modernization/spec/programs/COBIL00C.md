@@ -196,7 +196,10 @@ balance is: " (11,7); "Do you want to pay your balance now. Please confirm: " (1
   and resends the screen. Source: `app/cbl/COBIL00C.cbl:136-137 (MAIN-PARA)`, `:552-566 (CLEAR-CURRENT-SCREEN, INITIALIZE-ALL-FIELDS)`.
 - **NAV-COBIL00C-06**: Any other AID (PF1, PF2, PF5-PF24, PA keys, CLEAR) shows the 50-character
   `CCDA-MSG-INVALID-KEY` text "Invalid key pressed. Please see below..." padded with trailing spaces.
-  The screen fields keep what was received. Source: `app/cbl/COBIL00C.cbl:138-141 (MAIN-PARA)`, `app/cpy/CSMSG01Y.cpy:20-21`.
+  For PF keys the screen fields keep what was received (ACTIDIN, CURBAL, and CONFIRM are FSET). For PA
+  keys and CLEAR the terminal sends no data, so RECEIVE gets MAPFAIL (ignored, ERR-COBIL00C-08), the map
+  keeps its initial storage, and the account ID, current balance, and Confirm fields are blank on the
+  re-sent screen. Source: `app/cbl/COBIL00C.cbl:124`, `app/cbl/COBIL00C.cbl:138-141 (MAIN-PARA)`, `app/cpy/CSMSG01Y.cpy:20-21`.
 - **NAV-COBIL00C-07**: Every turn that does not XCTL ends with RETURN TRANSID `CB00` and the 218-byte
   COMMAREA. Source: `app/cbl/COBIL00C.cbl:146-149 (MAIN-PARA)`.
 
@@ -224,7 +227,8 @@ job log.
 - **ERR-COBIL00C-07**: ENDBR has no RESP option. Any exception raises the CICS default action, a task
   abend (AEIP). An example is INVREQ when STARTBR failed and no browse is active.
   Source: `app/cbl/COBIL00C.cbl:501-505 (ENDBR-TRANSACT-FILE)`.
-- **ERR-COBIL00C-08**: The RESP of RECEIVE MAP is captured but never tested, so MAPFAIL is ignored.
+- **ERR-COBIL00C-08**: The RESP of RECEIVE MAP is captured but never tested, so MAPFAIL is ignored
+  (consequence for PA keys and CLEAR: see NAV-COBIL00C-06).
   Source: `app/cbl/COBIL00C.cbl:306-314 (RECEIVE-BILLPAY-SCREEN)`.
 
 ## Data effects
