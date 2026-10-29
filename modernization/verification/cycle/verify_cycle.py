@@ -8,7 +8,8 @@ Two scenarios on the sample data (architecture.md section 6, B-CYCLE):
 The reference chain is the patched GnuCOBOL programs (refrun.py), each step reading the files the
 previous step wrote, with COMBTRAN reproduced by refrun.combtran(). The target chain is one
 `airflow dags test carddemo_daily_cycle` run on a freshly loaded database (BACKUP, POSTTRAN,
-month_start, INTCALC when the date is the first business day, CREASTMT). The end states are compared
+month_start, INTCALC when the month's interest is due, which on a freshly loaded database means the
+first business day, CREASTMT). The end states are compared
 with compare.py: the transaction, account, and category-balance tables (exported in their legacy
 layouts), the reject file, and the text and HTML statements. Run-time timestamps are the only
 normalized fields (processing timestamps, and the original timestamps of interest rows).
