@@ -124,8 +124,9 @@ bright), and the key legend `ENTER=Continue  F3=Back  F7=Backward  F8=Forward` a
    blank); set the next-page flag to `Y`; IF page number > 1, PERFORM PROCESS-PAGE-BACKWARD; OTHERWISE
    message "You are already at the top of the page...", send without ERASE (the displayed rows stay).
 7. PROCESS-PF8-KEY (`app/cbl/COUSR00C.cbl:260-277`): start key = CDEMO-CU00-USRID-LAST (HIGH-VALUES if
-   blank; a full key of HIGH-VALUES is a CICS special case that positions the browse at the end of the file
-   instead of giving NOTFND, see NAV-COUSR00C-03); IF next-page flag is `Y`, PERFORM PROCESS-PAGE-FORWARD; OTHERWISE message
+   blank; a full key of HIGH-VALUES is a CICS special case that positions the browse at the end of the
+   file instead of giving NOTFND, inferred from CICS documentation; see NAV-COUSR00C-03); IF next-page
+   flag is `Y`, PERFORM PROCESS-PAGE-FORWARD; OTHERWISE message
    "You are already at the bottom of the page...", send without ERASE.
 8. PROCESS-PAGE-FORWARD (`app/cbl/COUSR00C.cbl:282-331`):
    1. STARTBR USRSEC at the start key. The GTEQ option is commented out, but GTEQ is the CICS default, so
@@ -224,30 +225,32 @@ bright), and the key legend `ENTER=Continue  F3=Back  F7=Backward  F8=Forward` a
 - **NAV-COUSR00C-02**: PF3 -> XCTL to COADM01C with the COMMAREA (always to the admin menu).
   Source: `app/cbl/COUSR00C.cbl:125-127 (MAIN-PARA)`, `app/cbl/COUSR00C.cbl:506-517`.
 - **NAV-COUSR00C-03**: PF7 -> previous page; on page 1 (or less), message
-  "You are already at the top of the page..." and the current rows stay on the screen (sent without ERASE).
-  In both cases the next-page flag is set to `Y` first (line 245), so after PF7 on page 1 a following PF8
-  pages forward from CDEMO-CU00-USRID-LAST even when no next page exists; with no further users this clears
-  all rows and shows "You have reached the bottom of the page..." with the page number unchanged
-  (Q-COUSR00C-15). This assumes CDEMO-CU00-USRID-LAST holds a user ID that is still in the file. If it is
-  blank (list entered from the admin menu with the 160-byte COMMAREA and row 10 never filled, for example
-  with 9 users), PF8 starts at HIGH-VALUES: CICS positions the browse at the end of the file (a full key of
-  HIGH-VALUES does not give NOTFND), the skip READNEXT gets ENDFILE, no row is cleared or read, and the
-  received rows are re-sent with "You have reached the bottom of the page...", next-page flag `N`, and the
-  page number unchanged. If it holds a key with no user ID greater than or equal to it (for example that
-  user, the last in the file, was deleted), STARTBR returns NOTFND and the turn ends with
-  "Unable to lookup User..." and an AEIP abend (ERR-COUSR00C-01, Q-COUSR00C-03).
-  Source: `app/cbl/COUSR00C.cbl:128-129`, `app/cbl/COUSR00C.cbl:237-255 (PROCESS-PF7-KEY)`, `app/cbl/COUSR00C.cbl:245`,
-  `app/cbl/COUSR00C.cbl:262-266 (PROCESS-PF8-KEY)`.
+  "You are already at the top of the page..." and the current rows stay on the screen (sent without
+  ERASE). In both cases the next-page flag is set to `Y` first (line 245), so after PF7 on page 1 a
+  following PF8 pages forward from CDEMO-CU00-USRID-LAST even when no next page exists; with no further
+  users this clears all rows and shows "You have reached the bottom of the page..." with the page number
+  unchanged (Q-COUSR00C-15). This assumes CDEMO-CU00-USRID-LAST holds a user ID that is still in the
+  file. If it is blank (list entered from the admin menu with the 160-byte COMMAREA and row 10 never
+  filled, for example with 9 users), PF8 starts at HIGH-VALUES: CICS positions the browse at the end of
+  the file (a full key of HIGH-VALUES does not give NOTFND), the skip READNEXT gets ENDFILE, no row is
+  cleared or read, and the received rows are re-sent with "You have reached the bottom of the page...",
+  next-page flag `N`, and the page number unchanged (the HIGH-VALUES positioning is inferred from CICS
+  documentation). If it holds a key with no user ID greater than or equal to it (for example that user,
+  the last in the file, was deleted), STARTBR returns NOTFND and the turn ends with
+  "Unable to lookup User..." and an AEIP abend (ERR-COUSR00C-01, Q-COUSR00C-03). Source:
+  `app/cbl/COUSR00C.cbl:128-129`, `app/cbl/COUSR00C.cbl:237-255 (PROCESS-PF7-KEY)`,
+  `app/cbl/COUSR00C.cbl:245`, `app/cbl/COUSR00C.cbl:262-266 (PROCESS-PF8-KEY)`.
 - **NAV-COUSR00C-04**: PF8 -> next page; when the next-page flag is not `Y`, message
   "You are already at the bottom of the page..." and the current rows stay (sent without ERASE).
   The flag can be `Y` without a next page after PF7 on page 1 (NAV-COUSR00C-03).
   Source: `app/cbl/COUSR00C.cbl:130-131`, `app/cbl/COUSR00C.cbl:260-277 (PROCESS-PF8-KEY)`, `app/cbl/COUSR00C.cbl:245`.
-- **NAV-COUSR00C-05**: Any other AID -> message "Invalid key pressed. Please see below...         ", cursor on
-  the search field, screen re-sent with ERASE. For PF keys the received rows and page number are sent
-  back (all list fields are FSET), so the list stays visible. For CLEAR and PA1-PA3 the terminal sends no
-  data, so RECEIVE gets MAPFAIL (ignored, ERR-COUSR00C-08), the map keeps its initial storage, and the list
-  rows, page number, and search field are blank on the re-sent screen. In both cases the COMMAREA paging
-  state is unchanged. Source: `app/cbl/COUSR00C.cbl:121`, `app/cbl/COUSR00C.cbl:132-136 (MAIN-PARA)`.
+- **NAV-COUSR00C-05**: Any other AID -> message "Invalid key pressed. Please see below...         ",
+  cursor on the search field, screen re-sent with ERASE. For PF keys the received rows and page number
+  are sent back (all list fields are FSET), so the list stays visible. For CLEAR and PA1-PA3 the terminal
+  sends no data, so RECEIVE gets MAPFAIL (ignored, ERR-COUSR00C-08), the map keeps its initial storage,
+  and the list rows, page number, and search field are blank on the re-sent screen. In both cases the
+  COMMAREA paging state is unchanged. Target: C-SHORTREAD (ledger-online.md). Source:
+  `app/cbl/COUSR00C.cbl:121`, `app/cbl/COUSR00C.cbl:132-136 (MAIN-PARA)`.
 - **NAV-COUSR00C-06**: Selection `U`/`u` -> XCTL COUSR02C; `D`/`d` -> XCTL COUSR03C; both with the 194-byte
   COMMAREA, FROM-TRANID `CU00`, FROM-PROGRAM `COUSR00C`, context 0.
   Source: `app/cbl/COUSR00C.cbl:189-209 (PROCESS-ENTER-KEY)`.
@@ -303,16 +306,17 @@ in the COMMAREA extension (first/last key, page number, next-page flag, selectio
   earlier users exist). These messages also replace "Invalid selection. Valid values
   are U and D". Recommendation: decide (the target can show "no more records" as a state, not a message).
   Source: `app/cbl/COUSR00C.cbl:308-316`, `app/cbl/COUSR00C.cbl:634-640`, `app/cbl/COUSR00C.cbl:668-674`.
-- **Q-COUSR00C-03**: When STARTBR returns NOTFND (search key greater than every user ID, or empty file), the
-  code sets end of file but not the error flag, then issues ENDBR at line 325 for a browse that never
+- **Q-COUSR00C-03**: When STARTBR returns NOTFND (search key greater than every user ID, or empty file),
+  the code sets end of file but not the error flag, then issues ENDBR at line 325 for a browse that never
   started. CICS raises INVREQ, and with no RESP or HANDLE the task abends (expected abend code AEIP). The
   message set just before, "You are at the top of the page...", is also misleading. Recommendation: fix
   (show "No users found" and an empty list). The same NOTFND is reached by PF8 when CDEMO-CU00-USRID-LAST
-  holds a key with no user ID greater than or equal to it, and by PF7 when CDEMO-CU00-USRID-FIRST and every
-  later user ID were deleted; there the skip read fails first, so the last message is
+  holds a key with no user ID greater than or equal to it, and by PF7 when CDEMO-CU00-USRID-FIRST and
+  every later user ID were deleted; there the skip read fails first, so the last message is
   "Unable to lookup User..." (ERR-COUSR00C-01). A blank CDEMO-CU00-USRID-LAST does not reach it
-  (HIGH-VALUES, NAV-COUSR00C-03). Source: `app/cbl/COUSR00C.cbl:597-606`, `app/cbl/COUSR00C.cbl:325`,
-  `app/cbl/COUSR00C.cbl:262-266`, `app/cbl/COUSR00C.cbl:286-290`, `app/cbl/COUSR00C.cbl:340-344`.
+  (HIGH-VALUES, NAV-COUSR00C-03; inferred from CICS documentation). Source:
+  `app/cbl/COUSR00C.cbl:597-606`, `app/cbl/COUSR00C.cbl:325`, `app/cbl/COUSR00C.cbl:262-266`,
+  `app/cbl/COUSR00C.cbl:286-290`, `app/cbl/COUSR00C.cbl:340-344`.
 - **Q-COUSR00C-04**: CDEMO-CU00-USRID-LAST is updated only when row 10 is filled, so after a short last page
   it still holds the previous page's last key (FIRST is updated). Because the next-page flag is then `N`, PF8
   does not use it. Recommendation: fix in the target (track the last displayed key).

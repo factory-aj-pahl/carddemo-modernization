@@ -144,8 +144,10 @@ Checked in this order; only the first failure is reported. The entered values st
 - **NAV-COUSR01C-03**: PF4 -> clear all fields and the message, cursor First Name.
   Source: `app/cbl/COUSR01C.cbl:96-97 (MAIN-PARA)`, `app/cbl/COUSR01C.cbl:279-295`.
 - **NAV-COUSR01C-04**: Any other AID, including PF12 shown on the screen as `F12=Exit` -> message
-  "Invalid key pressed. Please see below...         ", cursor First Name, screen re-sent with the typed data.
-  Source: `app/cbl/COUSR01C.cbl:98-102 (MAIN-PARA)`.
+  "Invalid key pressed. Please see below...         ", cursor First Name, screen re-sent with the typed
+  data. For CLEAR and PA1-PA3 the terminal sends no field data: RECEIVE gets MAPFAIL (not tested), the
+  map keeps its initial storage, and every field is blank on the re-sent screen. Target: C-SHORTREAD
+  (ledger-online.md). Source: `app/cbl/COUSR01C.cbl:98-102 (MAIN-PARA)`.
 - **NAV-COUSR01C-05**: Every redisplay ends with RETURN TRANSID(`CU01`) COMMAREA(CARDDEMO-COMMAREA).
   Source: `app/cbl/COUSR01C.cbl:107-110 (MAIN-PARA)`.
 

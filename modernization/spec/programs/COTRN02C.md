@@ -264,7 +264,10 @@ value, the zip code format, or the relation between the two dates.
 - **NAV-COTRN02C-06**: PF5 copies the last transaction and processes the form (BR-COTRN02C-09).
   Source: `app/cbl/COTRN02C.cbl:146-147 (MAIN-PARA)`.
 - **NAV-COTRN02C-07**: Any other AID shows "Invalid key pressed. Please see below..." (the 50-character
-  constant). The entered values are sent back unchanged. Source: `app/cbl/COTRN02C.cbl:148-151 (MAIN-PARA)`.
+  constant). The entered values are sent back unchanged. For CLEAR and PA1-PA3 the terminal sends no
+  field data: RECEIVE gets MAPFAIL (not tested), the map keeps its initial storage, and every field is
+  blank on the re-sent screen. Target: C-SHORTREAD (ledger-online.md). Source:
+  `app/cbl/COTRN02C.cbl:148-151 (MAIN-PARA)`.
 - **NAV-COTRN02C-08**: Before every XCTL the program sets FROM-TRANID `CT02`, FROM-PROGRAM `COTRN02C`,
   and context 0. Source: `app/cbl/COTRN02C.cbl:500-511 (RETURN-TO-PREV-SCREEN)`.
 - **NAV-COTRN02C-09**: Every turn that does not XCTL ends with RETURN TRANSID `CT02` and the COMMAREA,

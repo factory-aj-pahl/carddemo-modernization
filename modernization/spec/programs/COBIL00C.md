@@ -195,11 +195,12 @@ balance is: " (11,7); "Do you want to pay your balance now. Please confirm: " (1
 - **NAV-COBIL00C-05**: PF4 clears ACTIDIN, CURBAL, CONFIRM, and the message, puts the cursor on ACTIDIN,
   and resends the screen. Source: `app/cbl/COBIL00C.cbl:136-137 (MAIN-PARA)`, `:552-566 (CLEAR-CURRENT-SCREEN, INITIALIZE-ALL-FIELDS)`.
 - **NAV-COBIL00C-06**: Any other AID (PF1, PF2, PF5-PF24, PA keys, CLEAR) shows the 50-character
-  `CCDA-MSG-INVALID-KEY` text "Invalid key pressed. Please see below..." padded with trailing spaces.
-  For PF keys the screen fields keep what was received (ACTIDIN, CURBAL, and CONFIRM are FSET). For PA
-  keys and CLEAR the terminal sends no data, so RECEIVE gets MAPFAIL (ignored, ERR-COBIL00C-08), the map
-  keeps its initial storage, and the account ID, current balance, and Confirm fields are blank on the
-  re-sent screen. Source: `app/cbl/COBIL00C.cbl:124`, `app/cbl/COBIL00C.cbl:138-141 (MAIN-PARA)`, `app/cpy/CSMSG01Y.cpy:20-21`.
+  `CCDA-MSG-INVALID-KEY` text "Invalid key pressed. Please see below..." padded with trailing spaces. For
+  PF keys the screen fields keep what was received (ACTIDIN, CURBAL, and CONFIRM are FSET). For PA keys
+  and CLEAR the terminal sends no data, so RECEIVE gets MAPFAIL (ignored, ERR-COBIL00C-08), the map keeps
+  its initial storage, and the account ID, current balance, and Confirm fields are blank on the re-sent
+  screen. Target: C-SHORTREAD (ledger-online.md). Source: `app/cbl/COBIL00C.cbl:124`,
+  `app/cbl/COBIL00C.cbl:138-141 (MAIN-PARA)`, `app/cpy/CSMSG01Y.cpy:20-21`.
 - **NAV-COBIL00C-07**: Every turn that does not XCTL ends with RETURN TRANSID `CB00` and the 218-byte
   COMMAREA. Source: `app/cbl/COBIL00C.cbl:146-149 (MAIN-PARA)`.
 

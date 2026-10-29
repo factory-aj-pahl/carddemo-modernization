@@ -181,9 +181,12 @@ The output fields are ASKIP without FSET, so they are not returned by RECEIVE. C
 - **NAV-COTRN01C-05**: PF4 clears the screen (BR-COTRN01C-07). Source: `app/cbl/COTRN01C.cbl:123-124 (MAIN-PARA)`.
 - **NAV-COTRN01C-06**: PF5 always transfers by XCTL to `COTRN00C`, which shows its first page
   (with the record-skip defect Q-COTRN00C-01). Source: `app/cbl/COTRN01C.cbl:125-127 (MAIN-PARA)`.
-- **NAV-COTRN01C-07**: Any other AID sets the error flag and shows "Invalid key pressed. Please see below..."
-  (the 50-character constant from CSMSG01Y). The screen is sent with erase; the output fields were not
-  returned by RECEIVE, so the details are blank. Source: `app/cbl/COTRN01C.cbl:128-131 (MAIN-PARA)`.
+- **NAV-COTRN01C-07**: Any other AID sets the error flag and shows
+  "Invalid key pressed. Please see below..." (the 50-character constant from CSMSG01Y). The screen is
+  sent with erase; the output fields were not returned by RECEIVE, so the details are blank. For CLEAR
+  and PA1-PA3 the terminal sends no field data: RECEIVE gets MAPFAIL (not tested), the map keeps its
+  initial storage, and the Tran ID field is blank as well. Target: C-SHORTREAD (ledger-online.md).
+  Source: `app/cbl/COTRN01C.cbl:128-131 (MAIN-PARA)`.
 - **NAV-COTRN01C-08**: Before every XCTL the program sets FROM-TRANID `CT01`, FROM-PROGRAM `COTRN01C`,
   and context 0, and passes the 218-byte COMMAREA.
   Source: `app/cbl/COTRN01C.cbl:197-208 (RETURN-TO-PREV-SCREEN)`.

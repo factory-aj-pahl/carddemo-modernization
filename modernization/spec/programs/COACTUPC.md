@@ -531,9 +531,11 @@ a failing step skips the rest of its own paragraph only.
   `app/cbl/COACTUPC.cbl:1613-1614`.
 
 ### Navigation and keys
-- **NAV-COACTUPC-01**: AID handling. PF13-PF24 act as PF1-PF12. Valid keys: ENTER; PF3; PF5 only
-  in state N; PF12 only when details have been fetched (any state other than "not fetched").
-  Every other AID, including PF5 and PF12 outside those states, is treated as ENTER. Source:
+- **NAV-COACTUPC-01**: AID handling. PF13-PF24 act as PF1-PF12. Valid keys: ENTER; PF3; PF5 only in state
+  N; PF12 only when details have been fetched (any state other than "not fetched"). Every other AID,
+  including PF5 and PF12 outside those states, is treated as ENTER. For CLEAR and PA1-PA3 the terminal
+  sends no field data (MAPFAIL, ERR-COACTUPC-14), so the turn is edited as an ENTER with every input
+  field blank (before a fetch: `No input received`). Target: C-SHORTREAD (ledger-online.md). Source:
   `app/cbl/COACTUPC.cbl:898-916`, `app/cpy/CSSTRPFY.cpy:17-79`.
 - **NAV-COACTUPC-02**: PF3 in any state: TO-TRANID = FROM-TRANID or `CM00`; TO-PROGRAM =
   FROM-PROGRAM or `COMEN01C`; FROM-TRANID = `CAUP`; FROM-PROGRAM = `COACTUPC`; user type `U`;
@@ -602,7 +604,9 @@ a failing step skips the rest of its own paragraph only.
 - **ERR-COACTUPC-13**: Any abend goes to `ABEND-ROUTINE`: default message
   `UNEXPECTED ABEND OCCURRED.`, culprit `COACTUPC`, SEND ABEND-DATA NOHANDLE, HANDLE ABEND
   CANCEL, ABEND ABCODE(`9999`). Source: `app/cbl/COACTUPC.cbl:4203-4226`.
-- **ERR-COACTUPC-14**: RECEIVE MAP and SEND MAP responses are captured and not checked. Source:
+- **ERR-COACTUPC-14**: RECEIVE MAP and SEND MAP responses are captured and not checked. On MAPFAIL
+  (CLEAR and PA keys, NAV-COACTUPC-01) the input fields keep their initial storage and are treated as
+  blank. Source:
   `app/cbl/COACTUPC.cbl:1040-1045`, `:3594-3601`.
 
 ## Data effects

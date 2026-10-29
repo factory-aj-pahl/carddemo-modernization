@@ -270,7 +270,11 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
 
 ### Navigation and keys
 - **NAV-COACTVWC-01**: AID handling. PF13-PF24 are mapped to PF1-PF12. Only ENTER and PF3 are
-  valid; every other AID (including CLEAR, PA1, PA2) is treated as ENTER, with no message. Source:
+  valid; every other AID (including CLEAR, PA1, PA2, and PA3, which CSSTRPFY leaves unmapped) is treated
+  as ENTER, with no message. For CLEAR and PA1-PA3 the terminal sends no field data, so RECEIVE gets
+  MAPFAIL (not tested, ERR-COACTVWC-09), ACCTSIDI keeps its initial storage, and the account filter is
+  blank: the turn ends as an ENTER with an empty account number (`No input received`, `*` in red, no
+  details, VR-COACTVWC-01). Target: C-SHORTREAD (ledger-online.md). Source:
   `app/cbl/COACTVWC.cbl:299-314`, `app/cpy/CSSTRPFY.cpy:17-79`.
 - **NAV-COACTVWC-02**: PF3 exit:
   - CDEMO-TO-TRANID = CDEMO-FROM-TRANID, or `CM00` when that is LOW-VALUES or spaces.
@@ -332,7 +336,8 @@ Labels (all ASKIP constants): `View Account` (4,33); `Account Number :` (5,19); 
   NOHANDLE; HANDLE ABEND CANCEL; ABEND ABCODE(`9999`). Source:
   `app/cbl/COACTVWC.cbl:916-937 (ABEND-ROUTINE)`, `app/cpy/CSMSG02Y.cpy`.
 - **ERR-COACTVWC-09**: RECEIVE MAP and SEND MAP responses are captured and not checked. Because
-  ACCTSID is always sent with MDT on, a RECEIVE normally returns it. Source:
+  ACCTSID is always sent with MDT on, a RECEIVE normally returns it; CLEAR and PA keys are the exception
+  (MAPFAIL, NAV-COACTVWC-01). Source:
   `app/cbl/COACTVWC.cbl:610-617`, `:583-590`.
 
 ## Data effects
@@ -437,9 +442,11 @@ SSNs and government ids are masked. The full values are in `app/data/ASCII/custd
 - **TS-COACTVWC-11** (NAV-COACTVWC-02, Q-COACTVWC-03): Given any screen state, when PF3 is pressed,
   then XCTL goes to COMEN01C with CDEMO-FROM-PROGRAM = `COACTVWC`, CDEMO-FROM-TRANID = `CAVW`,
   CDEMO-PGM-CONTEXT = 0, CDEMO-USER-TYPE = `U`, CDEMO-LAST-MAPSET = `COACTVW`.
-- **TS-COACTVWC-12** (NAV-COACTVWC-01): Given account `00000000001` is displayed, when PF5 (or CLEAR,
-  PA1) is pressed, then the account is re-read and displayed again exactly as for ENTER. PF15 is
-  folded to PF3 by CSSTRPFY and exits like PF3.
+- **TS-COACTVWC-12** (NAV-COACTVWC-01): Given account `00000000001` is displayed, when PF5 is pressed,
+  then the account is re-read and displayed again exactly as for ENTER. PF15 is folded to PF3 by
+  CSSTRPFY and exits like PF3. When CLEAR or PA1 is pressed instead, nothing is received, so the error
+  is `No input received` and the account field shows `*` in red. Expected in the target system
+  (C-SHORTREAD): CLEAR or PA1 with the account number in the request behaves as PF5.
 - **TS-COACTVWC-13** (BR-COACTVWC-05): Given account `00000000001` is displayed, when the field is
   changed to `00000000002` and ENTER is pressed, then account 2 is shown (balance `+        158.00`,
   credit limit `+      6,130.00`, cash limit `+      5,448.00`, opened `2013-06-19`).

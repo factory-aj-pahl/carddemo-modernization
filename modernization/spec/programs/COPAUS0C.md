@@ -251,9 +251,12 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
 - **NAV-COPAUS0C-07**: PF8 -> next page when the next-page flag is 'Y', otherwise "You are already
   at the bottom of the page...". Sent without erase. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:388-412 (PROCESS-PF8-KEY)`.
-- **NAV-COPAUS0C-08**: Any other key -> message CCDA-MSG-INVALID-KEY "Invalid key pressed. Please
-  see below...         " (from CSMSG01Y), cursor on ACCTID, screen sent with erase and without
-  re-reading data. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:245-249 (MAIN-PARA)`.
+- **NAV-COPAUS0C-08**: Any other key -> message CCDA-MSG-INVALID-KEY
+  "Invalid key pressed. Please see below...         " (from CSMSG01Y), cursor on ACCTID, screen sent with
+  erase and without re-reading data. For CLEAR and PA1-PA3 the terminal sends no field data: RECEIVE gets
+  MAPFAIL (not tested), the map keeps its initial storage, and the account field and the list are blank
+  on the re-sent screen (Q-COPAUS0C-09 describes PF keys). Target: C-SHORTREAD (ledger-online.md).
+  Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:245-249 (MAIN-PARA)`.
 - **NAV-COPAUS0C-09**: Every turn that does not XCTL ends with RETURN TRANSID 'CPVS' and the
   COMMAREA. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:254-257 (MAIN-PARA)`.
 

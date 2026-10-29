@@ -246,8 +246,11 @@ No rule checks that the start date is on or before the end date (Q-CORPT00C-03).
   Source: `app/cbl/CORPT00C.cbl:185-186 (MAIN-PARA)`.
 - **NAV-CORPT00C-04**: PF3 always transfers by XCTL to `COMEN01C`.
   Source: `app/cbl/CORPT00C.cbl:187-189 (MAIN-PARA)`.
-- **NAV-CORPT00C-05**: Any other AID (there is no PF4 here) shows "Invalid key pressed. Please see below..."
-  with the cursor on MONTHLY; the entered values are sent back. Source: `app/cbl/CORPT00C.cbl:190-194 (MAIN-PARA)`.
+- **NAV-CORPT00C-05**: Any other AID (there is no PF4 here) shows
+  "Invalid key pressed. Please see below..." with the cursor on MONTHLY; the entered values are sent
+  back. For CLEAR and PA1-PA3 the terminal sends no field data: RECEIVE gets MAPFAIL (not tested), the
+  map keeps its initial storage, and every field is blank on the re-sent screen. Target: C-SHORTREAD
+  (ledger-online.md). Source: `app/cbl/CORPT00C.cbl:190-194 (MAIN-PARA)`.
 - **NAV-CORPT00C-06**: Before every XCTL the program sets FROM-TRANID `CR00`, FROM-PROGRAM `CORPT00C`,
   and context 0. Source: `app/cbl/CORPT00C.cbl:540-551 (RETURN-TO-PREV-SCREEN)`.
 - **NAV-CORPT00C-07**: Every turn that does not XCTL ends with RETURN TRANSID `CR00` and the 160-byte
