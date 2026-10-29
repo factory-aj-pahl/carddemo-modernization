@@ -41,6 +41,16 @@ test.describe('COTRN00C transaction list', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
+  test('Q-COTRN00C-02 a typed search ID beyond the last transaction is not found and the field is marked', async ({ page }) => {
+    await open(page, '/screens/COTRN00C', 'CT00 · COTRN00C');
+    await page.getByLabel('Search Tran ID').fill('9999999999999999');
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(rows(page)).toHaveCount(0);
+    await expect(page.getByLabel('Search Tran ID')).toBeFocused();
+    await expect(page.getByLabel('Search Tran ID')).toHaveAttribute('aria-invalid', 'true');
+  });
+
   test('TS-COTRN00C-06 NAV-COTRN00C-03 a search ID starts the list at that transaction', async ({ page }) => {
     await open(page, '/screens/COTRN00C', 'CT00 · COTRN00C');
     const third = await rows(page).nth(2).locator('td').nth(1).textContent();
@@ -125,6 +135,68 @@ test.describe('COTRN00C transaction list', () => {
     await expect(rows(page)).toHaveCount(10);
     await page.keyboard.press('F3');
     await expectProgram(page, 'CM00 · COMEN01C');
+  });
+});
+
+test.describe('COTRN00C for a user with no transactions in scope', () => {
+  // A regular user added through COUSR01C has no linked accounts, so no transaction is in scope.
+  const NO_TRAN_USER = 'E2ENOTX1';
+  const NO_TRAN_PASSWORD = 'Secret12';
+
+  async function deleteIfPresent(page: Page) {
+    await signOn(page, 'ADMIN001');
+    await expectProgram(page, 'CA00 · COADM01C');
+    await open(page, '/screens/COUSR03C', 'CU03 · COUSR03C');
+    await page.getByLabel('Enter User ID').fill(NO_TRAN_USER);
+    await page.keyboard.press('Enter');
+    const prompt = 'Press PF5 key to delete this user ...';
+    await expect.poll(() => page.getByTestId('message').locator('.msg-text').textContent()).toMatch(/^(Press PF5 key to delete this user|User ID NOT found)/);
+    if ((await page.getByTestId('message').locator('.msg-text').textContent()) === prompt) {
+      await page.keyboard.press('F5');
+      await expectMessage(page, `User ${NO_TRAN_USER} has been deleted ...`);
+    }
+  }
+
+  test.beforeEach(async ({ page }) => {
+    await deleteIfPresent(page);
+    await open(page, '/screens/COUSR01C', 'CU01 · COUSR01C');
+    await page.getByLabel('First Name').fill('NO');
+    await page.getByLabel('Last Name').fill('TRANSACTIONS');
+    await page.getByLabel('User ID').fill(NO_TRAN_USER);
+    await page.getByLabel('Password').fill(NO_TRAN_PASSWORD);
+    await page.getByLabel('User Type').fill('U');
+    await page.keyboard.press('Enter');
+    await expectMessage(page, `User ${NO_TRAN_USER} has been added ...`);
+    await signOn(page, NO_TRAN_USER, NO_TRAN_PASSWORD);
+    await expectProgram(page, 'CM00 · COMEN01C');
+  });
+
+  test.afterEach(async ({ page }) => {
+    await deleteIfPresent(page);
+  });
+
+  test('Q-COTRN00C-02 an empty scope gives "Transaction ID NOT found..." without marking the blank search field', async ({ page }) => {
+    const search = page.getByLabel('Search Tran ID');
+    await menuOption(page, '6', 'CT00 · COTRN00C');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(rows(page)).toHaveCount(0);
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue('');
+    await expect(search).not.toHaveAttribute('aria-invalid', 'true');
+    await expectNoSeriousA11yViolations(page);
+
+    // ENTER with the search still blank: the same empty page, still not about the field.
+    await page.keyboard.press('Enter');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(search).toBeFocused();
+    await expect(search).not.toHaveAttribute('aria-invalid', 'true');
+
+    // A typed ID that finds nothing: the message is about that ID, so the field is marked.
+    await search.fill('0000000000000001');
+    await page.keyboard.press('Enter');
+    await expect(search).toHaveAttribute('aria-invalid', 'true');
+    await expectMessage(page, 'Transaction ID NOT found...');
+    await expect(search).toBeFocused();
   });
 });
 
