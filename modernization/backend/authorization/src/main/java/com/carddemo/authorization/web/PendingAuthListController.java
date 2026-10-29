@@ -139,16 +139,19 @@ public class PendingAuthListController {
         if (in.length() > 11) {
             in = in.substring(0, 11);
         }
+        // Q-COPAUS0C-14: nothing of the account shown before stays, and paging waits for a valid account.
         if (in.isBlank()) {
             return keep(session, empty(""), ENTER_ACCOUNT);
         }
         if (in.length() != 11 || !in.chars().allMatch(c -> c >= '0' && c <= '9')) {
-            return keep(session, empty(""), NOT_NUMERIC);
+            return keep(session, empty(in), NOT_NUMERIC);
         }
         long account = Long.parseLong(in);
         AuthScreens.account(session, new AccountContext(account, st.customerId()));
         String message = null;
-        List<String> sel = req.sel() == null ? List.of() : req.sel();
+        // Q-COPAUS0C-15: select codes refer to the rows of the account shown; another account is just searched.
+        boolean shown = st.account() != null && st.account() == account;
+        List<String> sel = req.sel() == null || !shown ? List.of() : req.sel();
         for (int i = 0; i < PAGE_SIZE && i < sel.size(); i++) {
             String code = sel.get(i) == null ? "" : sel.get(i).strip();
             if (code.isEmpty()) {
@@ -201,8 +204,9 @@ public class PendingAuthListController {
             return keep(session, failed(st), p.error());
         }
         if (p.rows().isEmpty()) {
-            return keep(session, new ListState(st.account(), st.customerId(), st.page(), st.firstKeys(), null, false, List.of(),
-                withRows(st.screen(), st.page(), List.of())), null);
+            // Q-COPAUS0C-16: the authorizations after the last row were deleted since it was shown.
+            return keep(session, new ListState(st.account(), st.customerId(), st.page(), st.firstKeys(), st.last(), false,
+                st.rowKeys(), st.screen()), BOTTOM);
         }
         List<PageKey> firstKeys = new ArrayList<>(st.firstKeys().subList(0, Math.min(st.page(), st.firstKeys().size())));
         firstKeys.add(PageKey.of(p.rows().get(0)));
@@ -221,8 +225,17 @@ public class PendingAuthListController {
             return keep(session, failed(st), p.error());
         }
         if (p.rows().isEmpty()) {
-            return keep(session, new ListState(st.account(), st.customerId(), page, st.firstKeys().subList(0, page - 1), null,
-                false, List.of(), withRows(st.screen(), page, List.of())), null);
+            // Q-COPAUS0C-16: nothing remains from the previous page's first row on, so show what remains from the newest.
+            Page top = browser.first(st.account(), PAGE_SIZE);
+            if (top.error() != null) {
+                return keep(session, failed(st), top.error());
+            }
+            if (top.rows().isEmpty()) {
+                return keep(session, new ListState(st.account(), st.customerId(), 0, List.of(), null, false, List.of(),
+                    withRows(st.screen(), 0, List.of())), TOP);
+            }
+            return keep(session, paged(st.account(), st.customerId(), 1, List.of(PageKey.of(top.rows().get(0))), top,
+                st.screen()), null);
         }
         List<PageKey> firstKeys = new ArrayList<>(st.firstKeys().subList(0, page - 1));
         firstKeys.add(PageKey.of(p.rows().get(0)));

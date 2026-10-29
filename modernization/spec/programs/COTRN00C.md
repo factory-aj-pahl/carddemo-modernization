@@ -8,7 +8,7 @@
 | Transaction ID / Job | CT00 (`app/csd/CARDDEMO.CSD:419-422`) |
 | BMS map | mapset `COTRN00` / map `COTRN0A` (`app/bms/COTRN00.bms`, symbolic map `app/cpy-bms/COTRN00.CPY`) |
 | Copybooks | COCOM01Y (plus the program-local extension `CDEMO-CT00-INFO`), COTRN00, COTTL01Y, CSDAT01Y, CSMSG01Y, CVTRA05Y, DFHAID, DFHBMSCA |
-| Calls / XCTL targets | XCTL `COTRN01C` (row selected with `S`); XCTL `COMEN01C` (PF3); XCTL `COSGN00C` (no COMMAREA). No CALLs. |
+| Calls / XCTL targets | XCTL `COTRN01C` (row selected with `S`); XCTL `COMEN01C` (PF3); XCTL `COSGN00C` when EIBCALEN = 0, passing the 218-byte working-storage COMMAREA (Q-COSGN00C-10). No CALLs. |
 | Data stores | `TRANSACT` (ENT-TRANSACTION): Browse only (STARTBR, READNEXT, READPREV, ENDBR), key `TRAN-ID`. Read-only. |
 
 ## Purpose

@@ -8,7 +8,7 @@
 | Transaction ID / Job | CT01 (`app/csd/CARDDEMO.CSD:429-430`) |
 | BMS map | mapset `COTRN01` / map `COTRN1A` (`app/bms/COTRN01.bms`, symbolic map `app/cpy-bms/COTRN01.CPY`) |
 | Copybooks | COCOM01Y (plus the program-local extension `CDEMO-CT01-INFO`), COTRN01, COTTL01Y, CSDAT01Y, CSMSG01Y, CVTRA05Y, DFHAID, DFHBMSCA |
-| Calls / XCTL targets | XCTL `COTRN00C` (PF5); XCTL to `CDEMO-FROM-PROGRAM` on PF3, which is `COTRN00C` or `COMEN01C` in practice, or `COMEN01C` when it is blank; XCTL `COSGN00C` (no COMMAREA). No CALLs. |
+| Calls / XCTL targets | XCTL `COTRN00C` (PF5); XCTL to `CDEMO-FROM-PROGRAM` on PF3, which is `COTRN00C` or `COMEN01C` in practice, or `COMEN01C` when it is blank; XCTL `COSGN00C` when EIBCALEN = 0, passing the 218-byte working-storage COMMAREA (Q-COSGN00C-10). No CALLs. |
 | Data stores | `TRANSACT` (ENT-TRANSACTION): READ with UPDATE by key `TRAN-ID`. Nothing is written. |
 
 ## Purpose
@@ -25,7 +25,8 @@ return (PF3), clear the screen (PF4), or open the transaction list (PF5).
   - `COMEN01C`, menu option 7 "Transaction View" (user type `U`, so regular users and admins see it).
     The menu sends the 160-byte COMMAREA. The group move pads the extension with spaces, so no ID is
     preselected and the form is empty.
-- If `EIBCALEN = 0` (for example, CT01 typed on a clear screen), the program transfers to `COSGN00C`.
+- If `EIBCALEN = 0` (for example, CT01 typed on a clear screen), the program transfers to `COSGN00C`,
+  passing its 218-byte working-storage COMMAREA (Q-COSGN00C-10).
 - The COMMAREA is 218 bytes: COCOM01Y (160 bytes) followed by `CDEMO-CT01-INFO`, which has the same
   layout as `CDEMO-CT00-INFO` in COTRN00C:
 
@@ -139,7 +140,9 @@ The output fields are ASKIP without FSET, so they are not returned by RECEIVE. C
     descriptions.
   - TDESC = `TRAN-DESC` characters 1-60.
   - TRNAMT = `TRAN-AMT` with picture `+99999999.99`: the sign is always shown and leading zeros are
-    kept, so -919.00 shows as `-00000919.00`.
+    kept, so -919.00 shows as `-00000919.00`. The picture has 8 integer digits and `TRAN-AMT`
+    (`S9(09)V99`) has 9, so an amount of 100,000,000.00 or more loses its leading digit without an
+    error (for example 123456789.00 shows as `+23456789.00`; picture at `app/cbl/COTRN01C.cbl:49`).
   - TORIGDT and TPROCDT = characters 1-10 of the 26-character timestamps, which is the `YYYY-MM-DD`
     part. A blank timestamp shows as blank.
   - MID = `TRAN-MERCHANT-ID`; MNAME = name characters 1-30; MCITY = city characters 1-25;
@@ -169,7 +172,8 @@ The output fields are ASKIP without FSET, so they are not returned by RECEIVE. C
   Source: `app/cbl/COTRN01C.cbl:283-288 (READ-TRANSACT-FILE)`.
 
 ### Navigation and keys
-- **NAV-COTRN01C-01**: IF `EIBCALEN = 0`, XCTL to `COSGN00C`.
+- **NAV-COTRN01C-01**: IF `EIBCALEN = 0`, XCTL to `COSGN00C`. The XCTL passes the 218-byte COMMAREA, so
+  COSGN00C sees EIBCALEN > 0 and treats the turn as a re-entry (Q-COSGN00C-10).
   Source: `app/cbl/COTRN01C.cbl:94-96 (MAIN-PARA)`, `:197-208 (RETURN-TO-PREV-SCREEN)`.
 - **NAV-COTRN01C-02**: First entry (context 0): set the context to 1, show the empty form with the
   cursor on TRNIDIN, or show the preselected transaction (BR-COTRN01C-03).
@@ -195,9 +199,11 @@ The output fields are ASKIP without FSET, so they are not returned by RECEIVE. C
 
 ### Error handling
 - **ERR-COTRN01C-01**: READ with any response other than NORMAL or NOTFND (for example, file closed or
-  disabled, or a record lock held by another task that times out) sets the error flag and shows
+  disabled, or an I/O error) sets the error flag and shows
   "Unable to lookup Transaction..." with the cursor on TRNIDIN. RESP and RESP2 are written to the log
-  with DISPLAY. Source: `app/cbl/COTRN01C.cbl:289-295 (READ-TRANSACT-FILE)`.
+  with DISPLAY. A record held by another task makes this task wait (the READ UPDATE has no NOSUSPEND), and
+  a lock-wait timeout abends the task instead of returning a RESP (inferred from CICS file-control
+  semantics; Q-COTRN01C-01). Source: `app/cbl/COTRN01C.cbl:269-278, 289-295 (READ-TRANSACT-FILE)`.
 - **ERR-COTRN01C-02**: The RESP of RECEIVE MAP is captured but never tested.
   Source: `app/cbl/COTRN01C.cbl:230-238 (RECEIVE-TRNVIEW-SCREEN)`.
 
@@ -213,7 +219,9 @@ task ends at the RETURN at the end of the same turn (Q-COTRN01C-01). The record 
 - **Q-COTRN01C-02**: On first entry with a preselected ID, the map is sent twice in one task: once
   inside PROCESS-ENTER-KEY and once more by MAIN-PARA. Both sends carry the same content, and only the
   last one is visible. Recommendation: in the target system, return one response.
-  Source: `app/cbl/COTRN01C.cbl:107-109, 152, 191`.
+  The first send is the one in PROCESS-ENTER-KEY (line 191) or, when the read fails, the one in
+  READ-TRANSACT-FILE (line 288 or 295); line 152 cannot be reached because the preselected ID is never blank.
+  Source: `app/cbl/COTRN01C.cbl:107-109, 191, 288, 295`.
 - **Q-COTRN01C-03**: PF5 opens COTRN00C with `EIBAID` = PF5, which makes the list skip the first
   record of the file (Q-COTRN00C-01). Recommendation: fix (in the list).
   Source: `app/cbl/COTRN01C.cbl:125-127`; `app/cbl/COTRN00C.cbl:285-287`.
@@ -267,7 +275,8 @@ Assumption: TRANSACT holds the 300 records of `app/data/ASCII/dailytran.txt`, in
 - **TS-COTRN01C-10** (covers NAV-COTRN01C-07): When the user presses PF7, then the message is
   "Invalid key pressed. Please see below..." and the details are blank.
 - **TS-COTRN01C-11** (covers NAV-COTRN01C-01): When CT01 is started with no COMMAREA, then control
-  passes to COSGN00C (sign-on screen).
+  passes to COSGN00C (as coded, COSGN00C receives a COMMAREA and, on ENTER, likely shows the sign-on
+  screen with "Please enter User ID ..." (inferred); target: clean sign-on screen, Q-COSGN00C-10 / C-ROLE).
 
 ## Open questions
 - Should regular users be limited to transactions of their own cards (Q-COTRN01C-07)?
