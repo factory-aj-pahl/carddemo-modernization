@@ -62,7 +62,7 @@ Each context is a Maven module under `backend/` with three packages: `web` (cont
 contexts may use). They run together in one Spring Boot service (`app`, a modular monolith) and can
 be deployed separately because a context reaches another only through its `api` package; the
 architecture test `app/.../ModuleBoundariesTest` enforces this. That is what makes **selective
-conversion** possible: `billpay-service` runs bill payment alone as its own service (port 8082) on
+conversion** possible: `billpay-service` runs bill payment alone as its own service (port 8091) on
 the same modules, and `spec/components.md` lists exactly what each context needs from the rest.
 Shared code without business rules (screen envelope, formatting, security principal, clock, batch
 job log) is in `common`; the schema is in `schema` (Flyway), the sample-data loader and exporter in

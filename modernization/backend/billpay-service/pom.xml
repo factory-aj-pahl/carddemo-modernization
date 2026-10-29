@@ -11,6 +11,28 @@
     <name>billpay-service</name>
     <description>Standalone bill-payment microservice (selective conversion of BC-5)</description>
 
+    <properties>
+        <!-- Integration tests start the packaged service alone (spring-boot:start) and call it over HTTP.
+             Database: -Dbillpay.it.db, else CARDDEMO_TEST_DB, else carddemo_test (reloaded with the sample data). -->
+        <billpay.it.db>${env.CARDDEMO_TEST_DB}</billpay.it.db>
+        <billpay.it.port>8092</billpay.it.port>
+        <billpay.it.jmx-port>9092</billpay.it.jmx-port>
+    </properties>
+
+    <profiles>
+        <profile>
+            <id>default-it-database</id>
+            <activation>
+                <property>
+                    <name>!env.CARDDEMO_TEST_DB</name>
+                </property>
+            </activation>
+            <properties>
+                <billpay.it.db>carddemo_test</billpay.it.db>
+            </properties>
+        </profile>
+    </profiles>
+
     <dependencies>
         <dependency>
             <groupId>com.carddemo</groupId>
@@ -54,6 +76,57 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>start-standalone-service</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipITs}</skip>
+                            <jmxPort>${billpay.it.jmx-port}</jmxPort>
+                            <jvmArguments>-Xmx384m</jvmArguments>
+                            <arguments>
+                                <argument>--server.port=${billpay.it.port}</argument>
+                            </arguments>
+                            <environmentVariables>
+                                <CARDDEMO_DB>${billpay.it.db}</CARDDEMO_DB>
+                            </environmentVariables>
+                            <maxAttempts>120</maxAttempts>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>stop-standalone-service</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                        <configuration>
+                            <skip>${skipITs}</skip>
+                            <jmxPort>${billpay.it.jmx-port}</jmxPort>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <argLine>-Xmx256m</argLine>
+                    <systemPropertyVariables>
+                        <billpay.it.url>http://127.0.0.1:${billpay.it.port}</billpay.it.url>
+                        <billpay.it.db>${billpay.it.db}</billpay.it.db>
+                    </systemPropertyVariables>
+                </configuration>
             </plugin>
         </plugins>
     </build>
