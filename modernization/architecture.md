@@ -51,9 +51,9 @@ arrived, as a 3270 keyboard lock would. `GET /api/session` returns the signed-on
 - The report request screen (CORPT00C) today writes JCL to the internal reader. In the target it
   calls the Airflow REST API to start the `transaction_report` DAG with the date range, and shows
   the run ID and status. The report file is downloadable from the web app.
-- The batch cycle no longer closes and reopens files. Database transactions give batch and online
-  consistent access; the cycle optionally sets a maintenance flag that makes online writes return
-  "system in batch window" (decision point).
+- The batch cycle no longer closes and reopens files. Online stays available during the cycle
+  (D-BATCH-WINDOW): database transactions with row locks give batch and online consistent access,
+  and there is no maintenance flag or "batch window" refusal of online writes.
 
 ## 3. Bounded contexts and modules
 
@@ -166,10 +166,14 @@ queues are bounded. Queue replies keep the legacy text layouts; the REST equival
 - Flyway migrations replace the IDCAMS DEFINE jobs. A loader reads the ASCII sample files,
   decodes overpunched signs, and loads every table; a reverse exporter writes the fixed-width
   layout back so the load can be checked by round-trip.
-- Transaction IDs come from a database sequence instead of "highest ID + 1" (fixes a race in
-  COBIL00C and COTRN02C, if approved).
-- GDG backups (TRANBKP) become snapshot tables or database backups taken by the DAG before
-  posting, so a bad run can be rolled back.
+- Online transaction IDs (COBIL00C and COTRN02C) still follow "highest ID + 1", but are taken
+  under a row lock on a shared counter held until the writing transaction ends, which fixes the
+  race (Q-COTRN02C-01, Q-COBIL00C-01).
+- GDG backups (TRANBKP) become snapshot tables written by the BACKUP step of the DAG before
+  posting, so a bad run can be rolled back. `RESTORE businessDate=<date>` restores the first
+  backup taken for that date, so a repeated trigger of the cycle, whose BACKUP snapshots the
+  already-posted state, does not change what a date rollback restores; `RESTORE backupId=<n>`
+  restores one specific backup.
 
 ## 5. Batch and scheduling
 
@@ -210,7 +214,7 @@ flowchart LR
   fresh database (`javarun.py`); output files, return code, SYSOUT, and exported tables must match
   record for record (`compare.py`). Owed program x dataset pairs are listed in
   `verification/parity/datasets.md`.
-- **Online:** the 523 spec test scenarios become API tests and browser tests. A traceability
+- **Online:** the 528 spec test scenarios become API tests and browser tests. A traceability
   matrix maps every BR, VR, NAV, and ERR rule to a test or to an approved exclusion.
 - **Data:** every sample file loads; row counts and a byte-for-byte round-trip export match.
 - **Schedule:** a full Airflow run of the daily cycle produces the same end state as the GnuCOBOL
