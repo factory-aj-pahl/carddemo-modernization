@@ -486,17 +486,17 @@ Transactions, bill payment, reports:
 
 ## Counts
 
-Rows by category and decision (225 rows).
+Rows by category and decision (226 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 24 | 0 | 0 | 0 | 0 | 24 |
 | data-corruption | 13 | 0 | 0 | 0 | 0 | 13 |
 | concurrency | 9 | 0 | 0 | 0 | 0 | 9 |
-| functional-defect | 56 | 0 | 0 | 0 | 0 | 56 |
+| functional-defect | 57 | 0 | 0 | 0 | 0 | 57 |
 | cosmetic | 0 | 18 | 0 | 0 | 0 | 18 |
 | business-choice | 0 | 42 | 0 | 0 | 0 | 42 |
 | platform | 0 | 0 | 0 | 37 | 0 | 37 |
 | dead-code | 0 | 0 | 0 | 0 | 20 | 20 |
 | user-decision | 0 | 0 | 6 | 0 | 0 | 6 |
-| Total | 102 | 60 | 6 | 37 | 20 | 225 |
+| Total | 103 | 60 | 6 | 37 | 20 | 226 |
