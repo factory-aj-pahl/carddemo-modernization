@@ -90,6 +90,8 @@ final class ListTurn {
     private boolean updateConflict;
     private boolean firstPageBefore;
     private boolean countFailed;
+    /** The confirmed delete or update reached the database on this turn. */
+    private boolean actionAttempted;
 
     ListTurn(TransactionTypeStore store, ListState ca) {
         this.store = store;
@@ -142,6 +144,11 @@ final class ListTurn {
             return down;
         }
         decide();
+        if (key == Key.PF10 && !actionAttempted) {
+            // Q-COTRTLIC-23: an accepted PF10 that failed an edit shows no prompt, so it cannot stay armed; only a
+            // confirmed action that failed in the database stays armed.
+            ca.disarm();
+        }
         return screen();
     }
 
@@ -495,6 +502,7 @@ final class ListTurn {
     // ---- 9200-UPDATE-RECORD / 9300-DELETE-RECORD ----------------------------------------------------------
 
     private void updateRecord() {
+        actionAttempted = true;
         TypeRow row = ca.rows[iSelected];
         String text = descIn[iSelected] == null ? "" : descIn[iSelected];
         try {
@@ -529,6 +537,7 @@ final class ListTurn {
     }
 
     private void deleteRecord() {
+        actionAttempted = true;
         TypeRow row = ca.rows[iSelected];
         try {
             switch (store.delete(row.code(), null)) {

@@ -107,6 +107,12 @@ file in `~/.carddemo/inbox/<date>/dailytran.txt`; outputs (rejects, statements) 
 Interest (INTCALC) runs on the first business day of each month; if that day's cycle is missed, the next date run
 in the month charges it (the jar's `INTSTATUS` tells the DAG whether the month is already calculated), once some
 month has been calculated on the database.
+If POSTTRAN fails (for example an abend, exit 99, on a bad daily record), the records it committed stay posted. Fix
+the cause, then either clear the failed POSTTRAN task (with its downstream tasks) in the same DAG run, which resumes
+posting after the last committed record, or run `carddemo-batch.jar RESTORE businessDate=<date>` and trigger the
+cycle for the date again. A new trigger without the restore stops at BACKUP with exit 8
+(`BACKUP REFUSED: POSTING ALREADY STARTED FOR <date>`), because a backup of a partly posted state would make the
+restore by date useless (`architecture.md` section 4).
 The transaction report DAG is started by the web app's report screen (CORPT00C); the file is downloadable
 there. The jar also runs on its own:
 `java -jar backend/batch/target/carddemo-batch.jar <COMMAND> key=value ...` (commands and exit codes in

@@ -32,15 +32,16 @@ public class CycleBackupService {
     }
 
     /**
-     * Takes the snapshot, or returns empty without writing anything when POSTTRAN has already completed for the
-     * business date: a backup then would hold the posted state, and RESTORE by date takes the latest backup.
+     * Takes the snapshot, or returns empty without writing anything when a POSTTRAN run exists for the business
+     * date, whatever its status: a backup then would hold a posted or partly posted state (an abended run keeps
+     * the records it committed, B-UOW), and RESTORE by date takes the latest backup.
      * One SERIALIZABLE transaction, so no posting or online change can fall between the check and the copied
      * tables. With no job instance yet the high-water mark is -1, not 0: BATCH_JOB_SEQ starts at 0 (V2), so the
      * first job ever run has instance id 0 and must still count as "after the backup".
      */
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public Optional<Snapshot> backup(LocalDate businessDate) {
-        if (postingCompleted(businessDate)) {
+        if (postingStarted(businessDate)) {
             return Optional.empty();
         }
         long id = jdbc.sql("""
@@ -77,23 +78,23 @@ public class CycleBackupService {
     }
 
     /**
-     * Whether a POSTTRAN run for the business date has completed, read from the Spring Batch job repository that
-     * POSTTRAN's own refusal uses. RESTORE forgets the job runs started after its backup, so a restored date
-     * counts as not posted.
+     * Whether any POSTTRAN run (started, failed, stopped, or completed) exists for the business date, read from the
+     * Spring Batch job repository that POSTTRAN's own refusal uses. RESTORE forgets the job runs started after its
+     * backup, so a restored date counts as not posted.
      */
-    boolean postingCompleted(LocalDate businessDate) {
+    boolean postingStarted(LocalDate businessDate) {
         return jdbc.sql("""
                 SELECT COUNT(*) FROM BATCH_JOB_EXECUTION e
                 JOIN BATCH_JOB_INSTANCE i ON i.JOB_INSTANCE_ID = e.JOB_INSTANCE_ID
                 JOIN BATCH_JOB_EXECUTION_PARAMS p ON p.JOB_EXECUTION_ID = e.JOB_EXECUTION_ID
-                WHERE i.JOB_NAME = ? AND e.STATUS = 'COMPLETED'
+                WHERE i.JOB_NAME = ?
                     AND p.PARAMETER_NAME = 'businessDate' AND p.IDENTIFYING = 'Y' AND p.PARAMETER_VALUE = ?
                 """).params(PosttranJobConfig.JOB, businessDate.toString()).query(Integer.class).single() > 0;
     }
 
     /**
-     * The newest backup taken for a business date. BACKUP is refused once the date is posted, so this is the
-     * state just before the most recent posting of that date.
+     * The newest backup taken for a business date. BACKUP is refused once a posting of the date has started, so
+     * this is the state just before the most recent posting of that date, even when that posting abended.
      */
     public Optional<Long> latestFor(LocalDate businessDate) {
         return jdbc.sql("SELECT MAX(backup_id) FROM cycle_backup WHERE business_date = ?").param(businessDate)

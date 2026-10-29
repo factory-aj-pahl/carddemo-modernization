@@ -23,9 +23,12 @@ INTCALC did not complete, the next business date run in the month charges the in
 INTCALC is skipped, so no run hits INTCALC's exit 8.
 
 The backup (Q-TRANBKP-01) must succeed before posting. BACKUP is refused (exit 8, the run fails with nothing changed)
-when POSTTRAN has already completed for the date, so a repeated trigger takes no backup of the posted state; RESTORE
-businessDate=<date> restores the latest backup for the date, which rolls the cycle back. Interest rows go straight
-into the transaction table, so there is no COMBTRAN step.
+when any POSTTRAN run exists for the date (completed, or abended with its committed records kept, B-UOW), so a
+repeated trigger takes no backup of a posted or partly posted state; RESTORE businessDate=<date> restores the latest
+backup for the date, which rolls the cycle back. After a POSTTRAN abend, either clear the failed POSTTRAN task (and
+its downstream tasks) in the same run, which restarts posting from its last commit, or RESTORE businessDate=<date>
+and trigger the cycle for the date again. Interest rows go straight into the transaction table, so there is no
+COMBTRAN step.
 
 Inputs:  $CARDDEMO_INBOX/<business date>/dailytran.txt
 Outputs: $CARDDEMO_OUTBOX/<business date>/dalyrejs.txt, STATEMNT.txt (text statements),
