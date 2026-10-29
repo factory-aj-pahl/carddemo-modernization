@@ -7,7 +7,7 @@
 | Kind | Online (CICS), pseudo-conversational |
 | Transaction ID / Job | CPVS (`app/app-authorization-ims-db2-mq/csd/CRDDEMO2.csd:18-22,49-50`, PROFILE DFHCICST) |
 | BMS map | mapset COPAU00, map COPAU0A (`app/app-authorization-ims-db2-mq/bms/COPAU00.bms`, symbolic map `app/app-authorization-ims-db2-mq/cpy-bms/COPAU00.cpy`, COPAU0AI / COPAU0AO) |
-| Copybooks | COCOM01Y (+ CDEMO-CPVS-INFO extension), COPAU00, COTTL01Y, CSDAT01Y, CSMSG01Y, CSMSG02Y, CVACT01Y, CVACT02Y (unused), CVACT03Y, CVCUS01Y, CIPAUSMY, CIPAUDTY, DFHAID, DFHBMSCA |
+| Copybooks | COCOM01Y (+ CDEMO-CPVS-INFO extension), COPAU00, COTTL01Y, CSDAT01Y, CSMSG01Y, CSMSG02Y (unused), CVACT01Y, CVACT02Y (card record, unused), CVACT03Y, CVCUS01Y, CIPAUSMY, CIPAUDTY, DFHAID, DFHBMSCA |
 | Calls / XCTL targets | XCTL COPAUS1C (select 'S'); XCTL COMEN01C (PF3; COSGN00C if the target is blank). EXEC DLI SCHD / TERM / GU / GNP. |
 | Data stores | VSAM CXACAIX (card cross-reference alternate index path by account id): Read. VSAM ACCTDAT: Read by account id. VSAM CUSTDAT: Read by customer id. IMS DBPAUTP0 through PSB PSBPAUTB, PCB 1: PAUTSUM0 GU by ACCNTID; PAUTDTL1 GNP (sequential) and GNP qualified by PAUT9CTS. No updates. |
 
@@ -145,8 +145,8 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
       summary"). IF a detail was returned: POPULATE-AUTH-LIST for this row; index + 1; LAST = this
       key; IF index is now 2 (first row just filled): page number + 1 and PREV-PG(page number) =
       this key.
-   3. IF not EOF and no error: read one more detail; next-page flag = 'Y' if one was returned,
-      otherwise 'N'.
+   3. IF not EOF and no error (all five rows were filled): read one more detail; next-page flag = 'Y'
+      if one was returned, otherwise 'N'. OTHERWISE the flag is not changed.
 6. PROCESS-PF7-KEY (362-385): IF page number > 1: page number - 1; saved key =
    PREV-PG(page number); GET-AUTH-SUMMARY; send without erase; next-page = 'Y';
    INITIALIZE-AUTH-DATA; PROCESS-PAGE-FORWARD. OTHERWISE message "You are already at the top of
@@ -173,12 +173,14 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
 - **BR-COPAUS0C-02**: Arriving from another program, the screen opens directly on CDEMO-ACCT-ID
   when it is numeric (any value, including zeros). Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:202-219 (MAIN-PARA)`.
-- **BR-COPAUS0C-03**: Every ENTER (and every arrival by XCTL) rebuilds the screen from page 1:
-  page number reset to 0, account details re-read, list cleared, first page read if a summary
-  exists. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:342-358 (GATHER-DETAILS)`.
+- **BR-COPAUS0C-03**: Every ENTER with a valid account id that does not select a row (and every
+  arrival by XCTL with a numeric CDEMO-ACCT-ID) rebuilds the screen from page 1: page number reset
+  to 0, account details re-read, list cleared, first page read if a summary exists. After
+  VR-COPAUS0C-01/-02 only the page number is reset (to 0). Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:342-358 (GATHER-DETAILS)`.
 - **BR-COPAUS0C-04**: The account is resolved to a card cross-reference through the account
-  alternate index CXACAIX (first xref record for the account); its customer id and card number are
-  stored in CDEMO-CUST-ID and CDEMO-CARD-NUM. Account and customer are then read by the xref's
+  alternate index CXACAIX (the READ on the non-unique path returns the first xref record; for an
+  account with more than one card the RESP is DUPKEY, see ERR-COPAUS0C-02); its customer id and card
+  number are stored in CDEMO-CUST-ID and CDEMO-CARD-NUM (only on RESP NORMAL). Account and customer are then read by the xref's
   account and customer ids. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:812-831 (GETCARDXREF-BYACCT)`,
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:865-877 (GETACCTDATA-BYACCT)`,
@@ -205,8 +207,14 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
   filled row's select field is unprotected. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:522-605 (POPULATE-AUTH-LIST)`.
 - **BR-COPAUS0C-10**: Paging bookkeeping: after a page is read, LAST = key of the last row; when
-  the first row of a page is filled, page number + 1 and PREV-PG(page number) = that row's key; one
-  extra detail is read to set the next-page flag. Source:
+  the first row of a page is filled, page number + 1 and PREV-PG(page number) = that row's key. When
+  all five rows were filled, one extra detail is read and the next-page flag is set to 'Y' or 'N'.
+  When the details end, or an error occurs, before row 5 is filled, no look-ahead is done and the
+  flag keeps the value of the incoming COMMAREA (the reset at line 183 is overwritten by the COMMAREA
+  copy at line 200). When PROCESS-PAGE-FORWARD is not run (no summary, or an error), CDEMO-CPVS-PAUKEY-LAST
+  also keeps its previous value (Q-COPAUS0C-13). Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:183, 200 (MAIN-PARA)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:354-356 (GATHER-DETAILS)`,
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:420-452 (PROCESS-PAGE-FORWARD)`.
 - **BR-COPAUS0C-11**: Empty rows are blank and their select fields protected. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:608-662 (INITIALIZE-AUTH-DATA)`.
@@ -217,12 +225,26 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
 
 ### Validation rules
 - **VR-COPAUS0C-01**: ACCTID must not be spaces or low-values; otherwise message "Please enter
-  Acct Id..." and cursor on ACCTID; no data is read. Source:
-  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:264-271 (PROCESS-ENTER-KEY)`.
+  Acct Id..." and cursor on ACCTID; no data is read. Processing continues in GATHER-DETAILS, which
+  sets the page number to 0 (line 347) and reads nothing. ACCTID is re-sent blank (lines 228-229).
+  The screen is sent with erase from the received map: the FSET fields (credit and cash limits,
+  balances, approved and declined amounts, and the list rows of the account shown before) are shown
+  again, and the non-FSET fields (name, customer id, address, phone, counts) are blank, as in
+  Q-COPAUS0C-09 (FSET behaviour inferred from BMS rules). CDEMO-ACCT-ID, LAST, AUTH-KEYS, and the
+  next-page flag are unchanged. A following PF8 (flag 'Y') therefore shows the next page of the
+  previous account, numbered page 1, and a following PF7 gives "You are already at the top of the
+  page..." (Q-COPAUS0C-14). Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:228-229 (MAIN-PARA)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:264-271 (PROCESS-ENTER-KEY)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:345-349 (GATHER-DETAILS)`.
 - **VR-COPAUS0C-02**: ACCTID must be numeric in all 11 positions (no right-justification or zero
   fill is applied, so "7" followed by spaces fails); otherwise message "Acct Id must be Numeric
-  ..." and cursor on ACCTID. Source:
-  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:273-280 (PROCESS-ENTER-KEY)`.
+  ..." and cursor on ACCTID. The rest of the turn is as in VR-COPAUS0C-01: the typed value is not
+  re-sent, the previous account's FSET fields and rows stay, and its paging state is unchanged
+  (Q-COPAUS0C-14). Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:228-229 (MAIN-PARA)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:273-280 (PROCESS-ENTER-KEY)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:345-349 (GATHER-DETAILS)`.
 - **VR-COPAUS0C-03**: The first non-blank select field must contain 'S' or 's'; otherwise message
   "Invalid selection. Valid value is S", cursor on ACCTID, and the screen is rebuilt for the
   account. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:310-331 (PROCESS-ENTER-KEY)`.
@@ -232,7 +254,10 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
 
 ### Navigation and keys
 - **NAV-COPAUS0C-01**: EIBCALEN = 0 (transaction typed directly): fresh COMMAREA, empty screen with
-  the cursor on ACCTID. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:190-198 (MAIN-PARA)`.
+  the cursor on ACCTID. No sign-on check is made: unlike the base programs, which XCTL to COSGN00C
+  when EIBCALEN = 0, CPVS started directly shows the screen with a blank user ID and type, and any
+  account can be searched. Target: C-ROLE (a request with no valid session goes to a clean sign-on
+  screen). Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:190-198 (MAIN-PARA)`.
 - **NAV-COPAUS0C-02**: First entry by XCTL (context not reenter): the screen is built for
   CDEMO-ACCT-ID and sent with erase. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:202-219 (MAIN-PARA)`.
@@ -240,7 +265,10 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:225-234 (MAIN-PARA)`.
 - **NAV-COPAUS0C-04**: 'S' or 's' on a filled row -> XCTL COPAUS1C with CDEMO-CPVS-PAU-SELECTED =
   row key, CDEMO-ACCT-ID = account, FROM-TRANID = 'CPVS', FROM-PROGRAM = 'COPAUS0C', context 0.
-  Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:313-325 (PROCESS-ENTER-KEY)`.
+  The key is taken from the list shown on the previous turn (CDEMO-CPVS-AUTH-KEYS), while
+  CDEMO-ACCT-ID is the ACCTID typed on this ENTER; if ACCTID was changed in the same ENTER, COPAUS1C
+  receives the new account with a key from the previous account's list (see Q-COPAUS1C-02,
+  Q-COPAUS0C-15). Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:282-325 (PROCESS-ENTER-KEY)`.
 - **NAV-COPAUS0C-05**: PF3 -> XCTL COMEN01C with FROM-TRANID 'CPVS', FROM-PROGRAM 'COPAUS0C',
   context 0 (COSGN00C only if the target were blank, which cannot happen here). Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:235-238 (MAIN-PARA)`,
@@ -249,13 +277,26 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
   the top of the page...". The screen is sent without erase. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:362-385 (PROCESS-PF7-KEY)`.
 - **NAV-COPAUS0C-07**: PF8 -> next page when the next-page flag is 'Y', otherwise "You are already
-  at the bottom of the page...". Sent without erase. Source:
-  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:388-412 (PROCESS-PF8-KEY)`.
+  at the bottom of the page...". Sent without erase. Because a short last page leaves the flag at 'Y'
+  (BR-COPAUS0C-10), PF8 on a short last page (for example account 1 page 2, account 13 page 12)
+  re-reads the last row, finds no more details, and shows an empty list with no message; LAST becomes
+  low-values, and the page number, PREV-PG, and AUTH-KEYS are unchanged. A further PF8 takes the
+  LAST-blank branch (lines 391-392): no GU or PSB schedule is done, and the GNP runs with no scheduled
+  PSB (outcome not determined by the COBOL: an error status through ERR-COPAUS0C-06 or an abend).
+  After ENTER for an account without a summary, a PF8 with the flag 'Y' left from the previous
+  account repositions under no parent and shows the ERR-COPAUS0C-07 message (status GP, inferred).
+  Target: Q-COPAUS0C-13. Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:183, 200 (MAIN-PARA)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:388-412 (PROCESS-PF8-KEY)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:445-452 (PROCESS-PAGE-FORWARD)`.
 - **NAV-COPAUS0C-08**: Any other key -> message CCDA-MSG-INVALID-KEY
   "Invalid key pressed. Please see below...         " (from CSMSG01Y), cursor on ACCTID, screen sent with
   erase and without re-reading data. For CLEAR and PA1-PA3 the terminal sends no field data: RECEIVE gets
-  MAPFAIL (not tested), the map keeps its initial storage, and the account field and the list are blank
-  on the re-sent screen (Q-COPAUS0C-09 describes PF keys). Target: C-SHORTREAD (ledger-online.md).
+  MAPFAIL (not tested), the map keeps its initial storage (inferred: the INTO area is unchanged on
+  MAPFAIL), and the account field, the customer and summary header (including the FSET limit, balance
+  and amount fields), and the list are blank on the re-sent screen; only the header lines, the labels
+  and the message are shown, the select fields take the map attribute UNPROT (Q-COPAUS0C-11), and the
+  COMMAREA paging state is unchanged (Q-COPAUS0C-09 describes PF keys). Target: C-SHORTREAD (ledger-online.md).
   Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:245-249 (MAIN-PARA)`.
 - **NAV-COPAUS0C-09**: Every turn that does not XCTL ends with RETURN TRANSID 'CPVS' and the
   COMMAREA. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:254-257 (MAIN-PARA)`.
@@ -263,20 +304,33 @@ ENTER=Continue  F3=Back  F7=Backward  F8=Forward
 ### Error handling
 In every case below the paragraph sets the message, puts the cursor on ACCTID and performs
 SEND-PAULST-SCREEN at once, then processing continues (see Q-COPAUS0C-07). Resp and Reas are
-shown as 9-digit unsigned numbers (WS-RESP-CD-DIS / WS-REAS-CD-DIS PIC 9(9)).
+shown as 9-digit unsigned numbers (WS-RESP-CD-DIS / WS-REAS-CD-DIS PIC 9(9)). WS-MESSAGE is 80
+characters and ERRMSG shows 78. The "System error while reading XREF/ACCT file" texts are 87
+characters, so the screen ends at " Reas:" with no RESP2 digits. The CUST text is 86 characters and
+shows one RESP2 digit. The not-found texts (72-73 characters) and the DL/I texts (43-49 characters)
+fit. STRING does not clear WS-MESSAGE, so a shorter STRING message that follows a longer one in the
+same turn keeps the end of the earlier text (for example a summary GU error after a CUSTDAT not-found
+shows the 49-character DL/I text followed by characters 50-72 of the CUST message). Source:
+`app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:37, 692, 851-858, 901-908, 952-959`.
 - **ERR-COPAUS0C-01**: CXACAIX NOTFND -> "Account:" + search account + " not found in XREF file.
   Resp:" + RESP + " Reas:" + RESP2. The error flag is not set. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:832-845 (GETCARDXREF-BYACCT)`.
 - **ERR-COPAUS0C-02**: CXACAIX other RESP -> error flag on, "Account:" + account + " System error
-  while reading XREF file. Resp:" + RESP + " Reas:" + RESP2. Source:
+  while reading XREF file. Resp:" + RESP + " Reas:" + RESP2 (cut on the screen; see the preamble). This
+  includes DUPKEY (RESP 15) for an account with several cards (`app/jcl/XREFFILE.jcl:75` NONUNIQUEKEY;
+  DUPKEY on a non-unique path is inferred from CICS READ semantics). The record is returned, so the
+  header and summary are still filled, but CDEMO-CUST-ID and CDEMO-CARD-NUM are not updated and no list
+  is shown (line 418). Sample data has one card per account. Target: Q-ENT-32 (DF-6). Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:846-860 (GETCARDXREF-BYACCT)`.
 - **ERR-COPAUS0C-03**: ACCTDAT NOTFND -> "Account:" + xref account + " not found in ACCT file.
   Resp:" + RESP + " Reas:" + RESP2 (no error flag). Other RESP -> error flag on, "Account:" +
-  account + " System error while reading ACCT file. Resp:" + RESP + " Reas:" + RESP2. Source:
+  account + " System error while reading ACCT file. Resp:" + RESP + " Reas:" + RESP2 (cut on the
+  screen; see the preamble). Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:879-911 (GETACCTDATA-BYACCT)`.
 - **ERR-COPAUS0C-04**: CUSTDAT NOTFND -> "Customer:" + customer id + " not found in CUST file.
   Resp:" + RESP + " Reas:" + RESP2 (no error flag). Other RESP -> error flag on, "Customer:" +
-  id + " System error while reading CUST file. Resp:" + RESP + " Reas:" + RESP2. Source:
+  id + " System error while reading CUST file. Resp:" + RESP + " Reas:" + RESP2 (cut on the screen;
+  see the preamble). Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:930-962 (GETCUSTDATA-BYCUST)`.
 - **ERR-COPAUS0C-05**: Summary GU status other than blank, FW, GE -> error flag on, " System error
   while reading AUTH Summary: Code:" + DL/I status. GE means "no summary" (zeros shown, no list).
@@ -285,7 +339,13 @@ shown as 9-digit unsigned numbers (WS-RESP-CD-DIS / WS-REAS-CD-DIS PIC 9(9)).
   error while reading AUTH Details: Code:" + status. GE or GB means end of the list. Source:
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:458-486 (GET-AUTHORIZATIONS)`.
 - **ERR-COPAUS0C-07**: Qualified repositioning GNP status other than blank, FW, GE, GB -> error
-  flag on, " System error while repos. AUTH Details: Code:" + status. Source:
+  flag on, " System error while repos. AUTH Details: Code:" + status. GE or GB (the saved key no
+  longer exists, for example after a purge by CBPAUP0C) sets end of data: PF8 then shows an empty list
+  with no message and the next-page flag unchanged (the fill loop tests end of data first, line 424);
+  PF7 shows an empty list and leaves the page number one lower (Q-COPAUS0C-16). Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:365-379 (PROCESS-PF7-KEY)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:394-397 (PROCESS-PF8-KEY)`,
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:424 (PROCESS-PAGE-FORWARD)`,
   `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:488-519 (REPOSITION-AUTHORIZATIONS)`.
 - **ERR-COPAUS0C-08**: PSB schedule fails (after one TERM and retry on TC) -> error flag on,
   " System error while scheduling PSB: Code:" + status. Source:
@@ -309,37 +369,71 @@ SYNCPOINT is issued before each send only to release the PSB.
   subscript 21 or more, overwriting the following COMMAREA fields (LAST, page number, flags).
   Account 13 in the sample has 58 authorizations (12 pages), so this needs more than 100 rows.
   Recommendation: fix. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:120,440`.
-- **Q-COPAUS0C-03**: Arriving from the menu, CDEMO-ACCT-ID is numeric even when no account was
-  chosen (zeros after the sign-on INITIALIZE), so the program searches for account 00000000000 and
-  shows a not-found message instead of an empty prompt. Recommendation: decide.
+- **Q-COPAUS0C-03**: Arriving from the menu, the program searches at once for whatever CDEMO-ACCT-ID
+  holds, if it is numeric. That can be an account entered on an earlier screen, zeros set by
+  COCRDLIC/COACTUPC/COCRDUPC when no account was given (for example `app/cbl/COCRDLIC.cbl:1011`), or
+  the sign-on task's uninitialized storage (COSGN00C does not INITIALIZE the COMMAREA, Q-COSGN00C-06).
+  For zeros the program searches account 00000000000 and shows not-found messages (Q-COPAUS0C-04)
+  instead of an empty prompt. A non-numeric value gives the empty prompt. Recommendation: decide.
+  Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:207-213`.
 - **Q-COPAUS0C-04**: A not-found cross-reference does not stop processing: the account read uses
-  XREF-ACCT-ID left over from an earlier read (or the initial working storage), then the customer
-  read, each sending the screen again. The user sees the last message sent. Recommendation: fix.
+  XREF-ACCT-ID and the customer read XREF-CUST-ID from the task's initial working storage (the xref
+  read is the first read of the task, so there is no earlier value); CDEMO-CUST-ID and CDEMO-CARD-NUM
+  keep their previous values. Each read sends the screen again, and the user sees the last message
+  sent. The summary is still read with the typed account (BR-COPAUS0C-07). Recommendation: fix.
+  Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:753-755, 832-845, 868, 918`.
 - **Q-COPAUS0C-05**: ACCSTAT (Acct Status) is on the map but never filled, although
-  ACCT-ACTIVE-STATUS is read. Recommendation: fix or decide.
-- **Q-COPAUS0C-06**: CASHBAL, APPRAMT and DECLAMT use edit picture -zzzz9.99 (9 characters), so
-  amounts of 100000.00 or more lose high-order digits; APPRAMT and DECLAMT fields are 10 long.
-  APPRCNT/DECLCNT show only 3 digits (counts over 999 are truncated). When no summary exists, the
-  six fields show strings of '0' characters (for example "000000000000" in CREDBAL) rather than
-  formatted zero amounts. Recommendation: fix.
+  ACCT-ACTIVE-STATUS is read. Recommendation: fix or decide. Source:
+  `app/app-authorization-ims-db2-mq/bms/COPAU00.bms` (ACCSTAT), `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:750-808` (no move to ACCSTATO).
+- **Q-COPAUS0C-06**: CASHLIM, CASHBAL, APPRAMT and DECLAMT use edit picture -zzzz9.99 (5 integer
+  digits), so amounts of 100,000.00 or more lose high-order digits; CREDLIM, CREDBAL and the row
+  Amount use -zzzzzzz9.99 (8 integer digits) and lose digits from 100,000,000.00. APPRAMT and DECLAMT
+  fields are 10 long. APPRCNT/DECLCNT show only 3 digits (counts over 999 are truncated). When no
+  summary exists, the six summary fields show strings of '0' characters (for example "000000000000"
+  in CREDBAL) rather than formatted zero amounts. Recommendation: fix. Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:55-58, 525, 780-806`.
 - **Q-COPAUS0C-07**: Error paragraphs send the screen immediately and then return to normal flow,
   so one turn can send the map several times. Because SEND-PAULST-SCREEN also SYNCPOINTs (releasing
   the PSB), a DL/I call after such an error in the same turn runs without a scheduled PSB.
-  Recommendation: fix.
+  Recommendation: fix. Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:684-688, 483, 516, 845, 860, 895, 910, 946, 961, 995, 1029`.
 - **Q-COPAUS0C-08**: The Amount column shows the approved amount, so declined authorizations show
-  0.00 instead of the requested amount. Recommendation: decide.
+  0.00 instead of the requested amount. Recommendation: decide. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:525`.
 - **Q-COPAUS0C-09**: On an invalid key, the screen is re-sent with erase from the received map
   only. Fields defined with FSET (limits, balances, amounts, list rows) come back from the terminal
   and are redisplayed; fields without FSET (name, customer id, address, phone, counts) are blank
-  after the erase. Recommendation: fix.
+  after the erase. Select fields of empty rows become unprotected (Q-COPAUS0C-11). Recommendation:
+  fix. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:245-249`, `app/app-authorization-ims-db2-mq/bms/COPAU00.bms` (FSET attributes).
 - **Q-COPAUS0C-10**: CNAME takes the first and last names only up to their first space ("Mary Ann"
   shows as "Mary"); a blank middle name leaves three spaces between names. ADDR001 is truncated at
-  25 characters. Recommendation: preserve (display only) or decide.
+  25 characters. Recommendation: preserve (display only) or decide. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:758-770`.
 - **Q-COPAUS0C-11**: CDEMO-CPVS-AUTH-KEYS is not cleared when a page has fewer than five rows; the
-  stale keys belong to protected rows, so they cannot be selected through the screen.
-  Recommendation: preserve.
-- **Q-COPAUS0C-12**: The account record copybook CVACT02Y and the names CARDDAT and CCXREF are
-  declared but not used. Recommendation: preserve.
+  stale keys belong to empty rows. Those rows are protected only when the list is rebuilt. Any send
+  from the received map (invalid key, CLEAR/PA, VR-COPAUS0C-01/-02, PF7 on page 1, PF8 at the bottom)
+  leaves the attribute byte X'00', so BMS uses the map attribute UNPROT again (inferred from BMS
+  rules). 'S' on such an empty row then passes a stale key to COPAUS1C (for example on account 1
+  page 2, row 2 holds the key of page 1 row 2 after PF5). Recommendation: preserve. Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:286-305, 542-605, 608-662`.
+- **Q-COPAUS0C-12**: The card record copybook CVACT02Y, the abend-variables copybook CSMSG02Y, and
+  the file names CARDDAT and CCXREF are declared but not used. Recommendation: preserve. Source:
+  `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:38-42, 141, 147`.
+- **Q-COPAUS0C-13**: The next-page flag and LAST are carried over in the COMMAREA and are not reset
+  after a short page or for an account without a list (BR-COPAUS0C-10). PF8 on a short last page
+  shows an empty list with no message, a further PF8 issues a GNP with no PSB scheduled, and PF8
+  after an account without a summary can show " System error while repos. AUTH Details: Code:GP"
+  (NAV-COPAUS0C-07). Reachable with sample accounts 1, 13, 15, 16, and 48. Recommendation: fix.
+  Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:183, 200, 354-356, 391-398, 404-407, 422, 445-452`.
+- **Q-COPAUS0C-14**: After "Please enter Acct Id..." or "Acct Id must be Numeric ...", the typed
+  value is not re-sent, the previous account's FSET header fields and rows stay on the screen, and
+  its paging state is kept, so PF8 continues the previous account's list (VR-COPAUS0C-01/-02).
+  Recommendation: fix. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:228-229, 264-280, 337, 345-349`.
+- **Q-COPAUS0C-15**: A select code is resolved against the keys of the list shown on the previous
+  turn while the account is the one typed on this ENTER, so changing ACCTID and marking a row in one
+  ENTER passes a key of one account with another account to COPAUS1C (NAV-COPAUS0C-04).
+  Recommendation: fix. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:282-325`.
+- **Q-COPAUS0C-16**: Paging assumes the saved key still exists. When it was deleted between turns,
+  the repositioning GNP returns GE and PF8 or PF7 shows an empty list with no message
+  (ERR-COPAUS0C-07). Recommendation: fix. Source: `app/app-authorization-ims-db2-mq/cbl/COPAUS0C.cbl:365-379, 394-397, 424, 491-505`.
 
 ## Test scenarios
 Sample data: account 7 (card 4859452612877065, customer 7 "Cooper" / "Dennis" / "Mayert",
@@ -379,6 +473,10 @@ authorizations totalling 74.79, credit balance 74.79 and 50 details. Account 2 h
   pressed. Please see below...         " is shown.
 - **TS-COPAUS0C-13** (NAV-02): Given CDEMO-ACCT-ID = 7 in the COMMAREA and context 0, when COMEN01C
   XCTLs here, then the screen opens showing account 7 without the user typing it.
+- **TS-COPAUS0C-14** (BR-10, NAV-07, Q-COPAUS0C-13): Given account 1 (6 authorizations), when the
+  user presses ENTER, PF8, and PF8, then the second PF8 shows (as coded) an empty list with no
+  message. Expected in the target system: "You are already at the bottom of the page..." with row 6
+  still shown on page 2.
 
 ## Open questions
 - Should ACCSTAT show ACCT-ACTIVE-STATUS, and should the Amount column show the requested amount

@@ -96,9 +96,129 @@ class PendingAuthListTest extends AuthScreenTestSupport {
         for (String bad : List.of("7", "0000000000A", "-0000000007", "0000000 007")) {
             JsonNode r = list("ENTER", bad);
             assertThat(r.at("/message").asText()).as(bad).isEqualTo("Acct Id must be Numeric ...");
-            assertThat(r.at("/fields/accountId").asText()).isEmpty();
+            assertThat(r.at("/fields/accountId").asText()).isEqualTo(bad);
             assertThat(txns(r)).containsOnly("");
         }
+    }
+
+    @Test
+    @Covers({"Q-COPAUS0C-14", "VR-COPAUS0C-01", "VR-COPAUS0C-02"})
+    void an_account_id_error_clears_the_account_shown_before_and_paging_needs_a_valid_account() {
+        pages(1);
+        JsonNode r = list("ENTER", "7");
+        assertThat(r.at("/message").asText()).isEqualTo("Acct Id must be Numeric ...");
+        assertThat(r.at("/fields/accountId").asText()).isEqualTo("7");
+        for (String field : List.of("name", "customerId", "address1", "phone", "creditLimit", "cashLimit", "creditBalance",
+            "cashBalance", "approvedAmount", "declinedAmount", "approvedCount", "declinedCount")) {
+            assertThat(r.at("/fields/" + field).asText()).as(field).isEmpty();
+        }
+        assertThat(txns(r)).containsOnly("");
+        assertThat(r.toString()).doesNotContain("Cooper");
+        JsonNode f8 = list("PF8", "7");
+        assertThat(f8.at("/message").asText()).isEqualTo(BOTTOM);
+        assertThat(txns(f8)).containsOnly("");
+        assertThat(list("PF7", "7").at("/message").asText()).isEqualTo(TOP);
+        pages(1);
+        JsonNode blank = list("ENTER", "");
+        assertThat(blank.at("/message").asText()).isEqualTo("Please enter Acct Id...");
+        assertThat(txns(blank)).containsOnly("");
+        assertThat(list("PF8", "").at("/message").asText()).isEqualTo(BOTTOM);
+        JsonNode valid = list("ENTER", ACCT7);
+        assertThat(txns(valid)).containsExactlyElementsOf(rows(ACCOUNT_7, 1, 5));
+        assertThat(txns(list("PF8", ACCT7))).containsExactlyElementsOf(rows(ACCOUNT_7, 6, 10));
+    }
+
+    @Test
+    @Covers({"TS-COPAUS0C-14", "Q-COPAUS0C-13", "BR-COPAUS0C-10", "NAV-COPAUS0C-07"})
+    void f8_after_a_short_last_page_or_an_account_change_says_bottom() {
+        String acct1 = "00000000001";
+        assertThat(allTxns(1)).hasSize(6);
+        list("ENTER", acct1);
+        JsonNode p2 = list("PF8", acct1);
+        assertThat(p2.at("/fields/pageNum").asText()).isEqualTo("2");
+        assertThat(txns(p2)).containsExactlyElementsOf(rows(1, 6, 10));
+        assertThat(p2.has("message")).isFalse();
+        for (int i = 0; i < 2; i++) {
+            JsonNode bottom = list("PF8", acct1);
+            assertThat(bottom.at("/message").asText()).isEqualTo(BOTTOM);
+            assertThat(bottom.at("/fields/pageNum").asText()).isEqualTo("2");
+            assertThat(txns(bottom)).containsExactlyElementsOf(rows(1, 6, 10));
+        }
+        // Account 7 page 2, then an account without a summary and an account with a short first page.
+        pages(1);
+        JsonNode none = list("ENTER", "00000000002");
+        assertThat(txns(none)).containsOnly("");
+        JsonNode noneF8 = list("PF8", "00000000002");
+        assertThat(noneF8.at("/message").asText()).isEqualTo(BOTTOM);
+        assertThat(txns(noneF8)).containsOnly("");
+        pages(1);
+        JsonNode five = list("ENTER", "00000000005");
+        assertThat(five.at("/fields/pageNum").asText()).isEqualTo("1");
+        JsonNode fiveF8 = list("PF8", "00000000005");
+        assertThat(fiveF8.at("/message").asText()).isEqualTo(BOTTOM);
+        assertThat(txns(fiveF8)).containsExactlyElementsOf(rows(5, 1, 5));
+        pages(2);
+        JsonNode one = list("ENTER", acct1);
+        assertThat(one.has("message")).isFalse();
+        assertThat(txns(one)).containsExactlyElementsOf(rows(1, 1, 5));
+        assertThat(txns(list("PF8", acct1))).containsExactlyElementsOf(rows(1, 6, 10));
+    }
+
+    @Test
+    @Covers({"Q-COPAUS0C-15", "NAV-COPAUS0C-04"})
+    void a_selection_typed_with_a_new_account_id_is_ignored_and_the_new_account_is_searched() {
+        list("ENTER", ACCT7);
+        JsonNode r = list("ENTER", "00000000001", 1, "S");
+        assertThat(r.has("navigate")).isFalse();
+        assertThat(r.has("message")).isFalse();
+        assertThat(r.at("/fields/accountId").asText()).isEqualTo("00000000001");
+        assertThat(r.at("/fields/pageNum").asText()).isEqualTo("1");
+        assertThat(txns(r)).containsExactlyElementsOf(rows(1, 1, 5));
+        JsonNode bad = list("ENTER", ACCT7, 2, "X");
+        assertThat(bad.has("message")).isFalse();
+        assertThat(txns(bad)).containsExactlyElementsOf(rows(ACCOUNT_7, 1, 5));
+        // The same account selects from its own rows.
+        assertThat(list("ENTER", ACCT7, 2, "S").at("/navigate").asText()).isEqualTo("COPAUS1C");
+        assertThat(admin.show("COPAUS1C").at("/fields/transactionId").asText()).isEqualTo(SECOND_TXN);
+    }
+
+    @Test
+    @Covers({"Q-COPAUS0C-16", "ERR-COPAUS0C-07"})
+    void paging_continues_from_the_next_remaining_authorization_when_a_saved_key_was_deleted() {
+        List<String> all = allTxns(ACCOUNT_7);
+        list("ENTER", ACCT7);
+        jdbc.update("DELETE FROM pending_auth_detail WHERE transaction_id = ?", all.get(4));
+        JsonNode p2 = list("PF8", ACCT7);
+        assertThat(p2.has("message")).isFalse();
+        assertThat(txns(p2)).containsExactlyElementsOf(all.subList(5, 10));
+        list("PF8", ACCT7);
+        jdbc.update("DELETE FROM pending_auth_detail WHERE transaction_id = ?", all.get(5));
+        JsonNode back = list("PF7", ACCT7);
+        assertThat(back.has("message")).isFalse();
+        assertThat(back.at("/fields/pageNum").asText()).isEqualTo("2");
+        assertThat(txns(back)).containsExactlyElementsOf(all.subList(6, 11));
+
+        // Everything after the last row shown is gone: bottom message, rows kept.
+        jdbc.update("DELETE FROM pending_auth_detail WHERE account_id = 7 AND transaction_id NOT IN (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            all.get(0), all.get(1), all.get(2), all.get(3), all.get(6), all.get(7), all.get(8), all.get(9), all.get(10));
+        JsonNode bottom = list("PF8", ACCT7);
+        assertThat(bottom.at("/message").asText()).isEqualTo(BOTTOM);
+        assertThat(bottom.at("/fields/pageNum").asText()).isEqualTo("2");
+        assertThat(txns(bottom)).containsExactlyElementsOf(all.subList(6, 11));
+
+        // Account 13 page 3; everything from page 2's first row on is gone: F7 shows what remains from the newest.
+        String acct13 = "00000000013";
+        List<String> all13 = allTxns(13);
+        list("ENTER", acct13);
+        list("PF8", acct13);
+        assertThat(txns(list("PF8", acct13))).containsExactlyElementsOf(all13.subList(10, 15));
+        jdbc.update("DELETE FROM pending_auth_detail WHERE account_id = 13 AND transaction_id NOT IN (?, ?, ?)", all13.get(0),
+            all13.get(1), all13.get(2));
+        JsonNode top = list("PF7", acct13);
+        assertThat(top.has("message")).isFalse();
+        assertThat(top.at("/fields/pageNum").asText()).isEqualTo("1");
+        assertThat(txns(top)).containsExactly(all13.get(0), all13.get(1), all13.get(2), "", "");
+        assertThat(list("PF7", acct13).at("/message").asText()).isEqualTo(TOP);
     }
 
     @Test

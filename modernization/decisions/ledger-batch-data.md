@@ -461,8 +461,12 @@ COPAUS1C).
 | Q-COPAUS0C-08 | Amount column shows the approved amount | business-choice | PRESERVE | Business choice: same. | n/a |
 | Q-COPAUS0C-09 | Invalid key redisplays only FSET fields | platform | PLATFORM | An invalid key redisplays the whole current screen with the invalid-key message. | n/a |
 | Q-COPAUS0C-10 | Name cut at the first space; address cut at 25 | cosmetic | PRESERVE | Display kept. | n/a |
-| Q-COPAUS0C-11 | Stale keys of protected rows | platform | PLATFORM | No counterpart. | n/a |
+| Q-COPAUS0C-11 | Stale keys of empty rows | platform | PLATFORM | No counterpart. | n/a |
 | Q-COPAUS0C-12 | Unused copybook and file names | dead-code | NOT-PORTED | Not ported. | n/a |
+| Q-COPAUS0C-13 | Next-page flag not reset after a short page or an account without a list | functional-defect | FIX | The paging state always belongs to the account shown. F8 shows a next page only when another authorization of that account follows the last row shown. After a page with fewer than five rows, or for an account without a summary or without authorizations, F8 shows `You are already at the bottom of the page...` with the rows and page unchanged. ENTER on another account after any page shows that account from page 1, and paging it never shows ` System error while repos. AUTH Details: Code:` or ` System error while reading AUTH Details: Code:` unless the database read really fails. TS-COPAUS0C-14 changes accordingly. | n/a |
+| Q-COPAUS0C-14 | Account id error keeps the previous account's rows and paging | functional-defect | FIX | After `Please enter Acct Id...` or `Acct Id must be Numeric ...` the account field shows the value as typed (at most 11 characters), and the customer, limit, summary, and list fields are empty: no data of the account shown before remains. Until ENTER shows a valid account, F7 gives `You are already at the top of the page...` and F8 `You are already at the bottom of the page...`. | n/a |
+| Q-COPAUS0C-15 | Selection uses the previous account's row keys when the account id changes on the same ENTER | data-corruption | FIX | A select code applies only to the rows of the account currently shown. If the account id typed on the same ENTER differs from the account shown, that account is searched and shown from page 1 and the select codes are ignored (no navigation, no `Invalid selection. Valid value is S`). | n/a |
+| Q-COPAUS0C-16 | Paging assumes the saved key still exists | concurrency | FIX | Keyset paging on the saved keys (F8: the authorizations after the last row shown; F7: from the first row of the previous page), so a deleted saved key causes no error, no empty page, and no skipped row; paging continues from the next existing authorization (as Q-COTRN00C-10, Q-COUSR00C-09). If no authorization follows the last row shown, F8 shows `You are already at the bottom of the page...` with the rows unchanged. If none remains from the previous page's first row on, F7 shows the remaining authorizations from the newest as page 1 (or, when none remains, an empty list with `You are already at the top of the page...`). | n/a |
 
 ## COPAUS1C
 
@@ -662,6 +666,7 @@ Authorization module (IMS, Db2, MQ):
 - Q-COPAUA0C-06, -07, -11: database update commits before the reply; critical errors roll back; no key collisions.
 - Q-COPAUA0C-13, -16: error log records carry this request's masked card number; M003 tagged `M`.
 - Q-COPAUS0C-01, -02, -03, -04, -05, -06: PF7 reaches page 1; no page limit; empty prompt without account context; xref not-found stops; Acct Status filled; amounts and counts show all digits and zeros as `0.00`.
+- Q-COPAUS0C-13, -14, -15, -16: F8 after a short last page or an account change gives the bottom message; an account id error keeps the typed value and shows nothing of the previous account; a selection typed with a new account id is ignored; deleted page keys do not empty the list.
 - Q-COPAUS1C-01, -02, -08: stored values shown after a failed fraud update; **NEW** `Authorization not found...` and **NEW** `Please select an authorization...`.
 - Q-COPAUS2C-04: SQLSTATE shown as text.
 - Q-CBPAUP0J-01, Q-CBPAUP0C-09 (D-PURGE): purge expiry is a DAG parameter defaulting to 5 days (not the JCL's `00`); debug off by default.
@@ -732,17 +737,17 @@ Still open: none.
 
 ## Counts
 
-Rows by category and decision (391 rows).
+Rows by category and decision (395 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 19 | 4 | 0 | 0 | 0 | 23 |
-| data-corruption | 40 | 0 | 0 | 0 | 0 | 40 |
-| concurrency | 4 | 0 | 0 | 0 | 0 | 4 |
-| functional-defect | 89 | 0 | 0 | 0 | 0 | 89 |
+| data-corruption | 41 | 0 | 0 | 0 | 0 | 41 |
+| concurrency | 5 | 0 | 0 | 0 | 0 | 5 |
+| functional-defect | 91 | 0 | 0 | 0 | 0 | 91 |
 | cosmetic | 0 | 14 | 0 | 0 | 0 | 14 |
 | business-choice | 0 | 45 | 0 | 0 | 0 | 45 |
 | platform | 0 | 0 | 0 | 114 | 0 | 114 |
 | dead-code | 0 | 0 | 0 | 0 | 30 | 30 |
 | user-decision | 0 | 0 | 32 | 0 | 0 | 32 |
-| Total | 152 | 63 | 32 | 114 | 30 | 391 |
+| Total | 156 | 63 | 32 | 114 | 30 | 395 |

@@ -50,7 +50,7 @@ test.describe('COPAUS0C pending authorization list', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
-  test('VR-COPAUS0C-01 VR-COPAUS0C-02 VR-COPAUS0C-03 TS-COPAUS0C-02 TS-COPAUS0C-03 TS-COPAUS0C-04 a missing or malformed account id and a bad select code are rejected', async ({ page }) => {
+  test('VR-COPAUS0C-01 VR-COPAUS0C-02 VR-COPAUS0C-03 TS-COPAUS0C-02 TS-COPAUS0C-03 TS-COPAUS0C-04 Q-COPAUS0C-14 a missing or malformed account id and a bad select code are rejected', async ({ page }) => {
     await openList(page);
     await page.keyboard.press('Enter');
     await expectMessage(page, 'Please enter Acct Id...');
@@ -58,7 +58,7 @@ test.describe('COPAUS0C pending authorization list', () => {
     await expectNoSeriousA11yViolations(page);
     await search(page, '7');
     await expectMessage(page, 'Acct Id must be Numeric ...');
-    await expect(page.getByLabel('Search Acct Id')).toHaveValue('');
+    await expect(page.getByLabel('Search Acct Id')).toHaveValue('7');
     await search(page, ACCT);
     await expect.poll(() => txns(page)).toHaveLength(5);
     await page.locator('#sel2').fill('X');
