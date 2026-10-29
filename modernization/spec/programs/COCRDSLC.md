@@ -25,8 +25,8 @@ but is not checked against the card (Q-COCRDSLC-01). The program is read-only.
 | Entry | How detected | Effect |
 |:--|:--|:--|
 | From COCRDLIC (select `S`) | `CDEMO-PGM-ENTER` and `CDEMO-FROM-PROGRAM` = `COCRDLIC` | Keys taken from CDEMO-ACCT-ID / CDEMO-CARD-NUM; card read and shown at once; key fields protected |
-| From main menu option 4 (`COMEN01C`, `app/cpy/COMEN02Y.cpy:42-46`) | `CDEMO-FROM-PROGRAM` = `COMEN01C` and not PGM-REENTER | CARDDEMO-COMMAREA is re-initialized (Q-COCRDSLC-03); empty search screen |
-| Transaction CCDL typed with no COMMAREA | EIBCALEN = 0 | Same as menu entry |
+| From main menu option 4 (`COMEN01C`, `app/cpy/COMEN02Y.cpy:42-46`) | EIBCALEN = 160, `CDEMO-PGM-ENTER`, and FROM-PROGRAM `COMEN01C` | COMMAREA copied from DFHCOMMAREA (the `COMEN01C` test reads working storage before the copy and is never true, Q-COCRDSLC-03); empty search screen |
+| Transaction CCDL typed with no COMMAREA | EIBCALEN = 0 | CARDDEMO-COMMAREA and the program area initialized; empty search screen |
 | Own pseudo-conversational turn | `CDEMO-PGM-REENTER` (set just before every SEND MAP) | Map received, keys edited, card read |
 
 **CARDDEMO-COMMAREA usage**
@@ -101,7 +101,13 @@ The mock-up shows the card on `app/data/ASCII/carddata.txt` line 1 (masked).
 2. IF EIBCALEN = 0, or FROM-PROGRAM = `COMEN01C` and not PGM-REENTER: INITIALIZE
    CARDDEMO-COMMAREA and the program area (PGM-CONTEXT becomes 0 = ENTER, every other field
    spaces or zeros). OTHERWISE copy CARDDEMO-COMMAREA and the 12-byte program area from
-   DFHCOMMAREA.
+   DFHCOMMAREA. The second operand tests the working-storage copy of CARDDEMO-COMMAREA before it
+   is loaded from DFHCOMMAREA, so on a new task it is never true (inferred from CICS storage
+   semantics: COCOM01Y has no VALUE clauses, `app/cbl/COCRDSLC.cbl:198`). In practice only
+   EIBCALEN = 0 initializes; menu entry copies the COMMAREA, so the user id, user type, and
+   customer, account, and card context survive. A nonzero CDEMO-ACCT-ID or CDEMO-CARD-NUM carried
+   in from earlier screens makes `1200-SETUP-SCREEN-VARS` move CC-ACCT-ID / CC-CARD-NUM, which are
+   spaces after INITIALIZE CC-WORK-AREA, so the first screen looks the same either way.
 3. Map the AID. Only ENTER and PF3 are valid; any other AID is treated as ENTER.
 4. EVALUATE:
    1. PF3: exit (NAV-COCRDSLC-02).
@@ -200,8 +206,13 @@ CARD-RECORD. NORMAL sets the info message `   Displaying requested details` (the
   terminal sends no field data, so RECEIVE gets MAPFAIL (not tested, ERR-COCRDSLC-04) and both key
   fields keep their initial storage. The keys are then blank, even when they were protected after entry
   from the list: the error is `No input received`, no card is read, and CDEMO-ACCT-ID and CDEMO-CARD-NUM
-  become 0 (VR-COCRDSLC-05). Target: C-SHORTREAD (ledger-online.md). Source:
-  `app/cbl/COCRDSLC.cbl:284-299`.
+  become 0 (VR-COCRDSLC-05). On the list path the re-sent key fields stay protected
+  (BR-COCRDSLC-05) and show `*` in red, so the user cannot re-enter them. Every later ENTER sends
+  the `*` back, which the edit turns into LOW-VALUES, so it repeats `No input received` until PF3
+  returns to the list (inferred from MAPFAIL semantics). Target: C-SHORTREAD (ledger-online.md): the
+  request carries the key values, so the stuck state does not occur. Source:
+  `app/cbl/COCRDSLC.cbl:284-299`, `app/cbl/COCRDSLC.cbl:505-512`, `app/cbl/COCRDSLC.cbl:541-551`,
+  `app/cbl/COCRDSLC.cbl:615-627`.
 - **NAV-COCRDSLC-02**: PF3 exits:
   - CDEMO-TO-TRANID = CDEMO-FROM-TRANID, or `CM00` if that is blank or LOW-VALUES.
   - CDEMO-TO-PROGRAM = CDEMO-FROM-PROGRAM, or `COMEN01C` if that is blank.
@@ -209,8 +220,9 @@ CARD-RECORD. NORMAL sets the info message `   Displaying requested details` (the
     LAST-MAPSET `COCRDSL`, LAST-MAP `CCRDSLA`.
   - XCTL to CDEMO-TO-PROGRAM with CARDDEMO-COMMAREA.
 
-  From the list path this returns to COCRDLIC. From the menu or direct path FROM-PROGRAM was
-  cleared, so it goes to COMEN01C. CDEMO-ACCT-ID and CDEMO-CARD-NUM are passed back unchanged.
+  From the list path this returns to COCRDLIC. From the menu path FROM-PROGRAM is still
+  `COMEN01C`, and on the direct CCDL path it is blank, so PF3 goes to COMEN01C. CDEMO-ACCT-ID and
+  CDEMO-CARD-NUM are passed back unchanged.
   Source: `app/cbl/COCRDSLC.cbl:305-334`.
 - **NAV-COCRDSLC-03**: Every non-exit turn ends with RETURN TRANSID(`CCDL`) and a 2000-byte
   COMMAREA. Source: `app/cbl/COCRDSLC.cbl:394-407 (COMMON-RETURN)`.
@@ -246,9 +258,12 @@ None. One READ (no UPDATE) of CARDDAT per list entry or ENTER with valid keys.
 - **Q-COCRDSLC-02**: Invalid (non-numeric) keys are not echoed. The redisplay uses CDEMO-ACCT-ID /
   CDEMO-CARD-NUM, which are zeroed on error, so the red field is empty and the user must retype.
   Recommendation: decide. Source: `app/cbl/COCRDSLC.cbl:462-472`, `app/cbl/COCRDSLC.cbl:673`, `app/cbl/COCRDSLC.cbl:714`.
-- **Q-COCRDSLC-03**: Entry from the menu INITIALIZEs the whole CARDDEMO-COMMAREA. This erases
-  CDEMO-USER-ID, CDEMO-USER-TYPE, and the customer and account context, and PF3 then sets user type
-  `U`. Recommendation: fix (keep the session identity). Source: `app/cbl/COCRDSLC.cbl:268-272`, `app/cbl/COCRDSLC.cbl:326`.
+- **Q-COCRDSLC-03**: The program intends to INITIALIZE CARDDEMO-COMMAREA on menu entry, but the
+  test reads working storage before the COMMAREA is copied (processing flow step 2), so only a
+  direct start with no COMMAREA initializes it. The user id and the customer and account context
+  therefore survive menu entry. PF3 sets user type `U`, so an administrator returns as a regular
+  user. Recommendation: fix (keep the session identity). (Corrected after review: an earlier
+  version said menu entry erases the user id and context.) Source: `app/cbl/COCRDSLC.cbl:268-272`, `app/cbl/COCRDSLC.cbl:326`.
 - **Q-COCRDSLC-04**: Messages are inconsistent. The account and card messages say "IF SUPPLIED"
   although both keys are mandatory. Several 88-level messages are never used:
   `Account number must be a non zero 11 digit number`,
@@ -315,7 +330,10 @@ at the cited line.
   then XCTL goes to COCRDLIC with CDEMO-FROM-PROGRAM = `COCRDSLC`, CDEMO-TO-PROGRAM = `COCRDLIC`,
   CDEMO-PGM-CONTEXT = 0, and CDEMO-USER-TYPE = `U`. Given the menu path, PF3 goes to COMEN01C.
 - **TS-COCRDSLC-13** (NAV-COCRDSLC-01): Given a card displayed via the list, when PF7 is pressed,
-  then the same card is re-read and re-displayed (no paging, no error).
+  then the same card is re-read and re-displayed (no paging, no error). When CLEAR is pressed
+  instead, both protected keys show `*` in red with `No input received`, and ENTER does not
+  recover the card. Expected in the target system (C-SHORTREAD): CLEAR with the keys in the request
+  behaves as PF7.
 - **TS-COCRDSLC-14** (ERR-COCRDSLC-01): Given CARDDAT is closed or disabled, when a valid search is
   entered, then the error line begins `File Error: READ     on CARDDAT   returned RESP ` and the
   account field is red.

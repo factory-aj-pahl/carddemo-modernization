@@ -218,7 +218,7 @@ echo, account, card, status), `1250-SETUP-ARRAY-ATTRIBS` (BR-COCRDLIC-12),
   start of the file. Source: `app/cbl/COCRDLIC.cbl:439-454`, `app/cbl/COCRDLIC.cbl:572-582 (0000-MAIN)`.
 - **BR-COCRDLIC-08**: The page number becomes 1 when the first row of a forward read is placed and
   the page number is 0. Fresh entry sets it to 1. PF8 adds 1 and PF7 subtracts 1 (single digit,
-  Q-COCRDLIC-06). Source: `app/cbl/COCRDLIC.cbl:324`, `app/cbl/COCRDLIC.cbl:341`, `app/cbl/COCRDLIC.cbl:492`, `app/cbl/COCRDLIC.cbl:508`, `app/cbl/COCRDLIC.cbl:1177-1179`.
+  Q-COCRDLIC-06: PF8 from page 9 stores 0, which the forward read turns into 1). Source: `app/cbl/COCRDLIC.cbl:324`, `app/cbl/COCRDLIC.cbl:341`, `app/cbl/COCRDLIC.cbl:492`, `app/cbl/COCRDLIC.cbl:508`, `app/cbl/COCRDLIC.cbl:1177-1179`.
 - **BR-COCRDLIC-09**: Selection is acted on only with ENTER (or a key treated as ENTER). PF7 and
   PF8 page and ignore a single valid selection. Source: `app/cbl/COCRDLIC.cbl:517-569 (0000-MAIN)`.
 - **BR-COCRDLIC-10**: On `S` or `U`, the program passes the selected row's account number in
@@ -231,8 +231,9 @@ echo, account, card, status), `1250-SETUP-ARRAY-ATTRIBS` (BR-COCRDLIC-12),
 - **BR-COCRDLIC-12**: Select-field protection. A row with no data, or any row when a filter is
   in error, gets a protected select field: row 1 uses `DFHBMPRF` (protected, MDT on) and rows 2-7
   use `DFHBMPRO`. Otherwise the select field is unprotected with MDT on (`DFHBMFSE`). A row flagged
-  in error is shown red. Row 1 in error also shows `*` if its code is blank, but no cursor is
-  placed on it. Rows 2-7 in error get the cursor but no `*`. Source:
+  in error is shown red. Row 1 in error gets no cursor. (Line 757 would show `*` for a blank
+  code in error, but `2250-EDIT-ARRAY` never flags a blank code, so it has no effect.) Rows 2-7 in
+  error get the cursor. Source:
   `app/cbl/COCRDLIC.cbl:748-832 (1250-SETUP-ARRAY-ATTRIBS)`.
 - **BR-COCRDLIC-13**: Filter field echo and cursor. Echo is skipped when EIBCALEN = 0 or on
   arrival from `COMEN01C`. Otherwise:
@@ -318,10 +319,17 @@ echo, account, card, status), `1250-SETUP-ARRAY-ATTRIBS` (BR-COCRDLIC-12),
   are `'File Error:'` padded to 12, `'READ'` padded to 8, `' on '`, `'CARDDAT '` padded to 9,
   `' returned RESP '`, the EIBRESP value as 9 zero-padded digits plus a space, `',RESP2 '`, and the
   EIBRESP2 value the same way. The operation name is always `READ`, even for READNEXT, READPREV,
-  and STARTBR failures. Source: `app/cbl/COCRDLIC.cbl:153-171`, `app/cbl/COCRDLIC.cbl:1222-1230`, `app/cbl/COCRDLIC.cbl:1246-1254`.
-- **ERR-COCRDLIC-02**: The STARTBR response is not checked. A failed STARTBR shows up as the
-  READNEXT/READPREV error in ERR-COCRDLIC-01 (typically INVREQ). ENDBR is issued with no RESP
-  option, so it is issued even after a failed STARTBR. Source: `app/cbl/COCRDLIC.cbl:1129-1136`, `app/cbl/COCRDLIC.cbl:1258-1259`, `app/cbl/COCRDLIC.cbl:1273-1280`, `app/cbl/COCRDLIC.cbl:1375-1377`.
+  and STARTBR failures. When the failing request is the first READNEXT/READPREV after a failed
+  STARTBR, ERR-COCRDLIC-02 applies instead. Source: `app/cbl/COCRDLIC.cbl:153-171`, `app/cbl/COCRDLIC.cbl:1222-1230`, `app/cbl/COCRDLIC.cbl:1246-1254`.
+- **ERR-COCRDLIC-02**: The STARTBR response is not checked. After a failed STARTBR the READNEXT or
+  READPREV fails and the file-error text of ERR-COCRDLIC-01 is set, but ENDBR (no RESP, no HANDLE
+  CONDITION) then raises INVREQ because no browse is active, and the task abends with AEIP before
+  the screen is sent (inferred from the CICS rule that ENDBR without an active browse raises
+  INVREQ). The error text is never shown and the conversation ends. Cases: an empty CARDDAT
+  (STARTBR GTEQ on spaces gets NOTFND), a start key above the highest card (for example the saved
+  key's card was deleted), and CARDDAT closed or disabled. Expected in the target system
+  (Q-COCRDLIC-19): no abend; an empty result gives the end-of-list messages and a database error
+  shows the file-error text with no rows. Source: `app/cbl/COCRDLIC.cbl:1129-1136`, `app/cbl/COCRDLIC.cbl:1258-1259`, `app/cbl/COCRDLIC.cbl:1273-1280`, `app/cbl/COCRDLIC.cbl:1375-1377`.
 - **ERR-COCRDLIC-03**: In a backward read, a failure of the first READPREV (for example NOTFND
   when the first card of the page was deleted) shows the file-error message with all rows blank.
   A non-NORMAL READPREV inside the loop, including ENDFILE (RESP 20) at the start of the file,
@@ -361,8 +369,10 @@ locks). Every turn issues at most one browse.
   exact card number (the primary key) or an account (alternate index `CARDAIX` exists but is not
   used). Recommendation: fix in the target (indexed query); results must be the same.
   Source: `app/cbl/COCRDLIC.cbl:213-217`, `app/cbl/COCRDLIC.cbl:1382-1407`.
-- **Q-COCRDLIC-06**: The page number is PIC 9(1). Page 10 is shown as 0. The next forward read
-  then resets it to 1 (because it is 0), and PF7 from "0" stores 1 (the sign is lost). The sample
+- **Q-COCRDLIC-06**: The page number is PIC 9(1). PF8 from page 9 stores 0 (10 truncated), and the
+  forward read of the same turn turns 0 into 1, so page 10 is shown as `1` (as `0` only if it has
+  no rows). PF7 then answers `NO PREVIOUS PAGES TO DISPLAY` instead of going back to page 9. From a
+  page shown as `0`, PF7 stores 1 (the sign is lost). The sample
   data (50 cards, 8 pages) does not reach this. Recommendation: fix. Source:
   `app/cbl/COCRDLIC.cbl:237-238`, `app/cbl/COCRDLIC.cbl:492`, `app/cbl/COCRDLIC.cbl:508`.
 - **Q-COCRDLIC-07**: With a filter, PF7 can reach the start of the file before 7 matches are
@@ -378,7 +388,8 @@ locks). Every turn issues at most one browse.
   subscript `I`. `I` is not used again in the turn, so there is no visible effect.
   Recommendation: preserve behavior (drop in target). Source: `app/cbl/COCRDLIC.cbl:787-797`.
 - **Q-COCRDLIC-10**: Row 1 is handled differently from rows 2-7: a different protect attribute
-  (`DFHBMPRF`), `*` on a blank row in error but no cursor, and no `CRDSTP1` in the map.
+  (`DFHBMPRF`), no cursor when in error, and no `CRDSTP1` in the map. (Its `*` for a blank code
+  in error can never show, because a blank code is never flagged.)
   Recommendation: fix (uniform rows). Source: `app/cbl/COCRDLIC.cbl:751-773`, `app/bms/COCRDLI.bms:140-173`.
 - **Q-COCRDLIC-11**: User type is forced to `U` on every XCTL and on fresh start. When control
   returns from COCRDSLC or COCRDUPC with the PF3 AID, CARDDEMO-COMMAREA is re-initialized,
@@ -408,6 +419,12 @@ locks). Every turn issues at most one browse.
 - **Q-COCRDLIC-18**: The stopper fields `CRDSTP2`-`CRDSTP7` are defined at the same position
   (n,14) as the zero-length stopper after each select field. Recommendation: ignore in target.
   Source: `app/bms/COCRDLI.bms:162-173`.
+- **Q-COCRDLIC-19**: A failed STARTBR (empty file, start key above the last card, file closed or
+  disabled) abends the task (AEIP) at ENDBR, because ENDBR has no RESP and no browse is active
+  (ERR-COCRDLIC-02). The file-error text that was set is never shown, and the conversation ends
+  with no screen. Inferred from the CICS ENDBR INVREQ rule. Recommendation: fix. Source:
+  `app/cbl/COCRDLIC.cbl:1129-1136`, `app/cbl/COCRDLIC.cbl:1258-1259`,
+  `app/cbl/COCRDLIC.cbl:1273-1280`, `app/cbl/COCRDLIC.cbl:1374-1377`.
 
 ## Test scenarios
 Sample data: `app/data/ASCII/carddata.txt` holds 50 cards in key order, one card per account, all

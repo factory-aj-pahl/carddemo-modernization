@@ -326,7 +326,7 @@ while navigating (Q-COTRTLIC-05, Q-COTRTUPC-10); PF5 from COTRN01C to COTRN00C s
 |:--|:--|:--|:--|
 | `CDEMO-FROM-TRANID`, `CDEMO-FROM-PROGRAM` | Every online program before XCTL | Every program with a "PF3 back" rule | Return address. The only reliable inter-program contract |
 | `CDEMO-TO-PROGRAM`, `CDEMO-TO-TRANID` | Menu programs and list programs | Same programs (XCTL target) | Transient |
-| `CDEMO-USER-ID` | COSGN00C only | No program reads it after sign-on | Lost when menu entries INITIALIZE the COMMAREA (Q-COACTVWC-03, Q-COACTUPC-21, Q-COCRDSLC-03, Q-COCRDUPC-10, Q-COTRTLIC-04) |
+| `CDEMO-USER-ID` | COSGN00C only | No program reads it after sign-on | Not lost on menu entry: COACTVWC, COCRDSLC, COACTUPC, and COCRDUPC test `CDEMO-FROM-PROGRAM` = `COMEN01C` against their working-storage copy before it is loaded from DFHCOMMAREA, so only a direct start with no COMMAREA initializes it (Q-COACTVWC-03, Q-COCRDSLC-03; the same code in Q-COACTUPC-21, Q-COCRDUPC-10). Lost when COCRDLIC re-initializes the COMMAREA on a PF3 return (Q-COCRDLIC-11) and after a successful delete in COTRTLIC (Q-COTRTLIC-04) |
 | `CDEMO-USER-TYPE` | COSGN00C sets it; forced to `U` by COACTVWC, COACTUPC, COCRDLIC, COCRDSLC, COCRDUPC, and COTRTLIC on PF2; set to `A` by COTRTLIC and COTRTUPC | COSGN00C routing and the dead check in COMEN01C | Not an authorization token (Q-COMEN01C-01, Q-COTRTLIC-05, Q-COTRTUPC-10) |
 | `CDEMO-PGM-CONTEXT` | Set to 0 (first entry) by every caller before XCTL | Every online program (first entry versus re-entry) | Pseudo-conversational state flag |
 | `CDEMO-CUST-ID` | COACTUPC, COACTVWC, COPAUS0C | COACTUPC, COACTVWC, COPAUS1C | |

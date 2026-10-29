@@ -192,7 +192,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COCRDLIC-07 | Filtered PF7 hitting the file start reports a file error | functional-defect | FIX | When a backward page reaches the first matching card before 7 rows are collected, the target shows page 1 (the first up to 7 matching cards from the start) with page number 1 and no file-error message. | n/a |
 | Q-COCRDLIC-08 | Selected-row index 0 reads the byte before the array | platform | PLATFORM | No row selected means no selection; behavior unchanged. | n/a |
 | Q-COCRDLIC-09 | Stray `I` moves an attribute byte into subscript I | dead-code | NOT-PORTED | No visible effect; nothing ported. | n/a |
-| Q-COCRDLIC-10 | Row 1 has different protection, marking, and cursor handling | platform | PLATFORM | All 7 rows behave the same. In error, a blank selected row shows `*`, and focus goes to the first row in error. | n/a |
+| Q-COCRDLIC-10 | Row 1 has different protection, marking, and cursor handling | platform | PLATFORM | All 7 rows behave the same; focus goes to the first row in error. | n/a |
 | Q-COCRDLIC-11 | User type forced to `U` on every transfer; COMMAREA re-initialized on PF3 return | functional-defect | FIX | C-SESSION. No visible change for a USER. | n/a |
 | Q-COCRDLIC-12 | Lowercase `s` and `u` are rejected | business-choice | PRESERVE | `s` or `u` gives `INVALID ACTION CODE`. | n/a |
 | Q-COCRDLIC-13 | Filters and page position are lost after view or update | business-choice | PRESERVE | Returning from view or update shows page 1 with blank filters. | n/a |
@@ -201,6 +201,7 @@ These rules are shared by many rows. A row that cites one of them applies it exa
 | Q-COCRDLIC-16 | Full 16-digit card numbers on the list | security | FIX | Card numbers are shown masked (C-MASK). A selection is resolved by row number on the server, which maps it to the full card number in the session. The full number is never sent to the client. | n/a |
 | Q-COCRDLIC-17 | "NO MORE RECORDS TO SHOW" appears in the red error line | cosmetic | PRESERVE | Shown in the error line and error style whenever the COBOL shows it. | n/a |
 | Q-COCRDLIC-18 | Stopper fields CRDSTP2-7 overlap the zero-length stopper | platform | PLATFORM | No counterpart. | n/a |
+| Q-COCRDLIC-19 | A failed STARTBR (empty file, start key above the last card, file unavailable) abends the task at ENDBR; no screen is sent | functional-defect | FIX | No abend: every turn ends with the list screen. When the browse finds no card from its start key (empty card table, or every card from the start key on is gone), the list shows no rows with `NO RECORDS FOUND FOR THIS SEARCH CONDITION.` on page 1 and `NO MORE RECORDS TO SHOW` on later pages, as after an ENDFILE in 9000-READ-FORWARD. PF8 whose announced next page no longer has a card answers as PF8 on the last page (Q-COCRDLIC-04). A database error shows the file-error text `File Error: READ     on CARDDAT   returned RESP 000000017 ,RESP2 000000000 ` (ERR-COCRDLIC-02) with no rows. | n/a |
 
 ## COCRDSLC
 
@@ -445,6 +446,7 @@ Cards:
 - Q-COCRDLIC-04: PF8 never shows an empty page.
 - Q-COCRDLIC-06: page numbers above 9 display correctly.
 - Q-COCRDLIC-07: filtered PF7 reaching the start shows page 1 instead of a file error.
+- Q-COCRDLIC-19: an empty card file or a browse start above the last card shows the list with `NO RECORDS FOUND FOR THIS SEARCH CONDITION.` or `NO MORE RECORDS TO SHOW`, and a database error shows the file-error text, instead of an abend.
 - Q-COCRDLIC-16: card numbers shown as `************1234`.
 - Q-COCRDSLC-01: the card is shown only when it belongs to the entered account; otherwise `Did not find cards for this search condition`.
 - Q-COCRDSLC-11: card number masked after a read.
@@ -482,17 +484,17 @@ Transactions, bill payment, reports:
 
 ## Counts
 
-Rows by category and decision (224 rows).
+Rows by category and decision (225 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 24 | 0 | 0 | 0 | 0 | 24 |
 | data-corruption | 13 | 0 | 0 | 0 | 0 | 13 |
 | concurrency | 9 | 0 | 0 | 0 | 0 | 9 |
-| functional-defect | 55 | 0 | 0 | 0 | 0 | 55 |
+| functional-defect | 56 | 0 | 0 | 0 | 0 | 56 |
 | cosmetic | 0 | 18 | 0 | 0 | 0 | 18 |
 | business-choice | 0 | 42 | 0 | 0 | 0 | 42 |
 | platform | 0 | 0 | 0 | 37 | 0 | 37 |
 | dead-code | 0 | 0 | 0 | 0 | 20 | 20 |
 | user-decision | 0 | 0 | 6 | 0 | 0 | 6 |
-| Total | 101 | 60 | 6 | 37 | 20 | 224 |
+| Total | 102 | 60 | 6 | 37 | 20 | 225 |
