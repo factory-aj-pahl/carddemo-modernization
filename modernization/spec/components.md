@@ -453,7 +453,7 @@ depends on it for identity.
 |:--|:--|:--|:--|
 | Authentication | Plain-text 8-character passwords in USRSEC, case-insensitive compare, no lockout, audit, or timeout | Q-COSGN00C-01, Q-ENT-17, Q-COSGN00C-04, Q-COSGN00C-05, Q-COSGN00C-08, Q-DUSRSECJ-01 | External identity provider; never migrate passwords |
 | Authorization | Only sign-on routing on type `A`; no program checks the user type; some programs change it | Q-COADM01C-01, Q-COMEN01C-01, Q-COSGN00C-07, Q-COTRTLIC-05, Q-COTRTUPC-10, Q-COCRDUPC-17, Q-COACTUPC-28, Q-COACCT01-15 | Role checks on every operation, including MQ requests |
-| Session state | 160-byte COMMAREA plus per-program extensions; INITIALIZE on menu entry erases identity | Section 5(b), ENT-COMMAREA | Server-side session |
+| Session state | 160-byte COMMAREA plus per-program extensions; PF3 forces user type `U`; a direct start without COMMAREA clears identity | Section 5(b), ENT-COMMAREA | Server-side session |
 | Sensitive data | PAN, CVV, SSN, government id in clear; printed by listing programs; CVV overwritten on card save | Q-ENT-33, Q-CBACT02C-01, Q-CBCUS01C-02, Q-CBTRN01C-05, Q-CBEXPORT-01, Q-COCRDUPC-01, rule CD070 in `AGENTS.md` | Do not migrate CVV; tokenize PAN; encrypt SSN; mask in logs |
 | Identifier generation | Three TRAN-ID generators; online highest key + 1 | Q-ENT-07, Q-COBIL00C-01, Q-COTRN02C-01, Q-INTCALC-01 | One sequence service |
 | Transactions and recovery | RECOVERY(NONE) files; no unit of work in batch; error flags not tested | Q-COACTUPC-03, Q-CBTRN02C-07, Q-COBIL00C-02, Q-COPAUA0C-06 | One database transaction per business operation; idempotent batch steps |
@@ -545,7 +545,7 @@ remaining quirks are triaged in their own files.
 | 65 | Q-CBIMPORT-01 | Import opens a card output file with no DD; the job cannot complete | functional-defect | fix |
 | 66 | Q-COTRTUPC-02 | Db2 save failures reported as success | functional-defect | fix |
 | 67 | Q-COACTUPC-02 | Customer lock failure reported as "Changes committed" | functional-defect | fix |
-| 68 | Q-COACTVWC-03 | Menu entry erases user id and type; admin returns as a regular user | functional-defect | fix |
+| 68 | Q-COACTVWC-03 | PF3 forces user type `U`, so an admin returns as a regular user; direct start without COMMAREA clears the session fields | functional-defect | fix |
 | 69 | Q-COTRN00C-01 | Return from detail with PF5 skips the first record | functional-defect | fix |
 | 70 | Q-COCRDLIC-06 | One-digit page number shows page 10 as 0 | functional-defect | fix |
 | 71 | Q-COPAUS0C-02 | Paging past page 20 overwrites COMMAREA fields | functional-defect | fix |

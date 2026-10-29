@@ -25,8 +25,8 @@ changes ACCTDAT balances, limits, and dates directly, and the only one that chan
 
 | Entry | How detected | Effect |
 |:--|:--|:--|
-| Main menu option 2 (`COMEN01C` XCTL with PGM-CONTEXT 0) | CDEMO-FROM-PROGRAM = `COMEN01C` and not PGM-REENTER | CARDDEMO-COMMAREA and the program extension are INITIALIZEd (Q-COACTUPC-21); PGM-ENTER; state "details not fetched"; empty search screen |
-| Transaction CAUP typed with no COMMAREA | EIBCALEN = 0 | Same as menu entry |
+| Main menu option 2 (`COMEN01C` XCTL with PGM-CONTEXT 0) | CDEMO-FROM-PROGRAM = `COMEN01C` and not PGM-REENTER | CARDDEMO-COMMAREA and the program extension copied from DFHCOMMAREA (the `COMEN01C` test reads working storage before the copy and is never true, Q-COACTUPC-21); the EVALUATE `COMEN01C` branch then INITIALIZEs the extension, sets state "details not fetched", and sends the empty search screen |
+| Transaction CAUP typed with no COMMAREA | EIBCALEN = 0 | CARDDEMO-COMMAREA and the program extension are INITIALIZEd (user id and type cleared); PGM-ENTER; state "details not fetched"; empty search screen |
 | Own pseudo-conversational turn | PGM-REENTER (set after every first send) | Map received, processed according to the state below |
 
 **CARDDEMO-COMMAREA usage**
@@ -144,7 +144,11 @@ labels are the same as COACTVW (`Account Number :`, `Active Y/N: `, `Credit Limi
    WS-COMMAREA. Clear the return message.
 2. IF EIBCALEN = 0, or FROM-PROGRAM = `COMEN01C` and not PGM-REENTER: INITIALIZE CARDDEMO-COMMAREA
    and WS-THIS-PROGCOMMAREA, set PGM-ENTER and state "not fetched". OTHERWISE restore both from
-   DFHCOMMAREA.
+   DFHCOMMAREA. The second operand tests the working-storage copy of CARDDEMO-COMMAREA before it is
+   loaded from DFHCOMMAREA, so on a new task it is never true (inferred: no VALUE clauses in
+   COCOM01Y, so the copy holds the initial image). In practice only EIBCALEN = 0 initializes; menu
+   entry restores the COMMAREA like any other caller, so CDEMO-USER-ID and CDEMO-USER-TYPE survive
+   (Q-COACTUPC-21). Source: `app/cbl/COACTUPC.cbl:880-893`.
 3. Map the AID (NAV-COACTUPC-01).
 4. EVALUATE (first match wins):
    1. PF3: exit (NAV-COACTUPC-02).
@@ -726,9 +730,12 @@ touched; the card record (CARDDAT) is not changed even if the account status cha
   from an unread record. A missing customer still runs the snapshot, putting unread customer data
   into CDEMO-CUST-FNAME and related fields. Recommendation: fix. Source:
   `app/cbl/COACTUPC.cbl:3627-3643`, `:3801-3811`.
-- **Q-COACTUPC-21**: Entry from the menu INITIALIZEs CARDDEMO-COMMAREA (user id and type are lost)
-  and PF3 forces user type `U`, as in COACTVWC. Recommendation: fix. Source:
-  `app/cbl/COACTUPC.cbl:880-886`, `:947`.
+- **Q-COACTUPC-21**: The program intends to INITIALIZE CARDDEMO-COMMAREA on menu entry, but the
+  test reads working storage before the COMMAREA is copied (processing flow step 2), so only a
+  direct start with no COMMAREA initializes it. The user id and type therefore survive menu entry.
+  PF3 forces user type `U`, so an administrator returns to the menu as a regular user, as in
+  COACTVWC. Recommendation: fix (keep session identity). Source: `app/cbl/COACTUPC.cbl:880-893`,
+  `:947`. (Corrected after review: an earlier version said menu entry erases the user id and type.)
 - **Q-COACTUPC-22**: Dead or unused code: paragraphs `1230-EDIT-ALPHANUM-REQD` and
   `1240-EDIT-ALPHANUM-OPT`; the WHEN for state C in `2000-DECIDE-ACTION`; the state C test in
   `1200-EDIT-MAP-INPUTS`; the state S branch of 2000 with a change; messages

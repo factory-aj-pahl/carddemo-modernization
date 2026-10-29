@@ -28,8 +28,8 @@ account id, and record filler (Q-COCRDUPC-01 to Q-COCRDUPC-03).
 | Entry | How detected | Effect |
 |:--|:--|:--|
 | From COCRDLIC (select `U`) | `CDEMO-PGM-ENTER` and `CDEMO-FROM-PROGRAM` = `COCRDLIC`; also `CDEMO-LAST-MAPSET` = `COCRDLI` | Card fetched with CDEMO-ACCT-ID / CDEMO-CARD-NUM; details shown for editing at once |
-| From main menu option 5 (`COMEN01C`, `app/cpy/COMEN02Y.cpy:48-52`) | `CDEMO-FROM-PROGRAM` = `COMEN01C` and not PGM-REENTER | CARDDEMO-COMMAREA re-initialized (Q-COCRDUPC-10); search screen asks for account and card |
-| Transaction CCUP typed with no COMMAREA | EIBCALEN = 0 | Same as menu entry |
+| From main menu option 5 (`COMEN01C`, `app/cpy/COMEN02Y.cpy:48-52`) | `CDEMO-FROM-PROGRAM` = `COMEN01C` and not PGM-REENTER | CARDDEMO-COMMAREA and the program area copied from DFHCOMMAREA (the `COMEN01C` test reads working storage before the copy and is never true, Q-COCRDUPC-10); the EVALUATE `COMEN01C` branch then INITIALIZEs the program area and the search screen asks for account and card |
+| Transaction CCUP typed with no COMMAREA | EIBCALEN = 0 | CARDDEMO-COMMAREA and the program area are INITIALIZEd (user id, user type, customer, and account context cleared); search screen asks for account and card |
 | Own pseudo-conversational turn | `CDEMO-PGM-REENTER` | Driven by the state in `CCUP-CHANGE-ACTION` |
 
 The program never updates CDEMO-FROM-PROGRAM, CDEMO-FROM-TRANID, or CDEMO-LAST-MAPSET on its own
@@ -164,7 +164,12 @@ protected.
    return message.
 2. IF EIBCALEN = 0, or FROM-PROGRAM = `COMEN01C` and not PGM-REENTER: INITIALIZE
    CARDDEMO-COMMAREA and the program area, set PGM-ENTER and state not-fetched. OTHERWISE copy
-   CARDDEMO-COMMAREA and the 329-byte program area from DFHCOMMAREA (Q-COCRDUPC-11).
+   CARDDEMO-COMMAREA and the 329-byte program area from DFHCOMMAREA (Q-COCRDUPC-11). The second
+   operand tests the working-storage copy of CARDDEMO-COMMAREA before it is loaded from
+   DFHCOMMAREA, so on a new task it is never true (inferred: no VALUE clauses in COCOM01Y, so the
+   copy holds the initial image). In practice only EIBCALEN = 0 initializes; menu entry copies the
+   COMMAREA like any other caller, so CDEMO-USER-ID, CDEMO-USER-TYPE, and the customer and account
+   context survive (Q-COCRDUPC-10). Source: `app/cbl/COCRDUPC.cbl:388-401`.
 3. Map the AID. Valid keys: ENTER; PF3; PF5 only in state `N`; PF12 only when the state is not
    not-fetched. Any other key, including PF5 or PF12 outside those states, is treated as ENTER.
 4. EVALUATE, first match wins (`app/cbl/COCRDUPC.cbl:429-543`):
@@ -412,7 +417,8 @@ Detail fields (states `S` or `E` with a change detected):
 - **NAV-COCRDUPC-04**: Entry from COCRDLIC fetches immediately and shows state `S`. Source:
   `app/cbl/COCRDUPC.cbl:482-497`.
 - **NAV-COCRDUPC-05**: Entry from the menu, or CCUP with no COMMAREA, shows the search screen.
-  Source: `app/cbl/COCRDUPC.cbl:388-394`, `app/cbl/COCRDUPC.cbl:502-511`.
+  Only CCUP with no COMMAREA initializes CARDDEMO-COMMAREA; menu entry keeps it (Q-COCRDUPC-10).
+  Source: `app/cbl/COCRDUPC.cbl:388-401`, `app/cbl/COCRDUPC.cbl:502-511`.
 - **NAV-COCRDUPC-06**: Every non-exit turn ends with RETURN TRANSID(`CCUP`) and a 2000-byte
   COMMAREA. Source: `app/cbl/COCRDUPC.cbl:546-558 (COMMON-RETURN)`.
 
@@ -505,9 +511,13 @@ Detail fields (states `S` or `E` with a change detected):
   list was shown). The user sees `Did not find cards for this search condition` with editable,
   empty details, and info `Details of selected card shown above`. A later save fails with
   `Could not lock record for update`. Recommendation: fix. Source: `app/cbl/COCRDUPC.cbl:492-494`.
-- **Q-COCRDUPC-10**: Menu entry INITIALIZEs CARDDEMO-COMMAREA (user id, user type, customer, and
-  account context lost). Exit forces user type `U`. Recommendation: fix. Source:
-  `app/cbl/COCRDUPC.cbl:388-394`, `app/cbl/COCRDUPC.cbl:464`.
+- **Q-COCRDUPC-10**: The program intends to INITIALIZE CARDDEMO-COMMAREA on menu entry, but the
+  test reads working storage before the COMMAREA is copied (processing flow step 2), so only a
+  direct start with no COMMAREA initializes it. The user id, user type, and the customer and
+  account context therefore survive menu entry. Exit forces user type `U`, so an administrator
+  returns as a regular user. Recommendation: fix (keep session identity). Source:
+  `app/cbl/COCRDUPC.cbl:388-401`, `app/cbl/COCRDUPC.cbl:464`. (Corrected after review: an
+  earlier version said menu entry erases the user id, user type, and context.)
 - **Q-COCRDUPC-11**: On list entry only 160 bytes are passed, but 329 bytes beyond them are copied
   into the program area, including CCUP-CHANGE-ACTION. The exit tests for states `C`/`L`/`F` come
   before the list-entry test, so a stray `C`, `L`, or `F` in that byte would send the user straight
