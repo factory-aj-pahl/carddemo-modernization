@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { SCREENS, aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Fields {
   options: string[];
@@ -64,7 +64,7 @@ export function Menu({ program }: { program: 'COMEN01C' | 'COADM01C' }) {
               inputMode="numeric"
               width="190px"
               placeholder={options.length ? `01–${String(options.length).padStart(2, '0')}` : undefined}
-              invalid={s.state?.messageColor === 'RED' && s.state.focus === 'option'}
+              invalid={fieldInError(s.state, 'option')}
             />
             <button className="btn btn-primary" type="submit" disabled={s.busy}>
               Continue <kbd>ENTER</kbd>

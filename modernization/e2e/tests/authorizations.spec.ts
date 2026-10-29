@@ -40,7 +40,8 @@ test.describe('COPAUS0C pending authorization list', () => {
     await expect(page.getByTestId('approved-count')).toHaveText('50');
     await expect(page.getByTestId('declined-count')).toHaveText('0');
     await expect(page.getByTestId('approved-amount')).toHaveText('74.79');
-    await expect(page.getByTestId('page')).toHaveText('Page 1');
+    // COPAU00 has no page field (UIR-11).
+    await expect(page.getByTestId('page')).toHaveCount(0);
     const first = page.getByTestId('auth-row').first();
     await expect(first).toContainText('11/16/23');
     await expect(first).toContainText('14:17:49');
@@ -83,10 +84,8 @@ test.describe('COPAUS0C pending authorization list', () => {
     await page.keyboard.press('F7');
     await expectMessage(page, 'You are already at the top of the page...');
     await page.keyboard.press('F8');
-    await expect(page.getByTestId('page')).toHaveText('Page 2');
     await expect.poll(async () => (await txns(page))[0]).not.toBe(first[0]);
     await page.keyboard.press('F7');
-    await expect(page.getByTestId('page')).toHaveText('Page 1');
     await expect.poll(() => txns(page)).toEqual(first);
     await page.keyboard.press('F2');
     await expectMessage(page, MSG.INVALID_KEY);
@@ -133,7 +132,6 @@ test.describe('COPAUS1C authorization details', () => {
     await page.keyboard.press('F3');
     await expectProgram(page, 'CPVS · COPAUS0C');
     await expect(page.getByLabel('Search Acct Id')).toHaveValue(ACCT);
-    await expect(page.getByTestId('page')).toHaveText('Page 1');
     await expect.poll(async () => (await txns(page))[0]).toBe(NEWEST_TXN);
   });
 

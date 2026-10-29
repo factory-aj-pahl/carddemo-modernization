@@ -1,9 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
-import { money } from '../format';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Row {
   tranId: string;
@@ -49,8 +48,8 @@ export function TransactionList() {
     next[i] = 'S';
     send('ENTER', next);
   };
-  const invalid = s.state?.messageColor === 'RED' && s.state.focus === 'searchTranId';
-  const pageNo = f?.page ? String(Number(f.page)) : '';
+  const invalid = fieldInError(s.state, 'searchTranId');
+  const pageNo = f?.page ?? '';
 
   return (
     <ScreenFrame program="COTRN00C" message={s.error ?? s.state?.message} messageColor={s.error ? 'RED' : s.state?.messageColor} onKey={press} busy={s.busy}>
@@ -130,7 +129,7 @@ export function TransactionList() {
                       <td className="mono">{r.date}</td>
                       <td>{r.description}</td>
                       <td className="mono" style={{ textAlign: 'right' }} data-raw={r.amount}>
-                        {money(r.amount)}
+                        {r.amount}
                       </td>
                       <td>
                         <div className="actions">

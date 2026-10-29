@@ -22,6 +22,9 @@ test.describe('COTRN00C transaction list', () => {
     await expect(rows(page)).toHaveCount(10);
     await expect(firstRowId(page)).toHaveText(fixtures.userTranId);
     await expect(rows(page).first().locator('td').nth(2)).toHaveText(/^\d\d\/\d\d\/\d\d$/);
+    // TAMT0nn is edited as +99999999.99 and PAGENUM shows 8 digits.
+    await expect(rows(page).first().locator('td').nth(4)).toHaveText(/^[+-]\d{8}\.\d{2}$/);
+    await expect(page.getByTestId('page')).toHaveText('Page 00000001');
     await expect(page.getByLabel('Search Tran ID')).toBeFocused();
     await expect(page.getByTestId('message')).toHaveText('');
     await expectNoSeriousA11yViolations(page);
@@ -155,7 +158,7 @@ test.describe('COTRN01C transaction view', () => {
     await page.keyboard.press('Enter');
     await expect(page.getByTestId('tranId')).toHaveText(fixtures.userTranId);
     await expect(page.getByTestId('cardNum')).toHaveText(/^\*{12}\d{4}$/);
-    await expect(page.getByTestId('amount')).not.toHaveText('—');
+    await expect(page.getByTestId('amount')).toHaveText(/^[+-]\d{8}\.\d{2}$/);
     await expect(page.getByTestId('message')).toHaveText('');
     await expectNoSeriousA11yViolations(page);
     await page.getByLabel('Enter Tran ID').fill('9999999999999999');
@@ -288,7 +291,7 @@ test.describe('COTRN02C add transaction', () => {
     await expect(page.getByTestId('tranId')).toHaveText(tranId);
     await expect(page.getByTestId('cardNum')).toHaveText(/^\*{12}\d{4}$/);
     await expect(page.getByTestId('description')).toHaveText('Playwright purchase');
-    await expect(page.getByTestId('amount')).toContainText('12.34');
+    await expect(page.getByTestId('amount')).toHaveText('+00000012.34');
     const details = page.getByTestId('details');
     for (const v of ['POS TERM', '2024-01-15', '2024-01-16', '000000001', 'Playwright Store', 'Seattle', '98101']) {
       await expect(details).toContainText(v);

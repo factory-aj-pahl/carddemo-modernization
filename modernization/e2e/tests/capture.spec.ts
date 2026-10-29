@@ -22,7 +22,7 @@ test.use({ viewport: VIEWPORT });
 async function fullShot(page: Page, path: string) {
   const extra = await page.locator('main').evaluate((m) => m.scrollHeight - m.clientHeight).catch(() => 0);
   if (extra > 0) await page.setViewportSize({ width: VIEWPORT.width, height: VIEWPORT.height + extra });
-  await page.screenshot({ path, fullPage: true });
+  await page.screenshot({ path, fullPage: true, animations: 'disabled' });
   if (extra > 0) await page.setViewportSize(VIEWPORT);
 }
 
@@ -50,6 +50,14 @@ test.describe('ui-review capture', () => {
 
   for (const [i, walk] of WALKS.entries()) {
     test(`capture ${walk.map}`, async ({ page }) => {
+      // A shot must show the settled state, never a border still fading from the previous turn's error.
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.addInitScript(() => {
+        const css = '*,*::before,*::after{transition:none!important;animation:none!important}';
+        const add = () => document.head.appendChild(Object.assign(document.createElement('style'), { textContent: css }));
+        if (document.head) add();
+        else document.addEventListener('DOMContentLoaded', add);
+      });
       const taken = new Set<string>();
       let order = 0;
       const at: At = async (state, how) => {
@@ -76,7 +84,7 @@ test.describe('ui-review capture', () => {
     const lines = [
       '# UI review screenshots',
       '',
-      `${all.length} screenshots of ${WALKS.length} BMS maps, reached with the keyboard only (modernization/e2e/tests/capture.spec.ts with CAPTURE_DIR set). Viewport 1280x820, full page; when the main area scrolls (long lists), the viewport is made taller by that overflow so the whole screen is in the shot.`,
+      `${all.length} screenshots of ${WALKS.length} BMS maps, reached with the keyboard only (modernization/e2e/tests/capture.spec.ts with CAPTURE_DIR set). Viewport 1280x820, full page, CSS transitions and animations disabled (reduced motion) so every shot shows the settled state; when the main area scrolls (long lists), the viewport is made taller by that overflow so the whole screen is in the shot.`,
       '',
       '| File | Route | State | How reached |',
       '|:--|:--|:--|:--|',

@@ -45,7 +45,7 @@ test.describe('COUSR00C user list', () => {
   test('TS-COUSR00C-01 BR-COUSR00C-02 first entry lists the ten sample users on page 1', async ({ page }) => {
     await openOption(page, /User List/, 'CU00 · COUSR00C');
     expect(await userIds(page)).toEqual(SAMPLE);
-    await expect(page.getByTestId('page')).toHaveText('Page 1');
+    await expect(page.getByTestId('page')).toHaveText('Page 00000001');
     await expectMessage(page, 'You have reached the bottom of the page...');
     await expect(page.getByLabel('Search User ID')).toBeFocused();
     await expectNoSeriousA11yViolations(page);
@@ -56,6 +56,8 @@ test.describe('COUSR00C user list', () => {
     await page.getByLabel('Select user ADMIN003').fill('x');
     await page.keyboard.press('Enter');
     await expectMessage(page, 'Invalid selection. Valid values are U and D');
+    // The cursor goes to the search field, but the message is not about its value (UIR-8).
+    await expect(page.getByLabel('Search User ID')).not.toHaveAttribute('aria-invalid', 'true');
     await expect(page.getByLabel('Select user ADMIN003')).toHaveValue('');
     expect(await userIds(page)).toEqual(SAMPLE);
     await expectNoSeriousA11yViolations(page);
@@ -118,7 +120,7 @@ test.describe('COUSR00C user list', () => {
     await page.keyboard.press('F8');
     await expectMessage(page, 'You are already at the bottom of the page...');
     expect(await userIds(page)).toEqual(SAMPLE);
-    await expect(page.getByTestId('page')).toHaveText('Page 1');
+    await expect(page.getByTestId('page')).toHaveText('Page 00000001');
     await expectNoSeriousA11yViolations(page);
   });
 });

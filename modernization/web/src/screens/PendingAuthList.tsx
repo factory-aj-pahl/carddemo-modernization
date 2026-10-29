@@ -2,7 +2,7 @@ import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Field } from '../Field';
 import { ScreenFrame } from '../ScreenFrame';
 import { aid } from '../screens';
-import { useScreen } from '../useScreen';
+import { fieldInError, useScreen } from '../useScreen';
 
 interface Row {
   sel: string;
@@ -57,7 +57,7 @@ export function PendingAuthList() {
   const [sel, setSel] = useState<string[]>(Array(ROWS).fill(''));
   const f = s.state?.fields;
   const rows = f?.rows ?? [];
-  const red = s.state?.messageColor === 'RED' && s.state.focus === 'accountId';
+  const red = fieldInError(s.state, 'accountId');
 
   useEffect(() => {
     if (!s.state) return;
@@ -86,9 +86,6 @@ export function PendingAuthList() {
               <h1>View Authorizations</h1>
               <p className="lede">Pending authorizations of one account, newest first.</p>
             </div>
-            <div className="page-no" data-testid="page">
-              Page <strong>{f?.pageNum ?? ''}</strong>
-            </div>
           </div>
           <div className="panel compact">
             <div className="search-bar">
@@ -101,8 +98,8 @@ export function PendingAuthList() {
             <dl className="kv cols-4" data-testid="account-summary">
               <Value label="Name" value={f?.name ?? ''} testId="name" />
               <Value label="Customer Id" value={f?.customerId ?? ''} />
-              <Value label="Account Status" value={f?.accountStatus ?? ''} />
-              <Value label="Phone" value={f?.phone ?? ''} />
+              <Value label="Acct Status" value={f?.accountStatus ?? ''} />
+              <Value label="PH" value={f?.phone ?? ''} />
               <div className="span-2">
                 <dt>Address</dt>
                 <dd className={f?.address1?.trim() ? '' : 'empty'}>
@@ -117,19 +114,19 @@ export function PendingAuthList() {
                   )}
                 </dd>
               </div>
-              <Value label="Credit Limit" value={f?.creditLimit ?? ''} />
-              <Value label="Cash Limit" value={f?.cashLimit ?? ''} />
-              <Value label="Approved Auth Count" value={f?.approvedCount ?? ''} testId="approved-count" />
-              <Value label="Approved Auth Amount" value={f?.approvedAmount ?? ''} testId="approved-amount" />
-              <Value label="Credit Balance" value={f?.creditBalance ?? ''} />
-              <Value label="Cash Balance" value={f?.cashBalance ?? ''} />
-              <Value label="Declined Auth Count" value={f?.declinedCount ?? ''} testId="declined-count" />
-              <Value label="Declined Auth Amount" value={f?.declinedAmount ?? ''} />
+              <Value label="Credit Lim" value={f?.creditLimit ?? ''} />
+              <Value label="Cash Lim" value={f?.cashLimit ?? ''} />
+              <Value label="Approval #" value={f?.approvedCount ?? ''} testId="approved-count" />
+              <Value label="Appr Amt" value={f?.approvedAmount ?? ''} testId="approved-amount" />
+              <Value label="Credit Bal" value={f?.creditBalance ?? ''} />
+              <Value label="Cash Bal" value={f?.cashBalance ?? ''} />
+              <Value label="Decline #" value={f?.declinedCount ?? ''} testId="declined-count" />
+              <Value label="Decl Amt" value={f?.declinedAmount ?? ''} />
             </dl>
           </div>
           <div className="list-wrap">
             <table className="list">
-              <caption className="sr-only">Pending authorizations, page {f?.pageNum ?? ''}</caption>
+              <caption className="sr-only">Pending authorizations</caption>
               <thead>
                 <tr>
                   <th scope="col" style={{ width: 90 }}>

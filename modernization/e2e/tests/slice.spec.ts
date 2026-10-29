@@ -135,6 +135,9 @@ test.describe('COBIL00C bill payment', () => {
     await expect(page.getByLabel(/Please confirm/)).toBeFocused();
     const shown = await page.getByTestId('balance').getAttribute('data-raw');
     expect(Number(shown)).toBeGreaterThan(0);
+    // CURBAL is edited as +9999999999.99; only the D-RECEIPT panel uses currency.
+    await expect(page.getByTestId('balance')).toHaveText(shown ?? '');
+    expect(shown).toMatch(/^[+-]\d{10}\.\d{2}$/);
     await page.getByLabel(/Please confirm/).fill('y');
     await page.keyboard.press('Enter');
     const message = page.getByTestId('message').locator('.msg-text');

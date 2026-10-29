@@ -76,7 +76,12 @@ export function TranTypeList() {
             </button>
           </div>
           <div className="list-wrap">
-            <table className="list" aria-label="Transaction types">
+            <table className="list fixed" aria-label="Transaction types">
+              <colgroup>
+                <col style={{ width: 110 }} />
+                <col style={{ width: 120 }} />
+                <col />
+              </colgroup>
               <thead>
                 <tr>
                   <th scope="col">Select</th>
@@ -89,7 +94,7 @@ export function TranTypeList() {
                   const n = i + 1;
                   const input = rows[i] ?? { select: '', description: '' };
                   return (
-                    <tr key={n} className={r.highlighted ? 'err' : r.type ? undefined : 'empty-row'} aria-current={r.highlighted ? 'true' : undefined} data-testid={`row${n}`}>
+                    <tr key={n} className={r.highlighted ? 'hl' : r.type ? undefined : 'empty-row'} aria-current={r.highlighted ? 'true' : undefined} data-testid={`row${n}`}>
                       <td>
                         <input
                           className="input sel"

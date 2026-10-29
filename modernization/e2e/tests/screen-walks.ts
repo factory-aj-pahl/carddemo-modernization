@@ -934,10 +934,9 @@ const COPAU00: ScreenWalk = {
     await page.keyboard.press('F7');
     await expectMessage(page, 'You are already at the top of the page...');
     await page.keyboard.press('F8');
-    await expect(page.getByTestId('page')).toHaveText('Page 2');
+    await expect.poll(async () => (await authTxns(page))[0]).not.toBe(page1[0]);
     await at('page2', 'F8 from page 1: page 2 (next page).');
     await page.keyboard.press('F7');
-    await expect(page.getByTestId('page')).toHaveText('Page 1');
     await expect.poll(() => authTxns(page)).toEqual(page1);
     await page.keyboard.press('F2');
     await expectMessage(page, MSG.INVALID_KEY);
@@ -949,7 +948,7 @@ const COPAU00: ScreenWalk = {
     await page.keyboard.press('F3');
     await expectProgram(page, 'CPVS · COPAUS0C');
     await expect(page.getByLabel('Search Acct Id')).toHaveValue(AUTH_ACCOUNT);
-    await expect(page.getByTestId('page')).toHaveText('Page 1');
+    await expect.poll(async () => (await authTxns(page))[0]).toBe(page1[0]);
     await page.keyboard.press('F3');
     await expectProgram(page, MAIN);
   },

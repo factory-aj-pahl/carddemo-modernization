@@ -125,7 +125,7 @@ export function AccountView() {
               <caption className="sr-only">Balances and limits</caption>
               <tbody>
                 <Amount label="Credit Limit" value={f?.creditLimit} testId="creditLimit" />
-                <Amount label="Cash Credit Limit" value={f?.cashCreditLimit} testId="cashCreditLimit" />
+                <Amount label="Cash credit Limit" value={f?.cashCreditLimit} testId="cashCreditLimit" />
                 <Amount label="Current Balance" value={f?.currentBalance} strong testId="currentBalance" />
                 <Amount label="Current Cycle Credit" value={f?.cycleCredit} testId="cycleCredit" />
                 <Amount label="Current Cycle Debit" value={f?.cycleDebit} testId="cycleDebit" />
@@ -137,9 +137,9 @@ export function AccountView() {
               Customer Details
             </h2>
             <dl className="kv cols-4">
-              <Kv label="Customer ID" value={f?.customerId} mono testId="customerId" />
+              <Kv label="Customer id" value={f?.customerId} mono testId="customerId" />
               <Kv label="SSN" value={f?.ssn} mono testId="ssn" />
-              <Kv label="Date of Birth" value={f?.dob} mono testId="dob" />
+              <Kv label="Date of birth" value={f?.dob} mono testId="dob" />
               <Kv label="FICO Score" value={f?.fico} mono testId="fico" />
               <Kv label="First Name" value={f?.firstName} testId="firstName" />
               <Kv label="Middle Name" value={f?.middleName} testId="middleName" />

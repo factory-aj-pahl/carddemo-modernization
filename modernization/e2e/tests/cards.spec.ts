@@ -246,7 +246,7 @@ test.describe('COCRDUPC credit card update', () => {
     await page.getByLabel('Card Number').fill(UPDATE_CARD);
     await page.keyboard.press('Enter');
     await expect(page.getByLabel('Name on card')).toHaveValue('HAYDEN P SMITH');
-    await expect(page.getByLabel('Expiry Month')).toHaveValue('11');
+    await expect(page.getByLabel('Expiry Date month')).toHaveValue('11');
     await expectNoSeriousA11yViolations(page);
   });
 
