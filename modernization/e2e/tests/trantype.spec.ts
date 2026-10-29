@@ -63,6 +63,37 @@ test.describe('COTRTLIC transaction type list', () => {
     await expectNoSeriousA11yViolations(page);
   });
 
+  test('Q-COTRTLIC-19 a row another session changed meanwhile is rejected and shown with the re-read value', async ({ page, browser, baseURL }) => {
+    await page.getByLabel('Select row 4').fill('U');
+    await page.keyboard.press('Enter');
+    await expectInfo(page, 'Update HIGHLIGHTED row. Press F10 to save');
+
+    const other = await browser.newContext({ baseURL });
+    try {
+      const page2 = await other.newPage();
+      await adminOption(page2, /Transaction Type List\/Update/, LIST);
+      await page2.getByLabel('Select row 4').fill('U');
+      await page2.keyboard.press('Enter');
+      await page2.getByLabel('Description row 4').fill('Changed Elsewhere');
+      await page2.keyboard.press('F10');
+      await expectInfo(page2, 'HIGHLIGHTED row was updated');
+    } finally {
+      await other.close();
+    }
+
+    const desc = page.getByLabel('Description row 4');
+    await desc.fill('Typed Here');
+    await page.keyboard.press('F10');
+    await expectMessage(page, 'Deadlock. Someone else updating ?');
+    await expect(desc).toHaveValue('Changed Elsewhere');
+    await expect(page.getByLabel('Select row 4')).toHaveValue('U');
+    await expectNoSeriousA11yViolations(page);
+    // F10 again saves only what is shown, so the other session's value stays.
+    await page.keyboard.press('F10');
+    await expectInfo(page, 'HIGHLIGHTED row was updated');
+    await expect(page.getByTestId('row4').locator('td').nth(2)).toHaveText('Changed Elsewhere');
+  });
+
   test('NAV-COTRTLIC-01 F3 returns to the admin menu', async ({ page }) => {
     await page.keyboard.press('F3');
     await expectProgram(page, 'CA00 · COADM01C');

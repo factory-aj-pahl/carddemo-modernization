@@ -86,6 +86,8 @@ final class ListTurn {
     private TypeEdits.Check rowDescCheck;
     private boolean deleted;
     private boolean updateCompleted;
+    /** Q-COTRTLIC-19: the row changed since it was read; the re-read values are shown instead of the input. */
+    private boolean updateConflict;
     private boolean firstPageBefore;
     private boolean countFailed;
 
@@ -484,6 +486,7 @@ final class ListTurn {
                 }
                 case CONFLICT -> {
                     ca.updatePending = true;
+                    updateConflict = true;
                     inputError = true;
                     if (msg == null) {
                         msg = DEADLOCK;
@@ -550,7 +553,7 @@ final class ListTurn {
                 } else {
                     ca.updatePending = true;
                 }
-                if (changesOccurred) {
+                if (changesOccurred && !updateConflict) {
                     description = rowDescCheck == TypeEdits.Check.BLANK ? "*" : descIn[i];
                 }
             }

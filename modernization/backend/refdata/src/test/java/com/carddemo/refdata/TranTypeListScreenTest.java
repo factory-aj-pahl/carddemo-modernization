@@ -410,17 +410,36 @@ class TranTypeListScreenTest {
 
     @Test
     @Covers({"Q-COTRTLIC-19"})
-    void update_of_a_row_changed_meanwhile_is_rejected_then_saved_after_reread() {
+    void update_of_a_row_changed_meanwhile_is_rejected_and_the_row_shows_the_reread_values() {
         JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 5, "U"));
         jdbc.update("UPDATE transaction_type SET description = 'REFUND OTHER' WHERE type_cd = '05'");
         r = client.post(P, "PF10", describe(listInput(r), 5, "REFUND CREDIT"));
         assertThat(r.at("/message").asText()).isEqualTo("Deadlock. Someone else updating ?");
         assertThat(description(jdbc, "05")).isEqualTo("REFUND OTHER");
+        // The list is re-read: the row shows the other session's value, still selected for update.
+        assertThat(row(r, 5).get("description").asText()).isEqualTo("REFUND OTHER");
+        assertThat(row(r, 5).get("select").asText()).isEqualTo("U");
         assertThat(row(r, 5).get("descriptionEditable").asBoolean()).isTrue();
-        assertThat(row(r, 5).get("description").asText()).isEqualTo("REFUND CREDIT");
+        assertThat(row(r, 5).get("highlighted").asBoolean()).isTrue();
+        // F10 again with what is shown writes nothing the user has not seen.
         r = key("PF10", r);
+        assertThat(description(jdbc, "05")).isEqualTo("REFUND OTHER");
+        assertThat(row(r, 5).get("description").asText()).isEqualTo("REFUND OTHER");
+    }
+
+    @Test
+    @Covers({"Q-COTRTLIC-19"})
+    void after_a_rejected_update_the_description_typed_again_is_saved() {
+        JsonNode r = client.post(P, "ENTER", select(listInput(client.show(P)), 5, "U"));
+        jdbc.update("UPDATE transaction_type SET description = 'REFUND OTHER' WHERE type_cd = '05'");
+        r = client.post(P, "PF10", describe(listInput(r), 5, "REFUND CREDIT"));
+        assertThat(r.at("/message").asText()).isEqualTo("Deadlock. Someone else updating ?");
+        assertThat(row(r, 5).get("description").asText()).isEqualTo("REFUND OTHER");
+        r = client.post(P, "PF10", describe(listInput(r), 5, "REFUND CREDIT"));
         assertThat(r.at("/fields/info").asText().strip()).isEqualTo("HIGHLIGHTED row was updated");
+        assertThat(r.has("message")).isFalse();
         assertThat(description(jdbc, "05")).isEqualTo("REFUND CREDIT");
+        assertThat(row(r, 5).get("description").asText()).isEqualTo("REFUND CREDIT");
     }
 
     @Test
