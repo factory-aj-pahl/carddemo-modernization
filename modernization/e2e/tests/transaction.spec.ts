@@ -1,5 +1,5 @@
 import { type Page, expect, test } from '@playwright/test';
-import { MSG, expectMessage, expectNoSeriousA11yViolations, expectProgram, fixtures, open, signOn } from './support';
+import { DEMO_PASSWORD, MSG, expectMessage, expectNoSeriousA11yViolations, expectProgram, fixtures, open, signOn } from './support';
 
 const rows = (page: Page) => page.getByTestId('row');
 const firstRowId = (page: Page) => rows(page).first().locator('td').nth(1);
@@ -141,7 +141,7 @@ test.describe('COTRN00C transaction list', () => {
 test.describe('COTRN00C for a user with no transactions in scope', () => {
   // A regular user added through COUSR01C has no linked accounts, so no transaction is in scope.
   const NO_TRAN_USER = 'E2ENOTX1';
-  const NO_TRAN_PASSWORD = 'Secret12';
+  const NO_TRAN_PASSWORD = DEMO_PASSWORD;
 
   async function deleteIfPresent(page: Page) {
     await signOn(page, 'ADMIN001');

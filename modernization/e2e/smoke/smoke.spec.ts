@@ -70,7 +70,7 @@ test('smoke: ADMIN001 lists the users', async ({ page }) => {
   await page.getByLabel('Please select an option').fill('1');
   await page.keyboard.press('Enter');
   await expectProgram(page, 'CU00 · COUSR00C');
-  await expect(page.getByTestId('page')).toHaveText('Page 1');
+  await expect(page.getByTestId('page')).toHaveText('Page 00000001');
   const ids = await page.getByTestId('user-row').locator('td:nth-child(2)').allTextContents();
   expect(ids).toEqual(expect.arrayContaining(['ADMIN001', 'USER0001']));
   expect(ids.length).toBeGreaterThanOrEqual(2);
