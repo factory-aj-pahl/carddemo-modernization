@@ -79,14 +79,32 @@ class TargetScheduleTest(unittest.TestCase):
             self.assertFalse(RELOAD_COMMANDS & string_literals(path), path.name)
 
     def test_interest_runs_once_a_month_inside_the_cycle(self):
-        """Q-RUNBOOK-01 Q-CONTROLM-02 Q-CONTROLM-03: INTCALC on the first business date of each month, then CREASTMT, in the daily cycle"""
+        """Q-RUNBOOK-01 Q-CONTROLM-02 Q-CONTROLM-03: INTCALC on the first business date the cycle runs in each month, then CREASTMT, in the daily cycle"""
         branch = self.cycle.get_task("month_start")
-        with mock.patch.dict(os.environ, {"CARDDEMO_HOLIDAYS": ""}):
+        calculated = {"2021-12"}
+
+        def status(day: str) -> tuple[bool, str | None]:
+            # INTSTATUS over a database where every INTCALC the branch chooses completes.
+            month = day[:7]
+            return month in calculated, max((m for m in calculated if m < month), default=None)
+
+        def cycle(day: date) -> list[str]:
+            chosen = branch.python_callable(day.isoformat())
+            if "INTCALC" in chosen:
+                calculated.add(day.isoformat()[:7])
+            return chosen
+
+        module = sys.modules[self.cycle.get_task("month_start").python_callable.__module__]
+        with mock.patch.dict(os.environ, {"CARDDEMO_HOLIDAYS": ""}), \
+                mock.patch.object(module, "interest_status", status):
             for month in range(1, 13):
                 first = date(2022, month, 1)
                 days = [first + timedelta(n) for n in range(31) if (first + timedelta(n)).month == month]
-                with_interest = [d for d in days if d.weekday() < 5 and "INTCALC" in branch.python_callable(d.isoformat())]
-                self.assertEqual(len(with_interest), 1, month)
+                runs = [d for d in days if d.weekday() < 5]
+                if month == 9:
+                    runs = runs[2:]  # the first two business days of September are never run
+                with_interest = [d for d in runs if "INTCALC" in cycle(d)]
+                self.assertEqual(with_interest, [runs[0]], month)
                 self.assertIn("CREASTMT", branch.python_callable(with_interest[0].isoformat()))
         self.assertIn("INTCALC", self.cycle.get_task("CREASTMT").upstream_task_ids)
         self.assertEqual({d.dag_id for d in self.dags.values() if "INTCALC" in d.task_ids}, {"carddemo_daily_cycle"})
@@ -98,6 +116,7 @@ class TargetScheduleTest(unittest.TestCase):
         self.assertIn("MNTTRDB2", maint.task_ids)
         self.assertNotIn("MNTTRDB2", self.cycle.task_ids)
         self.assertIsNone(self.dags["carddemo_transaction_report"].schedule)
+        self.assertIsNotNone(self.cycle.schedule)
 
     def test_no_job_definition_holds_clear_text_credentials(self):
         """Q-FTPJCL-01: no host, user ID, or password literal in a DAG; the batch jar reads its settings from the environment"""

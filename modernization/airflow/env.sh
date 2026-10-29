@@ -15,6 +15,8 @@ export AIRFLOW__CORE__EXECUTION_API_SERVER_URL="${AIRFLOW__CORE__EXECUTION_API_S
 # Simple auth manager: one admin user; its generated password is in
 # $AIRFLOW_HOME/simple_auth_manager_passwords.json.generated (POST /auth/token for a REST API token).
 export AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS="${AIRFLOW__CORE__SIMPLE_AUTH_MANAGER_USERS:-carddemo:admin}"
+# The daily cycle DAG is created paused whatever this says; start.sh pauses it again on every start unless
+# CARDDEMO_CYCLE_SCHEDULE=on (then it unpauses it, and the cycle runs at 22:00 UTC Monday to Friday).
 export CARDDEMO_INBOX="${CARDDEMO_INBOX:-$HOME/.carddemo/inbox}"
 export CARDDEMO_OUTBOX="${CARDDEMO_OUTBOX:-$HOME/.carddemo/outbox}"
 export PATH="$HOME/.carddemo/airflow-venv/bin:$PATH"
