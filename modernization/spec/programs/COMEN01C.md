@@ -236,11 +236,13 @@ None. No file is read or written. Only the COMMAREA fields listed above change.
   overlaps storage after the table. The loop runs only to CDEMO-MENU-OPT-COUNT (11), so OPTN012 is
   always blank. The copybook header comment says "Admin Menu Options" although it is the main menu.
   Recommendation: fix (size the table from the data). Source: `app/cpy/COMEN02Y.cpy:2`, `app/cpy/COMEN02Y.cpy:93-98`.
-- **Q-COMEN01C-03**: The checks do not short-circuit. When the option is invalid (0, non-numeric), the
-  admin-only test in step 6.3 still subscripts the table with that value (index 0 reads the byte before
-  the table; a non-numeric value is unpredictable). Without SSRANGE this does not abend, and with the
-  shipped data it does not change the message. Recommendation: fix (validate, then stop).
-  Source: `app/cbl/COMEN01C.cbl:127-143`.
+- **Q-COMEN01C-03**: The checks do not short-circuit. When the option is invalid (0, 12-99, or
+  non-numeric), the admin-only test in step 6.3 still subscripts the table with that value (index 0 reads
+  the byte before the table; indexes 12-99 read past the 11 entries, into the following working storage
+  including the received map COMEN1AI; a non-numeric value is unpredictable). Without SSRANGE this does
+  not abend, and with the shipped data and screen it does not change the message (inferred from the
+  storage layout, which depends on compiler alignment; not observed). Recommendation: fix (validate, then
+  stop). Source: `app/cbl/COMEN01C.cbl:127-143`, `app/cpy/COMEN02Y.cpy:93-98`.
 - **Q-COMEN01C-04**: The `DUMMY` branch builds its message with the name cut at the first space and no
   space before `is coming soon ...` (for example `This option Accountis coming soon ...`). The branch is
   unreachable with the shipped table. Recommendation: do not port; use a "coming soon" flag if needed.

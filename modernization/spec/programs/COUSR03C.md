@@ -141,9 +141,14 @@ hint `(A=Admin, U=User)` (blue), and the key legend `ENTER=Fetch  F3=Back  F4=Cl
   Source: `app/cbl/COUSR03C.cbl:123-125 (MAIN-PARA)`.
 - **NAV-COUSR03C-06**: Any other AID -> "Invalid key pressed. Please see below...         " and the
   screen is re-sent with the received data. For CLEAR and PA1-PA3 the terminal sends no field data:
-  RECEIVE gets MAPFAIL (not tested), the map keeps its initial storage, and every field is blank on the
-  re-sent screen. Target: C-SHORTREAD (ledger-online.md). Source:
-  `app/cbl/COUSR03C.cbl:126-129 (MAIN-PARA)`.
+  RECEIVE gets MAPFAIL (not tested), the map keeps its initial storage, and User ID, First Name, Last
+  Name, and User Type are blank on the re-sent screen; the header and the invalid-key message are filled
+  as usual (SEND-USRDEL-SCREEN). Target: C-SHORTREAD (ledger-online.md). No cursor field is set in this
+  branch (unlike NAV-COUSR01C-04): it is the only COUSR03C send that moves -1 to no length field before
+  SEND MAP ... CURSOR, so the cursor position is left to BMS, not chosen by the program (where BMS then
+  puts it is inferred from CICS documentation, not observed). Target: focus on User ID, the only
+  editable field, as after the read and delete errors (Q-COUSR03C-06). Source:
+  `app/cbl/COUSR03C.cbl:126-129 (MAIN-PARA)`, `app/cbl/COUSR03C.cbl:213-225 (SEND-USRDEL-SCREEN)`.
 - **NAV-COUSR03C-07**: Every redisplay ends with RETURN TRANSID(`CU03`) COMMAREA(CARDDEMO-COMMAREA).
   Source: `app/cbl/COUSR03C.cbl:134-137 (MAIN-PARA)`.
 
