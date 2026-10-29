@@ -60,8 +60,11 @@ JOB-MNTTRDB2 (`modernization/spec/jobs.md`, Q-MNTTRDB2-01).
 ### Business rules
 - **BR-COBTUPDT-01**: Records are processed strictly in file order, one SQL statement per non-comment record, with
   no look-ahead, sorting, or de-duplication; a later record sees the effect of an earlier one in the same run
-  (same unit of work). Source: `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:91-99 (1001-READ-NEXT-RECORDS)`.
-- **BR-COBTUPDT-02**: Action `A` inserts a new row:
+  (same unit of work). Before each record is processed, "PROCESSING   " (three trailing spaces) followed by the
+  53-byte record is displayed; at end of file nothing is displayed. Source:
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:91-99 (1001-READ-NEXT-RECORDS)`,
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:104-106 (1002-READ-RECORDS)`.
+- **BR-COBTUPDT-02**: Action `A` displays "ADDING RECORD", then inserts a new row:
   ```sql
   INSERT INTO CARDDEMO.TRANSACTION_TYPE
   (
@@ -76,8 +79,9 @@ JOB-MNTTRDB2 (`modernization/spec/jobs.md`, Q-MNTTRDB2-01).
   ```
   `TR_TYPE` = columns 2-3 as is; `TR_DESCRIPTION` = columns 4-53 as a fixed 50-character value (trailing spaces
   kept, BR-COBTUPDT-05). SQLCODE 0 -> DISPLAY "RECORD INSERTED SUCCESSFULLY". Source:
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:111-113 (1003-TREAT-RECORD)`,
   `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:132-164 (10031-INSERT-DB)`.
-- **BR-COBTUPDT-03**: Action `U` updates the description of an existing type:
+- **BR-COBTUPDT-03**: Action `U` displays "UPDATING RECORD", then updates the description of an existing type:
   ```sql
   UPDATE CARDDEMO.TRANSACTION_TYPE
      SET TR_DESCRIPTION = :INPUT-REC-DESC
@@ -85,15 +89,17 @@ JOB-MNTTRDB2 (`modernization/spec/jobs.md`, Q-MNTTRDB2-01).
   ```
   SQLCODE 0 -> DISPLAY "RECORD UPDATED SUCCESSFULLY". An update of a missing type is an error
   (ERR-COBTUPDT-03), not an insert (unlike COTRTUPC, BR-COTRTUPC-17). Source:
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:114-116 (1003-TREAT-RECORD)`,
   `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:166-195 (10032-UPDATE-DB)`.
-- **BR-COBTUPDT-04**: Action `D` deletes a type:
+- **BR-COBTUPDT-04**: Action `D` displays "DELETING RECORD", then deletes a type:
   ```sql
   DELETE FROM CARDDEMO.TRANSACTION_TYPE
    WHERE TR_TYPE = :INPUT-REC-NUMBER
   ```
   SQLCODE 0 -> DISPLAY "RECORD DELETED SUCCESSFULLY". Category rows are not deleted first, so the FK `ON DELETE
   RESTRICT` of ENT-DB2-TRAN-TYPE-CATEGORY rejects the delete of any type that still has categories
-  (ERR-COBTUPDT-05). Source: `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:196-226 (10033-DELETE-DB)`.
+  (ERR-COBTUPDT-05). Source: `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:117-119 (1003-TREAT-RECORD)`,
+  `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:196-226 (10033-DELETE-DB)`.
 - **BR-COBTUPDT-05**: Host variables are plain X(02) and X(50) fields (not the DCLGEN VARCHAR structure), so
   `TR_DESCRIPTION` is always stored with length 50 including trailing spaces, and a blank description is stored
   as 50 spaces (accepted by `NOT NULL`). Source: `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:71-77`, `:145-146`, `:173-174`.
@@ -113,10 +119,10 @@ JOB-MNTTRDB2 (`modernization/spec/jobs.md`, Q-MNTTRDB2-01).
 - Not applicable (batch).
 
 ### Error handling
-- **ERR-COBTUPDT-01**: OPEN status other than `00` (for example `35` DD or dataset missing, `39` record length not
-  53) -> DISPLAY "OPEN FILE NOT OK" and processing continues; each READ then fails with status `47` (not opened),
+- **ERR-COBTUPDT-01**: OPEN status `00` displays "OPEN FILE OK". OPEN status other than `00` (for example `35` DD
+  or dataset missing, `39` record length not 53) -> DISPLAY "OPEN FILE NOT OK" and processing continues; each READ then fails with status `47` (not opened),
   which is not an end-of-file condition, so LASTREC never becomes `Y` and the loop repeats without end
-  (Q-COBTUPDT-01). Source: `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:82-89`, `:93-96`, `:100-103`.
+  (Q-COBTUPDT-01). Source: `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:82-89 (0001-OPEN-FILES)`, `:93-96`, `:100-103`.
 - **ERR-COBTUPDT-02**: INSERT SQLCODE < 0 (for example -803 duplicate key) -> message "Error accessing:
   TRANSACTION_TYPE table. SQLCODE:" + SQLCODE in `----9` form (for example ` -803`), 9999-ABEND (DISPLAY, RC 4),
   next record. Source: `app/app-transaction-type-db2/cbl/COBTUPDT.cbl:154-162 (10031-INSERT-DB)`.
@@ -159,8 +165,14 @@ JOB-MNTTRDB2 (`modernization/spec/jobs.md`, Q-MNTTRDB2-01).
 - **Q-COBTUPDT-01**: If the OPEN fails, the program only displays "OPEN FILE NOT OK" and keeps going; READ then
   fails with status 47 forever (AT END never triggers), and each iteration displays "PROCESSING   " plus a blank
   record and "ERROR: TYPE NOT VALID". The job card has `TIME=1440` (no CPU limit), so the step loops until the
-  output limit or an operator cancel. The same happens for any non-end-of-file READ error. Recommendation: fix
-  (stop with a non-zero RC when OPEN or READ fails). Source: `COBTUPDT.cbl:82-89`, `:100-103`, `jcl/MNTTRDB2.jcl:2`.
+  output limit or an operator cancel. Any other non-end-of-file READ error also loops without end. Because READ ...
+  INTO moves nothing when the READ fails, WS-INPUT-REC keeps the last record read successfully, so each iteration
+  displays "PROCESSING   " with that record again and reapplies its action (an `A` gives the -803 error message every
+  time after the first, a `U` repeats "RECORD UPDATED SUCCESSFULLY", a `D` gives "No records found.", a `*` repeats
+  "IGNORING COMMENTED LINE"); the record is blank only when no READ has succeeded, as after a failed OPEN
+  (`COBTUPDT.cbl:71-77`, `:101-106`). (Correction: this sentence said the same blank-record loop happens for any
+  READ error.) Recommendation: fix (stop with a non-zero RC when OPEN or READ fails). Source: `COBTUPDT.cbl:82-89`,
+  `:100-106`, `:109-129`, `jcl/MNTTRDB2.jcl:2`.
 - **Q-COBTUPDT-02**: WS-RETURN-MSG (X(80)) is never cleared, and STRING writes only as many characters as it
   produces. A shorter message after a longer one keeps the old tail, for example "No records found." after a
   -803 error displays "No records found.TRANSACTION_TYPE table. SQLCODE: -803". Recommendation: fix (clear the

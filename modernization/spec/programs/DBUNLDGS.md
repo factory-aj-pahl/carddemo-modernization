@@ -197,6 +197,10 @@ details, one root with an X'40' key and no details).
 ## Open questions
 - What consumes the GSAM unload, and how is the detail-to-summary relationship expected to be
   rebuilt?
+- `MOVE PA-ACCT-ID TO ROOT-SEG-KEY` (line 239) runs before the `IS NUMERIC` test (line 241). Depending on
+  the z/OS compiler options (for example NUMPROC), a packed-to-packed move may be generated as ZAP, which
+  would raise a data exception (S0C7) on the sample root with key X'404040404040' before BR-DBUNLDGS-04 can
+  skip it. GnuCOBOL 3.1.2 raises nothing. Which options is the production load module compiled with?
 - Which job allocates `AWS.M2.CARDDEMO.PAUTDB.ROOT.GSAM` and `...CHILD.GSAM`?
 - Should DBUNLDGS be kept at all, given PAUDBUNL produces a self-describing extract?
 

@@ -29,8 +29,9 @@ changed.
   - OUTFIL1 -> `AWS.M2.CARDDEMO.PAUTDB.ROOT.FILEO`, `DISP=(NEW,CATLG,DELETE)`, LRECL=100, RECFM=FB.
   - OUTFIL2 -> `AWS.M2.CARDDEMO.PAUTDB.CHILD.FILEO`, `DISP=(NEW,CATLG,DELETE)`, LRECL=206, RECFM=FB.
 - PSB PAUTBUNL (`app/app-authorization-ims-db2-mq/ims/PAUTBUNL.PSB:18-21`): one DB PCB on DBPAUTP0,
-  PROCOPT=GOTP (get only, read without locking, P = path calls allowed), KEYLEN=14, sensitive
-  segments PAUTSUM0 (root) and PAUTDTL1 (child of PAUTSUM0); `CMPAT=NO`, so in a DLI region no I/O
+  PROCOPT=GOTP (get only, read without locking, T = on an invalid pointer the call is retried and then
+  returns status GG instead of abending, which falls under ERR-PAUDBUNL-03/-04; P = path calls allowed),
+  KEYLEN=14, sensitive segments PAUTSUM0 (root) and PAUTDTL1 (child of PAUTSUM0); `CMPAT=NO`, so in a DLI region no I/O
   PCB is passed and the DB PCB is the only parameter.
 - Linkage: `PROCEDURE DIVISION USING PAUTBPCB` (153) and `ENTRY 'DLITCBL' USING PAUTBPCB` (158) bind
   the same single PCB.
@@ -67,7 +68,8 @@ changed.
 4. 3000-FIND-NEXT-AUTH-DTL (253-286): DL/I "get the next detail (PAUTDTL1) under the current root"
    (GNP with the unqualified SSA `PAUTDTL1 `).
    1. IF status is blank: set MORE-AUTHS; add 1 to WS-NO-SUMRY-READ and WS-AUTH-SMRY-PROC-CNT (see
-      Q-PAUDBUNL-01); copy the detail to CHILD-SEG-REC; WRITE OPFIL2-REC (ROOT-SEG-KEY + detail).
+      Q-PAUDBUNL-01); copy the detail to CHILD-SEG-REC; WRITE OPFIL2-REC (ROOT-SEG-KEY + detail;
+      ROOT-SEG-KEY is not set again before the second and later WRITEs, Q-PAUDBUNL-12).
    2. IF status is 'GE' (no more children under this root): set WS-END-OF-CHILD-SEG = 'Y'; DISPLAY
       'CHILD SEG FLAG GE : ' + 'Y'.
    3. IF status is neither blank nor 'GE': DISPLAY 'GNP CALL FAILED  :' + status and
@@ -90,7 +92,9 @@ changed.
   `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:223-233 (2000-FIND-NEXT-AUTH-SUMMARY)`.
 - **BR-PAUDBUNL-03**: For each root written, every child detail under it is read in child key order
   (PAUT9CTS ascending, which is newest authorization first) and written to OUTFIL2 as the 6-byte
-  packed parent account id followed by the 200-byte detail unchanged. Source:
+  packed parent account id followed by the 200-byte detail unchanged (ROOT-SEG-KEY is moved only once per
+  root, before the first child; later children rely on the record area keeping it after WRITE, see
+  Q-PAUDBUNL-12). Source:
   `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:228-236 (2000-FIND-NEXT-AUTH-SUMMARY)`,
   `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:257-271 (3000-FIND-NEXT-AUTH-DTL)`.
 - **BR-PAUDBUNL-04**: When a root's PA-ACCT-ID is not valid packed decimal, neither the root nor any of
@@ -153,7 +157,9 @@ changed.
   reconcile with the load. Recommendation: fix (count roots and children separately and display
   them). Source: `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:225-226, 268-269`.
 - **Q-PAUDBUNL-02**: Roots whose key is not valid packed decimal are dropped silently together with
-  their children. The sample database contains one such root (key and amounts X'40'; bytes 6-21 X'F0'), so the unload has
+  their children. The sample database contains one such root (every byte X'40' except bytes 7-22, which are
+  X'F0': PA-CUST-ID `000000000`, PA-AUTH-STATUS `0` and the first three PA-ACCOUNT-STATUS entries `00`;
+  correction: this said "bytes 6-21", which are the 0-based offsets), so the unload has
   one root fewer than the database. Recommendation: decide (the record is garbage; a warning line
   would make the drop visible). Source: `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:232-237`.
 - **Q-PAUDBUNL-03**: The error IF at line 243 has no END-IF and is closed by the period at line 247.
@@ -183,6 +189,15 @@ changed.
 - **Q-PAUDBUNL-11**: The 6-byte parent key on each child record is the only link between the two
   files, while the matching GSAM unload DBUNLDGS writes children without it; the two unload programs
   are not interchangeable as input to PAUDBLOD. Recommendation: preserve.
+- **Q-PAUDBUNL-12**: ROOT-SEG-KEY in the FD record OPFIL2-REC is set once per root (lines 228-230) and is not
+  moved again before the WRITE of the second and later children (line 271). The COBOL rules say a written
+  record is no longer available in the record area (there is no SAME RECORD AREA and no WRITE FROM), so for
+  those children bytes 1-6 are not guaranteed to hold the parent key. On z/OS QSAM (locate mode) they may
+  contain leftover buffer bytes, and PAUDBLOD would then skip the child (key not packed, BR-PAUDBLOD-04),
+  attach it to another account, or drop it as an orphan (BR-PAUDBLOD-06). GnuCOBOL keeps the record area,
+  so a local run writes the parent key on every child; the first child of each root is always safe.
+  Recommendation: fix (move the parent key before every child WRITE, or WRITE FROM a working-storage
+  record). Source: `app/app-authorization-ims-db2-mq/cbl/PAUDBUNL.CBL:46-48, 228-230, 270-271`.
 
 ## Test scenarios
 Sample IMS data: `app/app-authorization-ims-db2-mq/data/EBCDIC/AWS.M2.CARDDEMO.IMSDATA.DBPAUTP0.dat`
@@ -194,8 +209,9 @@ and amounts are X'40' bytes, with no details.
   'CHILD SEG FLAG GE : Y' appears 21 times, the X'40'-key root is absent from both files, and the step
   ends with RC 0.
 - **TS-PAUDBUNL-02** (BR-03, BR-06): Given account 7 has 50 details, then OUTFIL2 contains 50
-  consecutive records whose bytes 1-6 are X'00000000007C', positioned after the records of account 5
-  and before those of account 13, in ascending key order (newest authorization first).
+  consecutive records whose bytes 1-6 are X'00000000007C' (as observed with GnuCOBOL; on z/OS only the
+  first is guaranteed, Q-PAUDBUNL-12), positioned after the records of account 5 and before those of
+  account 13, in ascending key order (newest authorization first).
 - **TS-PAUDBUNL-03** (BR-05): Given a root for account 99 with no details, then OUTFIL1 has its record,
   OUTFIL2 has none for it, and 'CHILD SEG FLAG GE : Y' is still displayed.
 - **TS-PAUDBUNL-04** (BR-04, Q-02): Given a root whose first 6 bytes are X'404040404040', then nothing
@@ -218,6 +234,10 @@ and amounts are X'40' bytes, with no details.
   sample `.dat` file), PAUDBUNL, or DBUNLDGS?
 - Should invalid roots be reported, repaired, or dropped as now?
 - Is UNLDPADB meant to run only while the online IMS database is stopped?
+- `MOVE PA-ACCT-ID TO ROOT-SEG-KEY` (line 230) runs before the `IS NUMERIC` test (line 232). Depending on
+  the z/OS compiler options (for example NUMPROC), a packed-to-packed move may be generated as ZAP, which
+  would raise a data exception (S0C7) on the sample root with key X'404040404040' before BR-PAUDBUNL-04 can
+  skip it. GnuCOBOL 3.1.2 raises nothing. Which options is the production load module compiled with?
 
 ## Target mapping proposal (non-normative)
 With the tables proposed in `modernization/spec/programs/COPAUA0C.md` (section "Target mapping

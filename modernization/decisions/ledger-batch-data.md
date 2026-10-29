@@ -519,6 +519,7 @@ COPAUS1C).
 | Q-PAUDBUNL-09 | Unload can run during online updates | user-decision | CHANGE (D-BATCH-WINDOW) | The unload reads one consistent snapshot (read-only transaction); online stays up. | n/a |
 | Q-PAUDBUNL-10 | Output holds full card numbers | security | PRESERVE (D-PII-FILES) | (D-PII-FILES) Content kept, including full card numbers (load contract with PAUDBLOD); both unload files are written mode 600. | n/a |
 | Q-PAUDBUNL-11 | Parent key only link; not interchangeable with DBUNLDGS | business-choice | PRESERVE | Business choice: same format. | n/a |
+| Q-PAUDBUNL-12 | Parent key on later children relies on the record area after WRITE | data-corruption | FIX | Every child record carries its own parent's account id (6-byte packed, bytes 1-6), for the second and later children of a root as well as the first, which is what GnuCOBOL produces and the program intends. | n/a (spec-derived tests; IMS; GnuCOBOL keeps the record area, so no patch would be needed) |
 
 ## PAUDBLOD
 
@@ -661,7 +662,7 @@ Authorization module (IMS, Db2, MQ):
 - Q-COPAUS2C-04: SQLSTATE shown as text.
 - Q-CBPAUP0J-01, Q-CBPAUP0C-09 (D-PURGE): purge expiry is a DAG parameter defaulting to 5 days (not the JCL's `00`); debug off by default.
 - Q-CBPAUP0C-01 (D-PURGE), -02, -03, -04, Q-ENT-42: purge saves the summary count and amount adjustments for deleted details (credit and cash balances unchanged), never deletes unexpired details, uses real day ages, and checkpoints by the numeric parameter.
-- Q-PAUDBUNL-01, -04, -06, Q-DBUNLDGS-01, -03, -05: unloads print **NEW** root and child counts, fail on write errors, delete partial outputs; the GSAM detail file carries the parent key.
+- Q-PAUDBUNL-01, -04, -06, -12, Q-DBUNLDGS-01, -03, -05: unloads print **NEW** root and child counts, fail on write errors, delete partial outputs; every detail record of both unloads carries its own parent key.
 - Q-PAUDBLOD-02, -03, -04, -07, -09: orphan children reported, read errors fatal, all-or-nothing load, invalid root keys rejected (**NEW** `INVALID ROOT KEY`), **NEW** end-of-run counts.
 
 ## Reference patches
@@ -727,12 +728,12 @@ Still open: none.
 
 ## Counts
 
-Rows by category and decision (387 rows).
+Rows by category and decision (388 rows).
 
 | Category | FIX | PRESERVE | CHANGE | PLATFORM | NOT-PORTED | Total |
 |:--|--:|--:|--:|--:|--:|--:|
 | security | 19 | 4 | 0 | 0 | 0 | 23 |
-| data-corruption | 37 | 0 | 0 | 0 | 0 | 37 |
+| data-corruption | 38 | 0 | 0 | 0 | 0 | 38 |
 | concurrency | 4 | 0 | 0 | 0 | 0 | 4 |
 | functional-defect | 88 | 0 | 0 | 0 | 0 | 88 |
 | cosmetic | 0 | 14 | 0 | 0 | 0 | 14 |
@@ -740,4 +741,4 @@ Rows by category and decision (387 rows).
 | platform | 0 | 0 | 0 | 114 | 0 | 114 |
 | dead-code | 0 | 0 | 0 | 0 | 30 | 30 |
 | user-decision | 0 | 0 | 32 | 0 | 0 | 32 |
-| Total | 148 | 63 | 32 | 114 | 30 | 387 |
+| Total | 149 | 63 | 32 | 114 | 30 | 388 |
