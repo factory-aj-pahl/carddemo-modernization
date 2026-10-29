@@ -144,6 +144,16 @@ queues are quorum queues with a delivery limit of 3 and dead-letter to `CARD.DEM
 queues are bounded. Queue replies keep the legacy text layouts; the REST equivalents return JSON
 (decimal amounts, ISO 8601 times).
 
+- An authorization request (COPAUA0C) is split on commas as the COBOL `UNSTRING` does: text after the
+  18th field is ignored and fields the message does not reach are blank, and the request is decided and
+  answered (a blank amount is declined `05`/`9000`, Q-COPAUA0C-12). Only a request that cannot be read as
+  text (over the 500-byte buffer, or not printable ASCII) is logged as M003 and dead-lettered at once,
+  as is a request whose transaction fails (Q-COPAUA0C-06); any other failure is redelivered up to the
+  delivery limit.
+- `GET /api/inquiry/account/{id}` takes the account ID as the queue does: exactly 11 digits, not all
+  zero (C-KEYLEN, never left-padded). Anything else is answered 400 with the queue's invalid-request
+  text as `{"message": ...}`; a missing or out-of-scope account is 404 with the not-found text.
+
 ## 4. Data
 
 - Schema from `spec/entities.md`: DECIMAL for signed zoned amounts, DATE / DATETIME2 for the

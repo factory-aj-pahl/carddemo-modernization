@@ -161,7 +161,8 @@ class AuthorizationMessagingTest {
             "processingCode", "transactionAmt", "merchantCategoryCode", "acqrCountryCode", "posEntryMode", "merchantId",
             "merchantName", "merchantCity", "merchantState", "merchantZip", "transactionId"};
         Map<String, Object> body = new LinkedHashMap<>();
-        for (int i = 0; i < names.length; i++) {
+        // A request with fewer fields leaves the remaining JSON properties out.
+        for (int i = 0; i < names.length && i < f.length; i++) {
             body.put(names[i], f[i]);
         }
         MockHttpServletResponse res = mvc.perform(post("/api/authorizations").session(adminClient.session()).with(csrf())
@@ -539,13 +540,48 @@ class AuthorizationMessagingTest {
     }
 
     @Test
+    @Covers({"BR-COPAUA0C-03", "Q-COPAUA0C-12"})
+    void requests_with_more_or_fewer_than_18_fields_are_decided_and_answered_like_the_unstring() throws Exception {
+        String seventeen = AuthFixtures.EXAMPLE.replace(",TXN000000000001", "");
+        String nineteen = AuthFixtures.EXAMPLE + ",EXTRA";
+        String four = "231026,143015," + AuthFixtures.CARD_7 + ",0100";
+        assertThat(seventeen.split(",", -1)).hasSize(17);
+        assertThat(nineteen.split(",", -1)).hasSize(19);
+        for (Transport t : Transport.values()) {
+            reset();
+            int details = count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = 7");
+
+            // The missing 18th field (transaction id) stays spaces; the request is approved as usual.
+            assertThat(authorize(t, seventeen)).as(t + " 17 fields")
+                .isEqualTo("4859452612877065,               ,143015,00,0000,        100.00,");
+            assertThat(newestDetail(7)).containsEntry("transaction_id", "").containsEntry("merchant_zip", "19801")
+                .containsEntry("auth_resp_code", "00");
+
+            // Text after the 18th field is ignored.
+            assertThat(authorize(t, nineteen)).as(t + " 19 fields")
+                .isEqualTo("4859452612877065,TXN000000000001,143015,00,0000,        100.00,");
+            assertThat(newestDetail(7)).containsEntry("transaction_id", "TXN000000000001").containsEntry("merchant_zip", "19801");
+            assertThat(count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = 7")).isEqualTo(details + 2);
+            assertThat(summary(7).get("approved_count")).isEqualTo(52);
+
+            // No amount: the blank amount is not a positive number, so Q-COPAUA0C-12 declines it without a record.
+            assertThat(authorize(t, four)).as(t + " 4 fields")
+                .isEqualTo("4859452612877065,               ,143015,05,9000,          0.00,");
+            assertThat(count("SELECT COUNT(*) FROM pending_auth_detail WHERE account_id = 7")).isEqualTo(details + 2);
+            assertThat(summary(7).get("declined_count")).isEqualTo(0);
+            assertThat(errorLog()).as(t + " no error records").isEmpty();
+        }
+        assertThat(rabbit.receive(queues.deadLetter(), 1_000)).as("nothing dead-lettered").isNull();
+    }
+
+    @Test
     @Covers({"ERR-COPAUA0C-02", "Q-COPAUA0C-16"})
     void oversized_and_unparsable_requests_are_dead_lettered_and_the_next_request_is_answered() {
         reset();
         String replyTo = tempQueue();
         List<String> ids = new ArrayList<>();
         byte[] oversized = (AuthFixtures.EXAMPLE + " ".repeat(400)).getBytes(StandardCharsets.US_ASCII);
-        byte[][] bad = {oversized, "231026,143015,4859452612877065".getBytes(StandardCharsets.US_ASCII),
+        byte[][] bad = {oversized, AuthFixtures.EXAMPLE.replace(',', '\t').getBytes(StandardCharsets.US_ASCII),
             {(byte) 0xC1, (byte) 0xFF, 0x00, 0x01}};
         for (byte[] b : bad) {
             String id = "P-" + UUID.randomUUID();

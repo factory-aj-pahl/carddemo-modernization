@@ -24,8 +24,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * COPAUA0C as a long-lived RabbitMQ consumer (Q-COPAUA0C-15). Per message: parse, decide and commit, then publish
- * the reply, then acknowledge (Q-COPAUA0C-06). Messages over the 500-byte request buffer or that are not 18
- * comma-separated text fields are logged (M003) and dead-lettered; so are requests whose transaction fails.
+ * the reply, then acknowledge (Q-COPAUA0C-06). Any number of comma-separated fields is accepted, as the COBOL
+ * UNSTRING does (BR-COPAUA0C-03). Messages over the 500-byte request buffer or that are not printable ASCII text
+ * cannot be read as a request: they are logged (M003) and dead-lettered, as are requests whose transaction fails.
  */
 @Component
 class AuthRequestListener {
@@ -59,12 +60,9 @@ class AuthRequestListener {
             String text = StandardCharsets.US_ASCII.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
                 .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(body)).toString();
             rq = AuthRequest.parse(text);
-        } catch (CharacterCodingException e) {
+        } catch (CharacterCodingException | AuthRequest.Unparsable e) {
             errors.log("M003", Level.CRITICAL, Subsystem.MQ, "PARSE", "NOT TEXT", "FAILED TO READ REQUEST MQ", "");
-            throw new AmqpRejectAndDontRequeueException("request is not ASCII text");
-        } catch (AuthRequest.Unparsable e) {
-            errors.log("M003", Level.CRITICAL, Subsystem.MQ, "PARSE", e.fields() + " FIELDS", "FAILED TO READ REQUEST MQ", "");
-            throw new AmqpRejectAndDontRequeueException(e.getMessage());
+            throw new AmqpRejectAndDontRequeueException("request is not printable ASCII text");
         }
         AuthReply reply;
         try {
