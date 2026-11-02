@@ -1,0 +1,249 @@
+{
+  "artifacts": [
+    {
+      "id": "contract",
+      "where": "/home/factory-user/.factory/missions-m/faad8541-04aa-4db9-88da-85fe6a9143af/promise.md",
+      "description": "Approved promise: scope, properties, sources of truth, boundaries, defaults",
+      "identity": "sha256:39e209759acc8314a193eecccb3e366561c87284f4fee95ee736f7a2951aa695"
+    },
+    {
+      "id": "decisions",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/decisions/",
+      "description": "User decisions (README.md) and the fidelity ledger (ledger-online.md, ledger-batch-data.md) with reference patches RP-*",
+      "identity": "git 467e0f0:modernization/decisions tree 52b88e789f0c17dcd9ff8b79c504d528856a0293"
+    },
+    {
+      "id": "cobol-source",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/app/",
+      "description": "COBOL, BMS, copybooks, JCL, schedules, sample data: the behavioral source of truth",
+      "identity": "git a3e87a4:app tree b0694f70b7245e044975a0199951e70f3f480250 (unchanged at 467e0f0: tree b0694f70b7245e044975a0199951e70f3f480250)"
+    },
+    {
+      "id": "spec",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/spec/",
+      "description": "Structured natural-language specification: README.md format, entities.md, jobs.md, components.md, programs/*.md",
+      "identity": "git 467e0f0:modernization/spec tree 759268eb3738b4bd3a3e7fb3680ed310c26daca0"
+    },
+    {
+      "id": "architecture",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/architecture.md",
+      "description": "Target architecture derived from the spec",
+      "identity": "git 467e0f0:modernization/architecture.md blob 6792befc0b3c7810e5f245c5703eb93cf074c8bd"
+    },
+    {
+      "id": "ui-prototype",
+      "where": "/home/factory-user/.factory/missions-m/faad8541-04aa-4db9-88da-85fe6a9143af/prototype/",
+      "description": "Clickable static prototype (index.html) and screenshots of sign-on, menu, account view, card list, bill payment; governs look and interaction style only",
+      "identity": "sha256:e4888144bef48c5767f1298dee48f66d73e2592b04331e6a789e250ea088d411"
+    },
+    {
+      "id": "harness",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/verification/",
+      "description": "GnuCOBOL reference runner, reference patch files, edge-dataset generator and dataset catalog (datasets.md), differential comparator, traceability generator; README.md documents usage",
+      "identity": "git 467e0f0:modernization/verification tree cb6c6bc46b86289db1c33548022d570ccd5e871d"
+    },
+    {
+      "id": "backend",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/backend/",
+      "description": "Maven multi-module Spring Boot API, context modules, billpay-service, Spring Batch jobs, loader/exporter, Flyway migrations, JUnit/API tests",
+      "identity": "git 467e0f0:modernization/backend tree fdb69cf02a646771ae5b697ec0cd2216daa6890e"
+    },
+    {
+      "id": "web",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/web/ and /home/factory-user/aws-mainframe-modernization-carddemo/modernization/e2e/",
+      "description": "React + TypeScript SPA and Playwright browser tests",
+      "identity": "git 467e0f0:modernization/web tree 7bf005df36086f295c47ec7bbea71124b3a30095 + modernization/e2e tree 6c4e3915bdc69841d3c83507e5e4546fb1a26b7a"
+    },
+    {
+      "id": "airflow",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/airflow/",
+      "description": "Airflow DAGs, config template, start/stop scripts",
+      "identity": "git 467e0f0:modernization/airflow tree 7a073375a287f1e3bcf11d0487f782d22aa9c8c7"
+    },
+    {
+      "id": "traceability",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo/modernization/verification/traceability.md",
+      "description": "Generated matrix: every owed rule/scenario/ledger ID -> test IDs and last result",
+      "identity": "git 467e0f0:modernization/verification/traceability.md blob b38ccea3f40bb7af26cdcd9fa77d89fcaf774f58"
+    },
+    {
+      "id": "system",
+      "where": "/home/factory-user/aws-mainframe-modernization-carddemo (branch modernization): modernization/ plus Makefile/README entry points",
+      "description": "The whole delivered stack as built and run on this machine",
+      "identity": "git 467e0f0 (branch modernization): modernization tree 997cc0ee54027543a0956fe694f7c0252d3ae6d3 + Makefile blob 02e64fcd + README.md blob 16d85e7c"
+    }
+  ],
+  "checks": [
+    {
+      "id": "app-unchanged",
+      "group": "Sources of truth",
+      "summary": "The COBOL application tree is unchanged from the start commit.",
+      "description": "app/ matches commit a3e87a4 exactly, so the behavioral source of truth and reference builds are the agreed version.",
+      "about": "cobol-source",
+      "kind": "verification",
+      "how": "In the repository run `git diff --stat a3e87a4 -- app/` and `git status --porcelain -- app/`. Passes when both print nothing."
+    },
+    {
+      "id": "spec-completeness",
+      "group": "Specification",
+      "summary": "The spec covers every program, entity, job, and source message, with consistent IDs.",
+      "description": "Every owed program, record copybook, and JCL member has a spec entry; every bold ID is defined once and every referenced ID resolves; every user-visible message literal in the online programs appears verbatim in the spec; components.md covers all 44 programs.",
+      "about": "spec",
+      "kind": "verification",
+      "how": "Run `python3 modernization/verification/spec_check.py` (in [[harness]]). Owed sets are derived from [[cobol-source]], not from the spec: programs = members listed in docs/INVENTORY.md at a3e87a4 (44); record copybooks = app/cpy and module cpy/dcl members; jobs = every member of app/jcl and app/app-*/jcl; messages = every alphanumeric literal of length >= 8 MOVEd to WS-MESSAGE, WS-RETURN-MSG, ERRMSGO, or an *-MSG field, or declared as an 88-level VALUE of such a field, in CO*/CS* programs (fixed-format code area, comments dropped, continuation lines joined). A token counts as an ID reference only when its member part is a namespace some defined ID uses (so COBOL data names such as ERR-CODE-1 are not IDs). Passes when every owed item is present, there are zero duplicate definitions, zero dangling references, and each of the 44 programs appears in exactly one bounded context in components.md. Report present/owed per category and list missing items."
+    },
+    {
+      "id": "spec-fidelity-review",
+      "group": "Specification",
+      "summary": "An independent review finds the spec accurate and complete against the COBOL.",
+      "description": "A reviewer who did not write the spec has audited it against the COBOL with no unresolved omissions or inaccuracies: full branch audit of the high-risk programs and a sampled accuracy audit of the rest.",
+      "about": "spec",
+      "kind": "review",
+      "how": "A fresh reviewer reads [[cobol-source]] and the spec. Full audit for COSGN00C, COUSR02C, COACTUPC, COCRDUPC, COTRN02C, COBIL00C, CORPT00C, CBTRN02C, CBACT04C, CBTRN03C, CBSTM03A, COPAUA0C, CBPAUP0C, COTRTUPC: enumerate every IF/EVALUATE WHEN/file-status or SQLCODE branch in the PROCEDURE DIVISION and confirm each one that changes data, output, a message, or navigation maps to a BR/VR/NAV/ERR rule with correct condition, effect, and verbatim message. For every other program in docs/INVENTORY.md, check at least 25% of its rules (chosen by the reviewer, covering every rule type present) for accuracy and scan for omitted branches. A sampled program in which any spec defect is found (by this review or later work) is then audited in full by the same branch-enumeration method. Findings: missing branch, wrong condition or effect, wrong message text, wrong citation. Each finding is resolved by correcting the spec (and any ledger row, test, or code that relied on it) and re-checked. Stops when all listed programs, and every escalated program, are audited; met when no finding is unresolved. Record per-program branches audited and findings."
+    },
+    {
+      "id": "ledger-complete",
+      "group": "Specification",
+      "summary": "Every spec quirk has exactly one valid ledger decision with a testable target.",
+      "description": "Each Q- ID defined in the spec has exactly one ledger row with a valid decision; every FIX/CHANGE row states a testable target behavior; every FIX/CHANGE affecting a GnuCOBOL-runnable batch program has a reference patch or a stated derivation of its expected output.",
+      "about": "decisions",
+      "kind": "verification",
+      "how": "Run `python3 modernization/verification/ledger_check.py` against [[spec]]. Owed set: every bold Q- ID defined in spec/*.md and spec/programs/*.md. Passes when owed and ledger IDs are equal sets, each decision is one of FIX/PRESERVE/CHANGE/PLATFORM/NOT-PORTED, no FIX/CHANGE row has an empty target behavior, and every FIX/CHANGE row for CBACT02C, CBACT03C, CBCUS01C, CBTRN01C, CBTRN02C, CBACT04C, CBTRN03C, CBSTM03A, CBSTM03B, CBEXPORT, CBIMPORT names an RP- patch that exists as a patch file in [[harness]] or a derivation. Report counts and list mismatches."
+    },
+    {
+      "id": "reference-harness-qualified",
+      "group": "Verification instruments",
+      "summary": "The GnuCOBOL reference runner and comparator give trustworthy verdicts.",
+      "description": "The reference runner reproduces known outcomes of the unmodified COBOL, applies patches only to temporary copies, and the comparator reports injected differences and missing outputs instead of passing them.",
+      "about": "harness",
+      "kind": "verification",
+      "how": "Using the harness README: (1) run unpatched CBTRN02C on the sample data with -fsign=EBCDIC; expect RC 4, 'TRANSACTIONS PROCESSED :000000300' (or the processed count shown by the program) and 38 rejects all reason 102 (A-6 in [[contract]]); also run without -fsign=EBCDIC and expect 43, demonstrating the sign semantics are actually in effect. (2) Run unpatched CBACT02C/CBACT03C/CBCUS01C and confirm record counts equal sample-file record counts. (3) Apply every RP- patch from [[decisions]]; each applies cleanly to a temp copy and `git status --porcelain -- app/` stays empty. (4) Comparator mutation test: for a reference output pair, flip one byte, drop one record, add one trailing record, rename one output file, and remove one table row; the comparator must report a failure naming the file/record for each, and pass on the unmodified pair. Passes when all four hold."
+    },
+    {
+      "id": "dataset-coverage-review",
+      "group": "Verification instruments",
+      "summary": "Differential datasets exercise every batch rule and error branch that can run.",
+      "description": "The differential datasets (sample data plus generated edge datasets) exercise every BR- and ERR- rule of the GnuCOBOL-runnable batch programs, so batch parity is not limited to the sample data's happy paths.",
+      "about": "harness",
+      "kind": "review",
+      "how": "A reviewer who did not build the datasets lists every BR- and ERR- ID in [[spec]] programs/CBACT02C, CBACT03C, CBCUS01C, CBTRN01C, CBTRN02C, CBACT04C, CBTRN03C, CBSTM03A, CBSTM03B, CBEXPORT, CBIMPORT and jobs.md JOB-COMBTRAN (owed set). For each, find in datasets.md the dataset and record(s) that trigger it, and confirm by running the reference on that dataset that the rule's effect is visible in the output (abend-only ERR paths that GnuCOBOL cannot reproduce must be listed as such, with the spec-derived Java test that covers them). Findings: owed ID not exercised, exercised only vacuously, or dataset not deterministic. Resolve by adding records/datasets and re-running. Met when every owed ID is exercised or listed as non-reproducible with its covering test."
+    },
+    {
+      "id": "data-roundtrip",
+      "group": "Data",
+      "summary": "All sample data loads into SQL Server and exports back byte for byte.",
+      "description": "Migrations create the schema on an empty database; the loader loads every owed sample file with correct sign, packed, and binary decoding; the exporter writes each table back in the source layout identical to the source after documented normalizations.",
+      "about": "backend",
+      "kind": "verification",
+      "how": "On an empty database carddemo_test: run Flyway migrate, then the loader for every owed file: all files in app/data/ASCII, the Db2 seed data in app/app-transaction-type-db2 (ctl/ and ddl inserts), and the IMS authorization sample data in app/app-authorization-ims-db2-mq/data (from [[cobol-source]]). Check row count per table = record count per file. Run the exporter per table and byte-compare with the source file after only these normalizations: line endings to LF, records right-padded to the record length. Also assert decoded spot values documented in [[spec]] entities.md (e.g. overpunch examples) load as the stated decimal values. Passes when every owed file loads, every count matches, and every export is identical; report per-file results."
+    },
+    {
+      "id": "batch-parity",
+      "group": "Batch",
+      "summary": "Java batch outputs match the patched GnuCOBOL reference on every dataset.",
+      "description": "For every GnuCOBOL-runnable batch program and every differential dataset, the Java job's output files, return code, job-log counts, and resulting table contents equal the reference run of the COBOL with the ledger's reference patches.",
+      "about": "backend",
+      "kind": "verification",
+      "how": "Run `make -C modernization verify-batch` from [[harness]]: for each program in {CBACT02C, CBACT03C, CBCUS01C, CBTRN01C, CBTRN02C, CBACT04C, CBTRN03C, CBSTM03A+CBSTM03B, CBEXPORT, CBIMPORT} x each dataset in datasets.md, build the reference with RP- patches from [[decisions]], run it, load the same dataset into a fresh carddemo_test, run the Java job, export tables, and compare with the comparator. Owed pairs = program x dataset as listed in datasets.md, fixed before running. Passes when every owed pair executes and matches exactly; report matched/owed and list failing, skipped, or missing pairs."
+    },
+    {
+      "id": "rule-traceability",
+      "group": "Behavior",
+      "summary": "Every owed rule, scenario, and approved fix maps to a passing automated test.",
+      "description": "Every BR/VR/NAV/ERR rule and TS scenario of all 44 programs, and every FIX/CHANGE ledger row, is covered by at least one passing automated test (unit, API, batch, or browser), or by the ledger's PLATFORM/NOT-PORTED decision with its modern equivalent tested.",
+      "about": "traceability",
+      "kind": "verification",
+      "how": "Run the full backend test suite (`mvn -f modernization/backend verify`), the Playwright suite in [[web]] (JUnit XML in e2e/test-results/junit.xml), and `make -C modernization verify-batch` (results.json), then `python3 modernization/verification/trace.py --batch-results <results.json>` from [[harness]]. It derives the owed set from [[spec]] (all bold BR-/VR-/NAV-/ERR-/TS- IDs in programs/*.md and jobs.md) and [[decisions]] (Q- rows with decision FIX or CHANGE); evidence is @Covers tags on Java tests joined with surefire XML by class and method, IDs in Playwright and other name-tagged JUnit test titles, and MATCH batch-parity pairs for the IDs in their datasets.md 'Rules exercised' cell. An owed rule may instead be resolved in verification/trace-exclusions.md by a ledger row: PLATFORM (its Q- ID, the modern equivalent, must itself be covered by a passing test), NOT-PORTED (dead code, nothing observable to test), or a C-/B- convention (which must be covered). Passes when every owed ID is covered or resolved, no test failed, no tagged test was skipped or tagged-but-not-run; report covered/owed by ID type and program, list uncovered IDs and untagged skipped tests."
+    },
+    {
+      "id": "test-quality-review",
+      "group": "Behavior",
+      "summary": "A review confirms tagged tests assert what their rules say.",
+      "description": "An independent review of a sample of rule-tagged tests finds that they assert the rule's condition and effect (including verbatim messages and data changes) rather than just running code under the tag.",
+      "about": "backend",
+      "kind": "review",
+      "how": "A reviewer who did not write the tests picks at least 10% of tagged tests per bounded context (minimum 5 per context, all tests for COACTUPC, COBIL00C, COTRN02C, COPAUA0C rules), reads each test with its rule in [[spec]] and ledger row in [[decisions]], and checks that inputs trigger the rule's condition and assertions check its effect. Also tests [[web]] browser tests the same way. Findings: tag on a test that does not exercise the rule, missing assertion of message text or data change, assertion of current behavior contradicting the spec. Resolve by fixing tests (and code if the corrected test fails). Met when the sample is reviewed and no finding is unresolved; record sample and findings."
+    },
+    {
+      "id": "security-matrix",
+      "group": "Security",
+      "summary": "Every API endpoint enforces roles and account scoping, and never leaks secrets.",
+      "description": "For every endpoint in the OpenAPI description: unauthenticated calls are rejected; admin-only endpoints reject regular users; account-scoped endpoints return the not-found response for accounts not linked to the regular user and succeed for linked ones; no response contains a password or hash; displayed card numbers and SSNs are masked. Sign-on failures show one generic message, 5 consecutive failures lock the ID for 15 minutes, sessions expire after 15 idle minutes, and sign-ons and user/account/card changes are written to the audit log (D-SEC-EXTRAS).",
+      "about": "backend",
+      "kind": "verification",
+      "how": "Run the security matrix test in [[backend]] that reads the generated OpenAPI document at test time to enumerate endpoints (owed set = every operation in the document) and calls each as anonymous, USER0001 (with a linked and an unlinked account), and ADMIN001. Expected outcomes per category come from [[contract]] P-SEC, A-1, A-2 and [[decisions]] D-AUTH, D-USER-ACCT. Every response body is scanned for the sample passwords, BCrypt prefixes, unmasked 16-digit card numbers and 9-digit SSNs. Separately, test D-SEC-EXTRAS: unknown user and wrong password give the identical message; the 6th attempt after 5 failures is refused even with the right password and succeeds after the lock window (clock injected); a session idle past 15 minutes (clock injected) is rejected; each sign-on and each user, account, and card change produces one audit row with actor, action, target, and time and no secret values. Passes when every operation is exercised under all roles with the expected outcome and no leak is found; report operations covered/owed."
+    },
+    {
+      "id": "module-boundaries",
+      "group": "Architecture",
+      "summary": "Bounded contexts are isolated modules and bill payment runs alone.",
+      "description": "Each bounded context of spec/components.md is its own Maven module that depends on other contexts only through their published API packages, and the bill-payment context builds, starts, and passes its tests as a standalone microservice.",
+      "about": "backend",
+      "kind": "verification",
+      "how": "Run the architecture test (ArchUnit or Spring Modulith verification) in [[backend]]: owed contexts are the bounded contexts listed in [[spec]] components.md section 3; each must map to a module and the test must report zero violations. Then build only billpay-service with its dependencies (`mvn -pl billpay-service -am verify`), start it alone against carddemo_test, and run its API tests against it (pay a positive balance, reject zero balance, account not found, out-of-scope account). Passes when every owed context maps to a module, the architecture test passes, and the standalone service passes its tests."
+    },
+    {
+      "id": "schedule-cycle",
+      "group": "Scheduling",
+      "summary": "Airflow runs the daily cycle and report DAGs to the reference end state.",
+      "description": "All DAGs import cleanly; a daily-cycle run and a month-start cycle run on a fresh load end with every task successful and the same tables and output files as the patched GnuCOBOL reference chain on the same data; a report requested from the web app runs the report DAG and its file equals the reference report for that range and scope.",
+      "about": "airflow",
+      "kind": "verification",
+      "how": "Start Airflow per [[airflow]] scripts with the API running. `airflow dags list-import-errors` prints none; owed DAGs (carddemo_daily_cycle, carddemo_transaction_report, carddemo_auth_purge, carddemo_trantype_maintenance) are listed. (a) Daily run: load the sample data fresh, trigger carddemo_daily_cycle for a business date that is not the first business day of a month; reference chain = POSTTRAN then CREASTMT. (b) Month-start run: fresh load, trigger for the first business day of a month; reference chain = POSTTRAN, INTCALC (PARM date = that business date), COMBTRAN sort, CREASTMT. For each, run the reference chain with [[harness]] on the same data and compare end-state tables (transactions compared with the reference's final TRANSACT, accounts, category balances) and all output files (rejects, statements text and HTML) exactly, per [[contract]] P-SCHED and [[decisions]] D-INTEREST, D-HISTORY. (c) In the browser, request a custom-range report as ADMIN001 and as USER0001; each run completes and its downloaded file equals the reference CBTRN03C output on the same range (for USER0001, on input filtered to linked accounts per D-REPORT). Passes when all hold."
+    },
+    {
+      "id": "mq-roundtrip",
+      "group": "Messaging",
+      "summary": "Authorization and inquiry work over RabbitMQ request/reply and REST.",
+      "description": "Requests published to the authorization, account-inquiry, and date-inquiry queues get correlated replies on the reply-to queue with the spec's decisions and formats (as adjusted by the ledger); the REST endpoints return the same results; malformed messages do not block the queue.",
+      "about": "backend",
+      "kind": "verification",
+      "how": "With RabbitMQ and the API running, run the messaging test suite in [[backend]]: for each TS- scenario of COPAUA0C, COACCT01, and CODATE01 in [[spec]], publish the request with a fresh message id and a temporary reply-to queue, assert the reply's correlation id equals the request message id and its body matches the scenario's expected result per [[decisions]]; call the REST equivalent and assert the same result; publish an oversized request to each inquiry queue and assert the reply the ledger requires (Q-COACCT01-08: invalid-request reply; Q-CODATE01-07: normal date reply); publish a request whose processing fails on every delivery and assert it reaches the dead-letter queue after 3 deliveries (Q-COACCT01-08, Q-CODATE01-07, Q-COPAUA0C-06) and that a following valid request is still answered. Passes when every scenario passes on both transports and every poison-handling case behaves as stated."
+    },
+    {
+      "id": "ui-accessibility",
+      "group": "User interface",
+      "summary": "Every screen passes automated accessibility checks and full keyboard operation.",
+      "description": "Every route in the web app has zero serious or critical axe-core violations and can be completed with the keyboard alone, including its F-key shortcuts.",
+      "about": "web",
+      "kind": "verification",
+      "how": "Run the Playwright accessibility suite in [[web]]: owed routes = one per BMS map in [[cobol-source]] app/bms and module bms directories (21), each in its initial, validation-error, and populated states. Run axe-core and fail on serious/critical violations; complete each screen's primary flow with keyboard only and press each F-key in its NAV rules. Passes when all owed route-states are checked with no violation and every flow completes."
+    },
+    {
+      "id": "ui-look-approved",
+      "group": "User interface",
+      "summary": "The user approves the look and interaction style of the prototype.",
+      "description": "The user has accepted the prototype's look and interaction style (layout, palette, type, message bar, F-key bar) as the standard for all screens.",
+      "about": "ui-prototype",
+      "kind": "decision",
+      "how": "Present the prototype screenshots and index.html path with a summary of what is simulated. Resolved when the user approves or gives changes that are then applied and approved; record the response."
+    },
+    {
+      "id": "ui-review",
+      "group": "User interface",
+      "summary": "A visual review finds every screen consistent with the approved prototype.",
+      "description": "A reviewer who did not build the screens finds every screen state consistent with the approved prototype's look and with the spec's fields, labels, and messages, with no layout defects.",
+      "about": "web",
+      "kind": "review",
+      "how": "Capture screenshots of all 21 routes in initial, error, populated, and (where applicable) paging/confirm states. The reviewer compares each with [[ui-prototype]] (style) and the screen section of the matching [[spec]] program file (fields, labels, messages, key legend). Findings: missing or extra field, wrong label/message text, misalignment, truncation, contrast or focus problems, inconsistency between screens. Resolve by fixing and re-capturing. Met when all routes are reviewed with no unresolved finding."
+    },
+    {
+      "id": "exploratory-review",
+      "group": "Behavior",
+      "summary": "Exploration beyond the fixed tests finds no unresolved divergence from the spec.",
+      "description": "A reviewer who did not implement the system exercises online flows and APIs with fresh inputs and finds no unresolved divergence from the spec as adjusted by the ledger.",
+      "about": "system",
+      "kind": "review",
+      "how": "Using the running stack, the reviewer explores for each bounded context: boundary and invalid inputs on every validated field (lengths, signs, dates incl. leap years and century limits, lower/upper case), paging edges (first/last page, exactly 7/10 rows, empty results), selection errors, two concurrent sessions editing the same account or card (expect the spec's changed-by-someone-else message), duplicate submissions of bill payment and transaction add, and the role/scope rules. Expected outcomes come from [[spec]] and [[decisions]]. Any divergence is a finding and becomes a regression test once fixed. Record inputs, observations, and areas explored. Met when each area has been explored for every context and all findings are resolved with their regression tests passing."
+    },
+    {
+      "id": "run-from-scratch",
+      "group": "Operations",
+      "summary": "The documented commands build and start the stack from a clean state.",
+      "description": "Following README instructions on a dropped database and clean build directories builds everything, migrates, loads, starts the services, and passes a smoke flow; existing repository checks still pass; no secret is committed.",
+      "about": "system",
+      "kind": "verification",
+      "how": "Drop and recreate carddemo, remove build outputs (backend target/, web dist/ and node_modules/), then run exactly the commands in modernization/README.md. Expect: build succeeds, migrations and loader succeed, API health UP on 8081, web on 5173, Airflow on 8080 lists the owed DAGs, RabbitMQ queues declared. Run the smoke e2e (sign on as USER0001, view a linked account, make a bill payment, sign on as ADMIN001, list users). Then run `make check` at the repository root and scan `git ls-files` content for the secrets in ~/.carddemo/secrets.env and for credential patterns. Passes when every step succeeds and no secret is found."
+    }
+  ]
+}

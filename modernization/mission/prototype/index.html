@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CardDemo – UI prototype</title>
+<style>
+:root{
+  --bg:#f4f5f7; --surface:#ffffff; --surface-2:#f8f9fb; --border:#e3e6eb; --border-strong:#c9ced7;
+  --text:#161a20; --muted:#5a6271; --subtle:#868d9a;
+  --accent:#1d5fd1; --accent-hover:#164fb3; --accent-soft:#eaf1fd;
+  --focus-ring:0 0 0 3px rgba(29,95,209,.32);
+  --error:#b42318; --error-soft:#fef3f2; --error-border:#f9c8c3;
+  --success:#067647; --success-soft:#ecfdf3; --success-border:#abefc6;
+  --radius:10px;
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:15px/1.5 var(--font);color:var(--text);background:var(--bg);display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.skip{position:absolute;left:-999px;top:8px;background:var(--surface);padding:8px 12px;border-radius:6px;z-index:10}
+.skip:focus{left:8px;box-shadow:var(--focus-ring)}
+
+/* Header */
+.app-header{flex:none;height:56px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 28px;gap:16px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:30px;height:21px;border-radius:5px;background:linear-gradient(135deg,var(--accent) 0%,#4d86e8 100%);position:relative}
+.brand-mark::after{content:"";position:absolute;left:5px;top:6px;width:7px;height:5px;border-radius:1.5px;background:rgba(255,255,255,.75)}
+.brand-name{font-weight:650;font-size:16px;letter-spacing:-.01em}
+.brand-sub{color:var(--muted);font-size:13px;padding-left:12px;border-left:1px solid var(--border)}
+.header-meta{margin-left:auto;display:flex;align-items:center;gap:22px;font-size:13px;color:var(--muted)}
+.tran{font-family:var(--mono);font-size:12px;color:var(--subtle);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:2px 10px}
+.user{display:flex;align-items:center;gap:8px;color:var(--text)}
+.avatar{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:700}
+.role{font-size:11px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:0 5px}
+.clock{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:12.5px}
+
+/* Main */
+main{flex:1;overflow:auto;padding:22px 28px 28px}
+.page{max-width:980px;margin:0 auto}
+.page.wide{max-width:1160px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:16px}
+h1{font-size:22px;line-height:1.3;font-weight:650;letter-spacing:-.015em;margin:0}
+.lede{color:var(--muted);margin:4px 0 0;font-size:14px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px}
+.panel + .panel{margin-top:16px}
+.section-label{font-size:12px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+.divider{height:1px;background:var(--border);margin:20px 0;border:0}
+.info-line{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.info-line::before{content:"i";width:16px;height:16px;border-radius:50%;border:1.5px solid var(--subtle);color:var(--subtle);font:700 10px/13px var(--font);text-align:center;flex:none}
+
+/* Fields */
+.row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px}
+.field > label{font-size:13px;font-weight:600}
+.hint{font-size:12px;color:var(--muted)}
+.input{font:15px/1 var(--mono);font-variant-numeric:tabular-nums;height:40px;padding:0 12px;border:1px solid var(--border-strong);border-radius:7px;background:#fff;color:var(--text);width:100%;transition:border-color .12s,box-shadow .12s}
+.input::placeholder{color:#a8aeb9}
+.input:hover{border-color:#aeb5c1}
+.input:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus-ring)}
+.input[aria-invalid="true"]{border-color:var(--error);background:#fffafa}
+.input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(180,35,24,.22)}
+.input:disabled{background:var(--surface-2);color:var(--subtle);cursor:not-allowed}
+.field-error{font-size:12.5px;color:var(--error);display:flex;align-items:flex-start;gap:6px;white-space:pre-wrap}
+.field-error::before{content:"!";flex:none;width:15px;height:15px;margin-top:1px;border-radius:50%;background:var(--error);color:#fff;font:700 10px/15px var(--font);text-align:center}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:7px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:600 14px var(--font);cursor:pointer;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn:focus-visible{outline:none;box-shadow:var(--focus-ring);border-color:var(--accent)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-sm{height:30px;padding:0 10px;font-size:13px;border-radius:6px}
+.btn kbd{font:600 10.5px var(--mono);opacity:.75}
+.btn-link{border:0;background:none;color:var(--accent);padding:0 6px;height:30px}
+.btn-link:hover{background:var(--accent-soft)}
+
+/* Footer: message bar + key bar */
+.app-footer{flex:none;background:var(--surface);border-top:1px solid var(--border)}
+.msgbar{min-height:46px;display:flex;align-items:center;gap:10px;padding:10px 28px;font-size:14px;white-space:pre-wrap;border-bottom:1px solid var(--border)}
+.msgbar:empty::before{content:"No messages";color:#b3b8c2;font-size:13px}
+.msgbar .icon{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 11px var(--font)}
+.msgbar.error{background:var(--error-soft);color:var(--error);border-bottom-color:var(--error-border)}
+.msgbar.error .icon{background:var(--error)}
+.msgbar.success{background:var(--success-soft);color:var(--success);border-bottom-color:var(--success-border)}
+.msgbar.success .icon{background:var(--success)}
+.msgbar.info{background:var(--surface-2);color:var(--text)}
+.msgbar.info .icon{background:var(--subtle)}
+.msgbar .msg-text{font-weight:550}
+.msgbar .msg-src{margin-left:auto;font:12px var(--mono);opacity:.6}
+.keybar{display:flex;align-items:center;gap:8px;padding:10px 28px 12px}
+.key{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 13px 0 6px;border:1px solid var(--border);border-radius:7px;background:var(--surface);font:500 13.5px var(--font);color:var(--text);cursor:pointer;transition:background .1s,transform .06s}
+.key:hover{background:var(--surface-2);border-color:var(--border-strong)}
+.key:focus-visible{outline:none;box-shadow:var(--focus-ring);border-color:var(--accent)}
+.key kbd{font:650 11.5px var(--mono);background:var(--surface-2);border:1px solid var(--border-strong);border-bottom-width:2px;border-radius:5px;padding:2px 7px;min-width:34px;text-align:center;color:var(--text)}
+.key.primary kbd{background:var(--accent);border-color:var(--accent-hover);color:#fff}
+.key.pressed{transform:translateY(1px);background:var(--accent-soft);border-color:var(--accent)}
+.proto-label{margin-left:auto;font-size:12px;color:var(--subtle);display:flex;align-items:center;gap:8px}
+.proto-label::before{content:"";width:7px;height:7px;border-radius:50%;background:#e2a33b}
+
+/* Sign-on */
+.signon{display:grid;grid-template-columns:1fr 420px;gap:0;max-width:900px;margin:12px auto 0;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.signon-art{background:linear-gradient(160deg,#f1f5fd 0%,#e4ecfb 100%);padding:40px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--border)}
+.signon-art h2{font-size:15px;font-weight:600;margin:0;color:var(--muted)}
+.signon-art p{margin:6px 0 0;font-size:20px;font-weight:650;letter-spacing:-.02em;line-height:1.25;max-width:320px}
+.cc{width:300px;height:184px;border-radius:16px;background:linear-gradient(135deg,#1d5fd1 0%,#3f7be6 55%,#6b9cf0 100%);color:#fff;padding:22px 24px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 18px 40px -18px rgba(29,95,209,.6);align-self:center}
+.cc .chip{width:40px;height:30px;border-radius:6px;background:linear-gradient(135deg,#f5d77a,#d9b44a)}
+.cc .num{font:500 17px var(--mono);letter-spacing:.12em}
+.cc .meta{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.signon-form{padding:40px 40px 36px;display:flex;flex-direction:column;gap:18px}
+.signon-form h1{margin-bottom:-8px}
+.demo-note{font-size:12px;color:var(--muted);background:var(--surface-2);border:1px dashed var(--border-strong);border-radius:7px;padding:8px 10px}
+
+/* Menu */
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin:0;padding:0;list-style:none}
+.opt{width:100%;display:flex;align-items:center;gap:14px;height:46px;padding:0 14px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font:500 14.5px var(--font);color:var(--text);cursor:pointer;text-align:left}
+.opt:hover{border-color:var(--accent);background:var(--accent-soft)}
+.opt:focus-visible{outline:none;box-shadow:var(--focus-ring);border-color:var(--accent)}
+.opt-num{font:600 12.5px var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:2px 6px}
+.opt-code{margin-left:auto;font:12px var(--mono);color:var(--subtle)}
+.select-row{display:flex;align-items:flex-end;gap:12px;margin-top:22px;padding-top:20px;border-top:1px solid var(--border)}
+
+/* Data display */
+.kv{display:grid;gap:13px 24px;margin:0}
+.kv div{min-width:0}
+.kv dt{font-size:12px;color:var(--muted);margin-bottom:2px}
+.kv dd{margin:0;font-size:14.5px;font-weight:500;overflow-wrap:anywhere}
+.kv dd.empty{color:#b3b8c2}
+.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.span-2{grid-column:span 2}
+.span-3{grid-column:span 3}
+.amounts{width:100%;border-collapse:collapse;font-size:14.5px}
+.amounts th{text-align:left;font-weight:400;color:var(--muted);font-size:13.5px;padding:7px 0;border-top:1px solid var(--border)}
+.amounts td{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;padding:7px 0;border-top:1px solid var(--border);font-weight:500}
+.amounts tr.strong th{color:var(--text);font-weight:600}
+.amounts tr.strong td{font-weight:650}
+.grid-2{display:grid;grid-template-columns:4fr 7fr;gap:16px;margin-top:14px}
+.grid-2 .panel + .panel{margin-top:0}
+.pill{display:inline-flex;align-items:center;gap:6px;font:600 12px var(--font);padding:2px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
+.pill.yes{background:var(--success-soft);border-color:var(--success-border);color:var(--success)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.search-bar{display:flex;align-items:flex-start;gap:12px}
+.search-bar > .btn{margin-top:25.5px}
+.search-bar .info-line{margin-top:35px;margin-left:8px}
+.panel.compact{padding:16px 24px}
+
+/* Card list */
+.page-no{font-size:13px;color:var(--muted)}
+.page-no strong{font-family:var(--mono);color:var(--text)}
+table.list{width:100%;border-collapse:separate;border-spacing:0;font-size:14.5px}
+table.list th{text-align:left;font-size:12px;font-weight:650;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 14px;background:var(--surface-2);border-bottom:1px solid var(--border)}
+table.list td{padding:5px 14px;border-bottom:1px solid var(--border);height:45px}
+table.list tbody tr:last-child td{border-bottom:0}
+table.list tbody tr:hover td{background:#fbfcfe}
+table.list tr.err td{background:var(--error-soft)}
+.list-wrap{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--surface);margin-top:14px}
+.sel{width:44px;text-align:center;text-transform:uppercase;padding:0;height:34px}
+.field .sel{height:40px}
+.actions{display:flex;gap:4px;justify-content:flex-end}
+.list-foot{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid var(--border);background:var(--surface-2)}
+.empty-row td{color:#c0c5cd}
+
+/* Bill pay */
+.balance{display:flex;align-items:baseline;gap:12px}
+.balance .amt{font:600 30px var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.balance .amt.none{color:#c0c5cd}
+.receipt{display:flex;align-items:center;gap:16px;margin-top:16px;padding:14px 18px;border-radius:var(--radius);border:1px solid var(--success-border);background:var(--success-soft)}
+.receipt .tick{width:30px;height:30px;border-radius:50%;background:var(--success);color:#fff;display:grid;place-items:center;font-weight:700;flex:none}
+.receipt dl{display:flex;gap:32px;margin:0}
+.receipt dt{font-size:12px;color:var(--success)}
+.receipt dd{margin:0;font:600 14px var(--mono)}
+.thanks{max-width:560px;margin:80px auto 0;text-align:center}
+.stub-tag{font:600 11px var(--font);letter-spacing:.06em;text-transform:uppercase;color:#9a6512;background:#fdf3e1;border:1px solid #f3dcae;border-radius:4px;padding:2px 7px}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="app-header" role="banner">
+  <div class="brand"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name">CardDemo</span><span class="brand-sub">AWS Mainframe Modernization</span></div>
+  <div class="header-meta">
+    <span class="tran" id="hdr-tran" title="Transaction · Program"></span>
+    <span class="user" id="hdr-user"></span>
+    <span class="clock" id="hdr-clock" aria-label="Date and time"></span>
+  </div>
+</header>
+<main id="main" tabindex="-1"></main>
+<footer class="app-footer">
+  <div class="msgbar" id="msgbar" role="status" aria-live="polite"></div>
+  <nav class="keybar" id="keybar" aria-label="Function keys"></nav>
+</footer>
+<script>
+(function(){
+"use strict";
+
+/* ---------- Simulated data (synthetic) ---------- */
+var USERS = {
+  USER0001:{pwd:"PASSWORD", type:"U", accounts:["00000000001","00000000002","00000000003","00000000004"]},
+  ADMIN001:{pwd:"PASSWORD", type:"A", accounts:[]}
+};
+var CUSTOMER = {
+  id:"000000001", ssn:"518224821", dob:"1979-04-12", fico:"712",
+  first:"Morgan", middle:"Lee", last:"Castellano",
+  addr1:"418 Harbor View Road", addr2:"Apt. 12", city:"Fairhaven", state:"NC", zip:"27514", country:"USA",
+  phone1:"(919)555-0142", phone2:"(919)555-0187", govt:"D19840417731", eft:"0081234567", primary:"Y"
+};
+var ACCOUNTS = {
+  "00000000001":{active:"Y",opened:"2014-11-20",expiry:"2027-05-20",reissue:"2025-05-20",group:"A000000000",limit:2020,cash:1020,bal:194,cycCr:0,cycDb:0},
+  "00000000002":{active:"Y",opened:"2013-06-19",expiry:"2026-08-11",reissue:"2024-08-11",group:"A000000000",limit:6130,cash:5448,bal:1580,cycCr:0,cycDb:0},
+  "00000000003":{active:"Y",opened:"2013-08-23",expiry:"2026-01-10",reissue:"2024-01-10",group:"A000000000",limit:4909,cash:538,bal:1470,cycCr:0,cycDb:0},
+  "00000000004":{active:"N",opened:"2012-11-17",expiry:"2025-12-16",reissue:"2023-12-16",group:"A000000000",limit:3503,cash:2789,bal:0,cycCr:0,cycDb:0}
+};
+var CARDS = [
+  {acct:"00000000001",num:"4000110022331234",active:"Y",name:"MORGAN L CASTELLANO",exp:"2027-03-31"},
+  {acct:"00000000001",num:"4000110022335521",active:"Y",name:"JAMIE CASTELLANO",exp:"2026-11-30"},
+  {acct:"00000000001",num:"4000110022338806",active:"N",name:"MORGAN L CASTELLANO",exp:"2024-02-29"},
+  {acct:"00000000002",num:"4000220033440417",active:"Y",name:"MORGAN L CASTELLANO",exp:"2026-08-31"},
+  {acct:"00000000002",num:"4000220033442290",active:"Y",name:"JAMIE CASTELLANO",exp:"2027-01-31"},
+  {acct:"00000000002",num:"4000220033447063",active:"Y",name:"RILEY CASTELLANO",exp:"2025-10-31"},
+  {acct:"00000000003",num:"4000330044551188",active:"Y",name:"MORGAN L CASTELLANO",exp:"2026-01-31"},
+  {acct:"00000000003",num:"4000330044559342",active:"N",name:"MORGAN L CASTELLANO",exp:"2023-07-31"},
+  {acct:"00000000004",num:"4000440055660075",active:"Y",name:"MORGAN L CASTELLANO",exp:"2025-12-31"},
+  {acct:"00000000004",num:"4000440055666619",active:"Y",name:"JAMIE CASTELLANO",exp:"2025-12-31"}
+];
+var nextTranId = 996722788;
+var PAGE_SIZE = 7;
+
+var MENU = [
+  ["Account View","CAVW","COACTVWC"],["Account Update","CAUP","COACTUPC"],["Credit Card List","CCLI","COCRDLIC"],
+  ["Credit Card View","CCDL","COCRDSLC"],["Credit Card Update","CCUP","COCRDUPC"],["Transaction List","CT00","COTRN00C"],
+  ["Transaction View","CT01","COTRN01C"],["Transaction Add","CT02","COTRN02C"],["Transaction Reports","CR00","CORPT00C"],
+  ["Bill Payment","CB00","COBIL00C"],["Pending Authorization View","CPVS","COPAUS0C"]
+];
+
+/* Verbatim COBOL message texts (see modernization/spec/programs/*.md) */
+var M = {
+  INVALID_KEY:"Invalid key pressed. Please see below...",
+  THANK_YOU:"Thank you for using CardDemo application...",
+  SGN_NO_USER:"Please enter User ID ...", SGN_NO_PWD:"Please enter Password ...",
+  SGN_NOT_FOUND:"User not found. Try again ...", SGN_BAD_PWD:"Wrong Password. Try again ...",
+  MEN_BAD_OPT:"Please enter a valid option number...",
+  MEN_NOT_INSTALLED:"This option Pending Authorization View is not installed...",
+  ACV_NO_INPUT:"No input received", ACV_BAD:"Account Filter must  be a non-zero 11 digit number",
+  ACV_INFO:"Enter or update id of account to display",
+  CCL_ACCT:"ACCOUNT FILTER,IF SUPPLIED MUST BE A 11 DIGIT NUMBER",
+  CCL_CARD:"CARD ID FILTER,IF SUPPLIED MUST BE A 16 DIGIT NUMBER",
+  CCL_ONE:"PLEASE SELECT ONLY ONE RECORD TO VIEW OR UPDATE", CCL_CODE:"INVALID ACTION CODE",
+  CCL_INFO:"TYPE S FOR DETAIL, U TO UPDATE ANY RECORD",
+  CCL_NOPREV:"NO PREVIOUS PAGES TO DISPLAY", CCL_NOMORE_PAGES:"NO MORE PAGES TO DISPLAY",
+  CCL_NOMORE_REC:"NO MORE RECORDS TO SHOW", CCL_NONE:"NO RECORDS FOUND FOR THIS SEARCH CONDITION.",
+  CSL_INFO:"Displaying requested details",
+  BIL_EMPTY:"Acct ID can NOT be empty...", BIL_NOTFOUND:"Account ID NOT found...",
+  BIL_YN:"Invalid value. Valid values are (Y/N)...", BIL_CONFIRM:"Confirm to make a bill payment...",
+  BIL_NOTHING:"You have nothing to pay..."
+};
+
+var SCREENS = {
+  signon:{tran:"CC00",prog:"COSGN00C",keys:[["ENTER","Sign-on"],["F3","Exit"]]},
+  thanks:{tran:"CC00",prog:"COSGN00C",keys:[["ENTER","Sign on again"]]},
+  menu:{tran:"CM00",prog:"COMEN01C",keys:[["ENTER","Continue"],["F3","Exit"]]},
+  acct:{tran:"CAVW",prog:"COACTVWC",keys:[["ENTER","View"],["F3","Exit"]]},
+  cards:{tran:"CCLI",prog:"COCRDLIC",keys:[["ENTER","Continue"],["F3","Exit"],["F7","Backward"],["F8","Forward"]]},
+  card:{tran:"CCDL",prog:"COCRDSLC",keys:[["ENTER","Search Cards"],["F3","Exit"]]},
+  bill:{tran:"CB00",prog:"COBIL00C",keys:[["ENTER","Continue"],["F3","Back"],["F4","Clear"]]}
+};
+
+/* ---------- State ---------- */
+var st = {screen:"signon", user:null, f:{}, err:{}, msg:null, focus:null};
+
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+function maskCard(n){return "************"+n.slice(-4);}
+function maskSsn(s){return "***-**-"+s.slice(-4);}
+function maskId(s){return "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"+s.slice(-4);}
+function money(n){return (n<0?"-":"")+"$"+Math.abs(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});}
+function pad2(n){return (n<10?"0":"")+n;}
+function setMsg(text,kind){st.msg=text?{text:text,kind:kind||"error"}:null;}
+function userAccounts(){return st.user?USERS[st.user].accounts:[];}
+
+function go(screen){
+  st.screen=screen; st.f={}; st.err={}; st.msg=null; st.focus=null;
+  if(screen==="cards"){st.page=1; st.applied={acct:"",card:""}; st.lastShown=false; st.selErr={};}
+  if(screen==="acct"){st.acctShown=null;}
+  if(screen==="bill"){st.balance=null; st.receipt=null;}
+  render();
+}
+
+/* ---------- Field helper ---------- */
+function field(o){
+  var id=o.id, err=st.err[id], v=st.f[id]==null?"":st.f[id];
+  var desc=[]; if(o.hint) desc.push(id+"-hint"); if(err) desc.push(id+"-err");
+  return '<div class="field" style="'+(o.width?"width:"+o.width:"")+'">'+
+    '<label for="'+id+'">'+esc(o.label)+'</label>'+
+    '<input class="input'+(o.cls?" "+o.cls:"")+'" id="'+id+'" name="'+id+'" type="'+(o.type||"text")+'" value="'+esc(v)+'"'+
+      (o.max?' maxlength="'+o.max+'"':'')+(o.inputmode?' inputmode="'+o.inputmode+'"':'')+(o.placeholder?' placeholder="'+esc(o.placeholder)+'"':'')+
+      ' autocomplete="'+(o.autocomplete||"off")+'" spellcheck="false"'+(err?' aria-invalid="true"':'')+(desc.length?' aria-describedby="'+desc.join(" ")+'"':'')+(o.upper?' data-upper="1"':'')+'>'+
+    (o.hint&&!err?'<span class="hint" id="'+id+'-hint">'+esc(o.hint)+'</span>':'')+
+    (o.hint&&err?'<span class="sr-only" id="'+id+'-hint">'+esc(o.hint)+'</span>':'')+
+    (err?'<span class="field-error" id="'+id+'-err">'+esc(err)+'</span>':'')+
+  '</div>';
+}
+
+/* ---------- Screens ---------- */
+var R = {};
+R.signon=function(){
+  return '<div class="signon">'+
+    '<div class="signon-art" aria-hidden="true"><div><h2>CardDemo</h2><p>This is a Credit Card Demo Application for Mainframe Modernization</p></div>'+
+      '<div class="cc"><div class="chip"></div><div class="num">\u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 \u2022\u2022\u2022\u2022 1234</div><div class="meta"><span>CardDemo</span><span>12/27</span></div></div><div></div></div>'+
+    '<form class="signon-form" id="form" novalidate aria-labelledby="t">'+
+      '<div><h1 id="t">Sign on</h1><p class="lede">Type your User ID and Password, then press ENTER.</p></div>'+
+      field({id:"userid",label:"User ID",max:8,hint:"Up to 8 characters",upper:true,autocomplete:"username"})+
+      field({id:"passwd",label:"Password",max:8,type:"password",hint:"Up to 8 characters",autocomplete:"current-password"})+
+      '<button class="btn btn-primary" type="submit">Sign on <kbd>ENTER</kbd></button>'+
+      '<div class="demo-note">Prototype sign-on: <span class="mono">USER0001</span> / <span class="mono">PASSWORD</span></div>'+
+    '</form></div>';
+};
+R.thanks=function(){
+  return '<form id="form" class="thanks panel" novalidate><h1>Signed off</h1><p class="lede" style="white-space:pre-wrap">'+esc(M.THANK_YOU)+'</p>'+
+    '<p style="margin:20px 0 0"><button class="btn btn-primary" type="submit">Sign on again <kbd>ENTER</kbd></button></p></form>';
+};
+R.menu=function(){
+  var items=MENU.map(function(m,i){
+    return '<li><button type="button" class="opt" data-opt="'+(i+1)+'"><span class="opt-num">'+pad2(i+1)+'</span><span>'+esc(m[0])+'</span><span class="opt-code">'+m[1]+'</span></button></li>';
+  }).join("");
+  return '<div class="page"><div class="page-head"><div><h1>Main Menu</h1><p class="lede">Choose a function, or type its number and press ENTER.</p></div></div>'+
+    '<form class="panel" id="form" novalidate><h2 class="section-label" id="opts">Functions</h2><ul class="menu-grid" aria-labelledby="opts">'+items+'</ul>'+
+    '<div class="select-row">'+field({id:"option",label:"Please select an option",max:2,inputmode:"numeric",width:"190px",placeholder:"01–11"})+
+    '<button class="btn btn-primary" type="submit">Continue <kbd>ENTER</kbd></button></div></form></div>';
+};
+function kv(label,val,cls,ddcls){var e=val==null||val==="";return '<div class="'+(cls||"")+'"><dt>'+esc(label)+'</dt><dd class="'+(e?"empty ":"")+(ddcls||"")+'">'+(e?"—":esc(val))+'</dd></div>';}
+R.acct=function(){
+  var a=st.acctShown?ACCOUNTS[st.acctShown]:null, c=a?CUSTOMER:null, g=function(o,k){return o?o[k]:null;};
+  var amt=function(k){return a?money(a[k]):"—";};
+  return '<div class="page wide"><div class="page-head"><div><h1>View Account</h1><p class="lede">Account and customer details for one of your accounts.</p></div></div>'+
+   '<form class="panel compact" id="form" novalidate><div class="search-bar">'+
+     field({id:"acctid",label:"Account Number",max:11,inputmode:"numeric",width:"240px",placeholder:"11 digits"})+
+     '<button class="btn btn-primary" type="submit">View <kbd>ENTER</kbd></button>'+
+     '<p class="info-line" style="margin-bottom:0">'+esc(M.ACV_INFO)+'</p>'+
+     '<div style="margin-left:auto;align-self:center;text-align:right"><div class="hint">Active Y/N</div>'+(a?'<span class="pill '+(a.active==="Y"?"yes":"")+'">'+a.active+'</span>':'<span class="hint">—</span>')+'</div>'+
+   '</div></form>'+
+   '<div class="grid-2">'+
+    '<section class="panel" aria-labelledby="s-acct"><h2 class="section-label" id="s-acct">Account</h2>'+
+      '<dl class="kv cols-2">'+kv("Opened",g(a,"opened"),"","mono")+kv("Expiry",g(a,"expiry"),"","mono")+kv("Reissue",g(a,"reissue"),"","mono")+kv("Account Group",g(a,"group"),"","mono")+'</dl>'+
+      '<table class="amounts" style="margin-top:18px"><caption class="sr-only">Balances and limits</caption><tbody>'+
+        '<tr><th scope="row">Credit Limit</th><td>'+amt("limit")+'</td></tr>'+
+        '<tr><th scope="row">Cash Credit Limit</th><td>'+amt("cash")+'</td></tr>'+
+        '<tr class="strong"><th scope="row">Current Balance</th><td>'+amt("bal")+'</td></tr>'+
+        '<tr><th scope="row">Current Cycle Credit</th><td>'+amt("cycCr")+'</td></tr>'+
+        '<tr><th scope="row">Current Cycle Debit</th><td>'+amt("cycDb")+'</td></tr>'+
+      '</tbody></table></section>'+
+    '<section class="panel" aria-labelledby="s-cust"><h2 class="section-label" id="s-cust">Customer Details</h2>'+
+      '<dl class="kv cols-4">'+
+        kv("Customer ID",g(c,"id"),"","mono")+kv("SSN",c?maskSsn(c.ssn):null,"","mono")+kv("Date of Birth",g(c,"dob"),"","mono")+kv("FICO Score",g(c,"fico"),"","mono")+
+        kv("First Name",g(c,"first"))+kv("Middle Name",g(c,"middle"))+kv("Last Name",g(c,"last"),"span-2")+
+        kv("Address",c?c.addr1+", "+c.addr2:null,"span-2")+kv("City",g(c,"city"))+kv("State",g(c,"state"))+
+        kv("Zip",g(c,"zip"),"","mono")+kv("Country",g(c,"country"))+kv("Phone 1",g(c,"phone1"),"","mono")+kv("Phone 2",g(c,"phone2"),"","mono")+
+        kv("Government Issued Id Ref",c?maskId(c.govt):null,"span-2","mono")+kv("EFT Account Id",g(c,"eft"),"span-2","mono")+kv("Primary Card Holder Y/N",g(c,"primary"),"span-2")+
+      '</dl></section>'+
+   '</div></div>';
+};
+function cardMatches(){
+  var accts=userAccounts(), ap=st.applied;
+  return CARDS.filter(function(c){return accts.indexOf(c.acct)>=0 && (!ap.acct||c.acct===ap.acct) && (!ap.card||c.num===ap.card);});
+}
+function pageRows(){var all=cardMatches(); return all.slice((st.page-1)*PAGE_SIZE, st.page*PAGE_SIZE);}
+R.cards=function(){
+  var all=cardMatches(), rows=pageRows(), pages=Math.max(1,Math.ceil(all.length/PAGE_SIZE));
+  var filterErr=!!(st.err.facct||st.err.fcard);
+  var body="";
+  for(var i=0;i<PAGE_SIZE;i++){
+    var c=rows[i];
+    if(!c){body+='<tr class="empty-row"><td></td><td></td><td></td><td></td><td></td></tr>';continue;}
+    var sid="sel"+i, bad=st.selErr[i], last4=c.num.slice(-4);
+    body+='<tr class="'+(bad?"err":"")+'">'+
+      '<td><label class="sr-only" for="'+sid+'">Select card ending '+last4+' (S detail, U update)</label>'+
+        '<input class="input sel" id="'+sid+'" name="'+sid+'" maxlength="1" autocomplete="off" data-upper="1" value="'+esc(st.f[sid]||"")+'"'+(bad?' aria-invalid="true"':'')+(filterErr?' disabled':'')+'></td>'+
+      '<td class="mono">'+c.acct+'</td><td class="mono">'+maskCard(c.num)+'</td>'+
+      '<td><span class="pill '+(c.active==="Y"?"yes":"")+'">'+c.active+'</span></td>'+
+      '<td><div class="actions"><button type="button" class="btn btn-link btn-sm" data-act="S" data-row="'+i+'"'+(filterErr?' disabled':'')+' aria-label="View card ending '+last4+'">View <kbd>S</kbd></button>'+
+        '<button type="button" class="btn btn-link btn-sm" data-act="U" data-row="'+i+'"'+(filterErr?' disabled':'')+' aria-label="Update card ending '+last4+'">Update <kbd>U</kbd></button></div></td></tr>';
+  }
+  var from=all.length?(st.page-1)*PAGE_SIZE+1:0, to=(st.page-1)*PAGE_SIZE+rows.length;
+  return '<div class="page"><form id="form" novalidate>'+
+   '<div class="page-head"><div><h1>List Credit Cards</h1><p class="lede">Cards on the accounts linked to your user ID.</p></div><div class="page-no">Page <strong>'+st.page+'</strong></div></div>'+
+   '<div class="panel compact"><div class="search-bar">'+
+     field({id:"facct",label:"Account Number",max:11,inputmode:"numeric",width:"230px",placeholder:"Optional, 11 digits"})+
+     field({id:"fcard",label:"Credit Card Number",max:16,inputmode:"numeric",width:"290px",placeholder:"Optional, 16 digits"})+
+     '<button class="btn" type="submit">Apply filter <kbd>ENTER</kbd></button>'+
+   '</div></div>'+
+   '<div class="list-wrap"><table class="list"><caption class="sr-only">Credit cards, page '+st.page+'</caption><thead><tr>'+
+     '<th scope="col" style="width:90px">Select</th><th scope="col">Account Number</th><th scope="col">Card Number</th><th scope="col" style="width:100px">Active</th><th scope="col" style="width:200px"><span class="sr-only">Actions</span></th></tr></thead>'+
+     '<tbody>'+body+'</tbody></table>'+
+     '<div class="list-foot"><span class="info-line">'+esc(M.CCL_INFO)+'</span><span class="hint">'+(all.length?'Showing <span class="mono">'+from+'–'+to+'</span> of <span class="mono">'+all.length+'</span> · page '+st.page+' of '+pages:"No cards")+'</span></div></div>'+
+   '<button type="submit" class="sr-only" tabindex="-1">Continue</button></form></div>';
+};
+R.card=function(){
+  var c=st.card;
+  return '<div class="page"><div class="page-head"><div><h1>View Credit Card Detail</h1><p class="lede">Read-only view of the selected card.</p></div><span class="stub-tag">Stub screen</span></div>'+
+   '<form class="panel" id="form" novalidate>'+
+     '<dl class="kv cols-2" style="max-width:620px">'+kv("Account Number",c.acct,"","mono")+kv("Card Number",maskCard(c.num),"","mono")+'</dl><hr class="divider">'+
+     '<dl class="kv cols-3">'+kv("Name on card",c.name)+'<div><dt>Card Active Y/N</dt><dd><span class="pill '+(c.active==="Y"?"yes":"")+'">'+c.active+'</span></dd></div>'+kv("Expiry Date",c.exp.slice(5,7)+" / "+c.exp.slice(0,4),"","mono")+'</dl>'+
+     '<p class="info-line" style="margin:22px 0 0">'+esc(M.CSL_INFO)+'</p><button type="submit" class="sr-only" tabindex="-1">Search</button></form></div>';
+};
+R.bill=function(){
+  var b=st.balance;
+  return '<div class="page"><div class="page-head"><div><h1>Bill Payment</h1><p class="lede">Pay the full current balance of an account.</p></div></div>'+
+   '<form class="panel" id="form" novalidate>'+
+     '<div class="search-bar">'+field({id:"actid",label:"Enter Acct ID",max:11,inputmode:"numeric",width:"240px",placeholder:"11 digits"})+'</div>'+
+     '<hr class="divider">'+
+     '<p class="section-label" id="bal-l">Your current balance is</p>'+
+     '<div class="balance" aria-labelledby="bal-l"><span class="amt '+(b==null?"none":"")+'">'+(b==null?"—":money(b))+'</span>'+(b!=null?'<span class="hint">for account <span class="mono">'+esc(st.balAcct)+'</span></span>':'<span class="hint">Enter an account and press ENTER to see the balance</span>')+'</div>'+
+     '<hr class="divider">'+
+     '<div class="row" style="align-items:flex-end">'+field({id:"confirm",label:"Do you want to pay your balance now. Please confirm:",max:1,width:"auto",hint:"Y = pay now, N = cancel",upper:true,cls:"sel"})+'</div>'+
+     '<div style="display:flex;gap:10px;margin-top:22px"><button class="btn btn-primary" type="submit">Continue <kbd>ENTER</kbd></button><button class="btn" type="button" data-key="F4">Clear <kbd>F4</kbd></button></div>'+
+   '</form>'+
+   (st.receipt?'<div class="receipt" role="group" aria-label="Payment receipt"><span class="tick" aria-hidden="true">✓</span><dl><div><dt>Transaction ID</dt><dd>'+st.receipt.id+'</dd></div><div><dt>Account</dt><dd>'+st.receipt.acct+'</dd></div><div><dt>Amount paid</dt><dd>'+money(st.receipt.amt)+'</dd></div><div><dt>New balance</dt><dd>'+money(0)+'</dd></div></dl></div>':'')+
+   '</div>';
+};
+
+/* ---------- Key handling ---------- */
+function collect(){
+  var form=document.getElementById("form"); if(!form) return;
+  Array.prototype.forEach.call(form.querySelectorAll("input[name]"),function(i){st.f[i.name]=i.value;});
+}
+var H = {};
+H.signon=function(k){
+  if(k==="F3"){st.user=null; go("thanks"); return;}
+  if(k!=="ENTER"){setMsg(M.INVALID_KEY); return;}
+  var uid=(st.f.userid||"").trim().toUpperCase(), pwd=(st.f.passwd||"").trim().toUpperCase();
+  st.f.userid=uid;
+  if(!uid){st.err.userid=M.SGN_NO_USER; setMsg(M.SGN_NO_USER); st.focus="userid"; return;}
+  if(!pwd){st.err.passwd=M.SGN_NO_PWD; setMsg(M.SGN_NO_PWD); st.focus="passwd"; return;}
+  var u=USERS[uid];
+  if(!u){st.err.userid=M.SGN_NOT_FOUND; setMsg(M.SGN_NOT_FOUND); st.f.passwd=""; st.focus="userid"; return;}
+  if(u.pwd!==pwd){st.err.passwd=M.SGN_BAD_PWD; setMsg(M.SGN_BAD_PWD); st.f.passwd=""; st.focus="passwd"; return;}
+  if(u.type==="A"){st.f.passwd=""; setMsg("Prototype: the admin menu (CA00 · COADM01C) is not part of this mock-up. Sign on as USER0001.","info"); return;}
+  st.user=uid; go("menu"); return "nav";
+};
+H.thanks=function(k){ if(k==="ENTER"){go("signon"); return "nav";} };
+H.menu=function(k){
+  if(k==="F3"){st.user=null; go("signon"); return "nav";}
+  if(k!=="ENTER"){setMsg(M.INVALID_KEY); return;}
+  var raw=(st.f.option||"").trim(), n=/^\d{1,2}$/.test(raw)?parseInt(raw,10):0;
+  if(n<1||n>MENU.length){st.err.option=M.MEN_BAD_OPT; setMsg(M.MEN_BAD_OPT); st.focus="option"; return;}
+  st.f.option=pad2(n);
+  if(n===1){go("acct"); return "nav";}
+  if(n===3){go("cards"); return "nav";}
+  if(n===10){go("bill"); return "nav";}
+  if(n===11){setMsg(M.MEN_NOT_INSTALLED); return;}
+  setMsg("Prototype: “"+MENU[n-1][0]+"” ("+MENU[n-1][1]+" · "+MENU[n-1][2]+") is not part of this mock-up.","info");
+};
+H.acct=function(k){
+  if(k==="F3"){go("menu"); return "nav";}
+  if(k!=="ENTER") return;
+  var v=(st.f.acctid||"").trim(); st.acctShown=null; st.focus="acctid";
+  if(!v||v==="*"){st.err.acctid=M.ACV_NO_INPUT; setMsg(M.ACV_NO_INPUT); return;}
+  if(!/^\d{11}$/.test(v)||/^0+$/.test(v)){st.err.acctid=M.ACV_BAD; setMsg(M.ACV_BAD); return;}
+  if(userAccounts().indexOf(v)<0){var m="Account:"+v+" not found in Cross ref file.  Resp:000000013  Reas:0000"; st.err.acctid=m; setMsg(m); return;}
+  st.acctShown=v;
+};
+H.cards=function(k){
+  if(k==="F3"){go("menu"); return "nav";}
+  if(k!=="ENTER"&&k!=="F7"&&k!=="F8") return;
+  st.selErr={};
+  var fa=(st.f.facct||"").trim(), fc=(st.f.fcard||"").trim(), msg=null;
+  if(/^0*$/.test(fa)) fa=""; if(/^0*$/.test(fc)) fc="";
+  if(fa&&!/^\d{11}$/.test(fa)){st.err.facct=M.CCL_ACCT; msg=M.CCL_ACCT;}
+  if(fc&&!/^\d{16}$/.test(fc)){st.err.fcard=M.CCL_CARD; msg=msg||M.CCL_CARD;}
+  if(msg){setMsg(msg); st.focus=st.err.facct?"facct":"fcard"; return;}
+  if(fa!==st.applied.acct||fc!==st.applied.card){st.applied={acct:fa,card:fc}; st.page=1; st.lastShown=false;}
+  var all=cardMatches(), pages=Math.max(1,Math.ceil(all.length/PAGE_SIZE));
+  if(k!=="F8") st.lastShown=false;
+  if(k==="F7"||k==="F8"){
+    clearSel();
+    if(k==="F7"){ if(st.page===1) setMsg(M.CCL_NOPREV); else st.page--; }
+    else if(st.page<pages){ st.page++; }
+    else if(!st.lastShown){ st.lastShown=true; setMsg(M.CCL_NOMORE_REC); }
+    else setMsg(M.CCL_NOMORE_PAGES);
+    return;
+  }
+  if(!all.length){setMsg(M.CCL_NONE); return;}
+  var rows=pageRows(), picks=[], bad=false;
+  rows.forEach(function(c,i){var v=(st.f["sel"+i]||"").trim(); if(!v) return; if(v==="S"||v==="U") picks.push(i); else {st.selErr[i]=true; bad=true;}});
+  if(picks.length>1){picks.forEach(function(i){st.selErr[i]=true;}); setMsg(M.CCL_ONE); st.focus="sel"+picks[0]; return;}
+  if(bad){setMsg(M.CCL_CODE); st.focus="sel"+Object.keys(st.selErr)[0]; return;}
+  if(picks.length===1){
+    var c=rows[picks[0]], code=st.f["sel"+picks[0]].trim();
+    if(code==="S"){st.card=c; go("card"); return "nav";}
+    setMsg("Prototype: Credit Card Update (CCUP · COCRDUPC) for card "+maskCard(c.num)+" is not part of this mock-up.","info");
+  }
+};
+function clearSel(){for(var i=0;i<PAGE_SIZE;i++) delete st.f["sel"+i];}
+H.card=function(k){
+  if(k==="F3"){go("cards"); return "nav";}
+  if(k==="ENTER") setMsg("Prototype: card search on this screen is not part of this mock-up.","info");
+};
+H.bill=function(k){
+  if(k==="F3"){go("menu"); return "nav";}
+  if(k==="F4"){st.f={}; st.balance=null; st.receipt=null; st.focus="actid"; return;}
+  if(k!=="ENTER"){setMsg(M.INVALID_KEY); return;}
+  st.receipt=null;
+  var id=(st.f.actid||"").trim(), cf=(st.f.confirm||"").trim();
+  if(!id){st.err.actid=M.BIL_EMPTY; setMsg(M.BIL_EMPTY); st.focus="actid"; st.balance=null; return;}
+  if(cf==="N"||cf==="n"){st.f={}; st.balance=null; st.focus="actid"; return;}
+  if(cf&&cf!=="Y"&&cf!=="y"){st.err.confirm=M.BIL_YN; setMsg(M.BIL_YN); st.focus="confirm"; return;}
+  var a=userAccounts().indexOf(id)>=0?ACCOUNTS[id]:null;
+  if(!a){st.err.actid=M.BIL_NOTFOUND; setMsg(M.BIL_NOTFOUND); st.focus="actid"; st.balance=null; return;}
+  st.balance=a.bal; st.balAcct=id;
+  if(a.bal<=0){setMsg(M.BIL_NOTHING); st.err.actid=M.BIL_NOTHING; st.focus="actid"; return;}
+  if(!cf){setMsg(M.BIL_CONFIRM,"info"); st.focus="confirm"; return;}
+  var tid=String(nextTranId++); tid="0000000000000000".slice(tid.length)+tid;
+  st.receipt={id:tid,acct:id,amt:a.bal}; a.bal=0;
+  st.f={}; st.balance=null; st.focus="actid";
+  setMsg("Payment successful.  Your Transaction ID is "+tid+".","success");
+};
+
+function handle(k){
+  collect(); st.err={}; st.msg=null; st.focus=null;
+  var r=(H[st.screen]||function(){})(k);
+  if(r!=="nav") render();
+  flashKey(k);
+}
+
+/* ---------- Rendering ---------- */
+function renderChrome(){
+  var s=SCREENS[st.screen];
+  document.getElementById("hdr-tran").textContent=s.tran+" · "+s.prog;
+  var u=document.getElementById("hdr-user");
+  u.innerHTML=st.user?'<span class="avatar" aria-hidden="true">'+st.user.slice(0,2)+'</span><span class="mono">'+st.user+'</span><span class="role">'+(USERS[st.user].type==="A"?"Admin":"User")+'</span>':'<span style="color:var(--subtle)">Not signed in</span>';
+  var mb=document.getElementById("msgbar");
+  if(st.msg){
+    mb.className="msgbar "+st.msg.kind;
+    mb.innerHTML='<span class="icon" aria-hidden="true">'+(st.msg.kind==="success"?"✓":st.msg.kind==="info"?"i":"!")+'</span><span class="msg-text">'+esc(st.msg.text)+'</span>';
+  } else {mb.className="msgbar"; mb.innerHTML="";}
+  document.getElementById("keybar").innerHTML=s.keys.map(function(k){
+    return '<button type="button" class="key'+(k[0]==="ENTER"?" primary":"")+'" data-key="'+k[0]+'" aria-keyshortcuts="'+(k[0]==="ENTER"?"Enter":k[0])+'"><kbd>'+k[0]+'</kbd><span>'+esc(k[1])+'</span></button>';
+  }).join("")+'<span class="proto-label">Prototype – simulated data</span>';
+}
+function render(){
+  document.getElementById("main").innerHTML=R[st.screen]();
+  renderChrome();
+  var form=document.getElementById("form");
+  if(form) form.addEventListener("submit",function(e){e.preventDefault(); handle("ENTER");});
+  var target=st.focus&&document.getElementById(st.focus);
+  if(!target){var first=document.querySelector("main input:not([disabled])"); target=first||document.querySelector("main button[type=submit]");}
+  if(target){target.focus(); if(target.select&&st.err[target.id]) target.select();}
+}
+function flashKey(k){
+  var b=document.querySelector('.key[data-key="'+k+'"]'); if(!b) return;
+  b.classList.add("pressed"); setTimeout(function(){b.classList.remove("pressed");},140);
+}
+
+/* ---------- Events ---------- */
+document.addEventListener("click",function(e){
+  var t=e.target.closest("[data-key],[data-opt],[data-act]"); if(!t) return;
+  if(t.dataset.key){ if(t.dataset.key==="ENTER"){collect(); handle("ENTER");} else handle(t.dataset.key); return; }
+  if(t.dataset.opt){ var o=document.getElementById("option"); o.value=pad2(+t.dataset.opt); handle("ENTER"); return; }
+  if(t.dataset.act){ for(var i=0;i<PAGE_SIZE;i++){var s=document.getElementById("sel"+i); if(s) s.value="";} document.getElementById("sel"+t.dataset.row).value=t.dataset.act; handle("ENTER"); }
+});
+document.addEventListener("input",function(e){ if(e.target.dataset&&e.target.dataset.upper){var p=e.target.selectionStart; e.target.value=e.target.value.toUpperCase(); try{e.target.setSelectionRange(p,p);}catch(x){}} });
+var FKEYS=/^F([1-9]|10)$/;
+document.addEventListener("keydown",function(e){
+  if(FKEYS.test(e.key)&&e.key!=="F5"&&!e.ctrlKey&&!e.altKey&&!e.metaKey){ e.preventDefault(); handle(e.key); }
+});
+
+function tick(){
+  var d=new Date();
+  document.getElementById("hdr-clock").textContent=pad2(d.getMonth()+1)+"/"+pad2(d.getDate())+"/"+String(d.getFullYear()).slice(2)+"  "+pad2(d.getHours())+":"+pad2(d.getMinutes())+":"+pad2(d.getSeconds());
+}
+tick(); setInterval(tick,1000);
+window.__proto={st:st,go:go,handle:handle};
+render();
+})();
+</script>
+</body>
+</html>
